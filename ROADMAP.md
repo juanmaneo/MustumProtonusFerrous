@@ -14,7 +14,7 @@ in the dev container for direct comparison.
 - [x] PE mapper (headers + sections into a flat image)
 - [x] podman/docker dev container + `cargo xtask compare`
 
-## Phase 1 — loader & ntdll core (current)
+## Phase 1 — loader & ntdll core (done)
 
 - [x] base relocations (`mpf_loader::MemoryModule::relocate`, HIGHLOW/DIR64),
       import (IAT) resolution, TLS directory, delay imports (`mpf-pe` parsers
@@ -27,11 +27,17 @@ in the dev container for direct comparison.
 - [x] process init equivalent of `programs/wineboot` (`mpf-wineboot::init_prefix`)
       + `loader/main.c` (`mpf-cli run`: map -> relocate -> resolve -> PEB/TEB/LDR)
 
-## Phase 2 — first runnable Win32 app
+## Phase 2 — first runnable Win32 app (current)
 
-- [ ] kernel32/kernelbase subset (process, thread, module, file, registry)
-- [ ] conformance harness running wine's `dlls/*/tests` against MPF builds
-- [ ] mpf-wineboot: prefix creation (`drive_c`, registry hives)
+- [x] kernel32 subset: process (`GetCurrentProcess[Id]`), threads
+      (`CreateThread`/`WaitForSingleObject`, thread ids), modules
+      (`GetModuleHandleW`/`GetModuleFileNameW`/`GetProcAddress` over mapped
+      images), files (`CreateFileW`/`ReadFile`/`WriteFile`/`CloseHandle`)
+- [x] registry: `mpf-advapi32` parses/formats wine `.reg` hives + Reg* key
+      API; `mpf-wineboot` writes real `system.reg`/`user.reg` hives
+      (`drive_c` prefix tree)
+- [x] conformance harness `mpf-conformance`: `cargo run -p mpf-conformance`
+      runs seeded cases derived from wine's `dlls/*/tests` expectations
 
 ## Phase 3 — graphics stack
 

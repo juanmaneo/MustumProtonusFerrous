@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "mpf-advapi32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cli"
 version = "0.1.0"
 dependencies = [
@@ -15,8 +19,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-conformance"
+version = "0.1.0"
+dependencies = [
+ "mpf-advapi32",
+ "mpf-kernel32",
+ "mpf-loader",
+ "mpf-ntdll",
+ "mpf-pe",
+ "mpf-wineboot",
+ "mpf-winnt",
+]
+
+[[package]]
 name = "mpf-kernel32"
 version = "0.1.0"
+dependencies = [
+ "mpf-loader",
+ "mpf-ntdll",
+ "mpf-pe",
+]
 
 [[package]]
 name = "mpf-loader"
@@ -36,6 +58,9 @@ version = "0.1.0"
 [[package]]
 name = "mpf-wineboot"
 version = "0.1.0"
+dependencies = [
+ "mpf-advapi32",
+]
 
 [[package]]
 name = "mpf-winnt"

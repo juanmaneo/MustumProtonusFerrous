@@ -6,10 +6,12 @@
 |-------------------------------------|----------------------------|-----------|
 | `loader/`                           | `proton` script            | `mpf-loader` (map, relocate, IAT/delay-import resolution, TLS) |
 | `dlls/ntdll/`                       | —                          | `mpf-ntdll` (ntstatus, unicode, heap, critical sections, object handles, exception bridge) |
-| `dlls/kernel32/`, `dlls/kernelbase/`| —                          | `mpf-kernel32`, `mpf-kernelbase` (planned) |
+| `dlls/kernel32/`, `dlls/kernelbase/`| —                          | `mpf-kernel32` (strings, process, thread, module, file), `mpf-kernelbase` (planned) |
+| `dlls/advapi32/`                    | —                          | `mpf-advapi32` (`.reg` hives + Reg* API) |
 | `dlls/user32`, `gdi32`, `winex11.drv` | dxvk submodule           | `mpf-user32`, `mpf-gdi32` (planned); dxvk native initially |
 | —                                   | vkd3d-proton submodule     | native companion initially, Rust port later |
-| `programs/wineboot`                 | `default_pfx.py`           | `mpf-wineboot` (prefix init) |
+| `programs/wineboot`                 | `default_pfx.py`           | `mpf-wineboot` (prefix init + hives) |
+| `dlls/*/tests`                      | —                          | `mpf-conformance` (seeded conformance cases) |
 | —                                   | umu-launcher (Python)      | `mpf-umu` (planned) |
 | `include/winnt.h` etc.              | —                          | `mpf-pe` + `mpf-winnt` (PEB/TEB/LDR/critical-section/exception ABI structs) |
 | process startup (`loader/main.c`, `LdrInitializeThunk`) | — | `mpf-cli run` (map → ASLR relocate → resolve imports → PEB/TEB/LDR) |

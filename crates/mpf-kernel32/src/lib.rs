@@ -1,8 +1,12 @@
-//! kernel32 surface (initial subset).
+//! kernel32 surface: strings, process, thread, module, file.
 //!
-//! Mirrors `dlls/kernel32/string.c` (`lstrlenW`, `lstrcpynW`) in the
-//! reference Wine tree. Safe slice-based cores plus thin `unsafe` FFI
-//! wrappers with the real Win32 signatures.
+//! Mirrors `dlls/kernel32/*.c` in the reference Wine tree. Safe slice-based
+//! cores plus thin `unsafe` FFI wrappers with the real Win32 signatures.
+
+pub mod file;
+pub mod module;
+pub mod process;
+pub mod thread;
 
 /// Mirrors `lstrlenW` on a slice: counts UTF-16 code units up to (not
 /// including) the first NUL.

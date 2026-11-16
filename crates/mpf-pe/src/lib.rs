@@ -286,6 +286,17 @@ impl<'a> PeImage<'a> {
         })
     }
 
+    /// Parses an already-mapped image: headers at offset 0 and each section
+    /// at its virtual address, so RVA == offset for everything. Used by
+    /// `GetProcAddress`-style export lookup on loaded modules.
+    pub fn parse_mapped(data: &'a [u8]) -> Result<PeImage<'a>, PeError> {
+        let mut pe = PeImage::parse(data)?;
+        for s in &mut pe.sections {
+            s.pointer_to_raw_data = s.virtual_address;
+        }
+        Ok(pe)
+    }
+
     pub fn machine(&self) -> u16 {
         self.coff.machine
     }
@@ -859,6 +870,23 @@ mod tests {
         assert_eq!(imports[0].function, "BaseFunc");
         assert_eq!(imports[0].ordinal, None);
         assert_eq!(imports[0].thunk_rva, 0x1170);
+    }
+
+    #[test]
+    fn parses_mapped_images_with_rva_equals_offset() {
+        let file = build_test_pe64();
+        let mut mapped = vec![0u8; 0x2000];
+        mapped[..0x200].copy_from_slice(&file[..0x200]);
+        mapped[0x1000..0x1300].copy_from_slice(&file[0x200..0x500]);
+        let pe = PeImage::parse_mapped(&mapped).unwrap();
+        assert_eq!(pe.rva_to_offset(0x1048), Some(0x1048));
+        assert_eq!(pe.exports().unwrap()[0].name, "TestFunc");
+        assert_eq!(pe.exports().unwrap()[0].rva, 0x1080);
+        assert_eq!(pe.imports().unwrap()[0].function, "BaseFunc");
+        assert!(matches!(
+            PeImage::parse_mapped(b"nope"),
+            Err(PeError::BadDosMagic)
+        ));
     }
 
     #[test]
