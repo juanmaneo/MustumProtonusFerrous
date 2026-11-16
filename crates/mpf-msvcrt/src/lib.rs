@@ -109,6 +109,55 @@ pub fn wcsdup(source: Option<&[u16]>) -> Option<Vec<u16>> {
     })
 }
 
+/// Caller-owned tokenizer state, preserving the source's original end after
+/// delimiters are replaced with NUL bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StrtokCursor {
+    next: usize,
+    end: usize,
+}
+
+impl StrtokCursor {
+    /// Starts tokenization at the beginning of the bounded NUL-terminated slice.
+    pub fn new(source: &[u8]) -> Self {
+        Self {
+            next: 0,
+            end: strnlen(source, source.len()),
+        }
+    }
+
+    /// Returns the next token range, replacing its separator with NUL.
+    /// Delimiters are interpreted up to their NUL.
+    pub fn next_token(
+        &mut self,
+        source: &mut [u8],
+        delimiters: &[u8],
+    ) -> Option<std::ops::Range<usize>> {
+        let delimiter_end = strnlen(delimiters, delimiters.len());
+        let delimiter_set = &delimiters[..delimiter_end];
+        let mut start = self.next.min(self.end);
+        while start < self.end && delimiter_set.contains(&source[start]) {
+            start += 1;
+        }
+        if start == self.end {
+            self.next = self.end;
+            return None;
+        }
+
+        let mut end = start;
+        while end < self.end && !delimiter_set.contains(&source[end]) {
+            end += 1;
+        }
+        if end < self.end {
+            source[end] = 0;
+            self.next = end + 1;
+        } else {
+            self.next = self.end;
+        }
+        Some(start..end)
+    }
+}
+
 /// Swaps adjacent bytes from `source` into `destination` for the first
 /// `count` bytes, ignoring any odd trailing byte.
 ///
@@ -811,6 +860,43 @@ mod tests {
         assert_eq!(wcsdup(Some(&w("wine"))), Some(w("wine")));
         assert_eq!(wcsdup(Some(&[b'a' as u16, b'b' as u16])), Some(w("ab")));
         assert_eq!(wcsdup(Some(&[])), Some(vec![0]));
+    }
+
+    #[test]
+    fn strtok_r_skips_delimiters_mutates_separators_and_advances_context() {
+        let mut source = *b",,one,,two,three\0tail";
+        let mut cursor = StrtokCursor::new(&source);
+        assert_eq!(cursor.next_token(&mut source, b","), Some(2..5));
+        assert_eq!(&source[2..6], b"one\0");
+        assert_eq!(cursor.next_token(&mut source, b","), Some(7..10));
+        assert_eq!(&source[7..11], b"two\0");
+        assert_eq!(cursor.next_token(&mut source, b","), Some(11..16));
+        assert_eq!(cursor.next_token(&mut source, b","), None);
+        assert_eq!(cursor.next, 16);
+        assert_eq!(cursor.next_token(&mut source, b","), None);
+
+        let mut no_delimiters = *b"token\0";
+        let mut cursor = StrtokCursor::new(&no_delimiters);
+        assert_eq!(cursor.next_token(&mut no_delimiters, b","), Some(0..5));
+        assert_eq!(cursor.next_token(&mut no_delimiters, b","), None);
+
+        let mut empty = *b",,,\0";
+        let mut cursor = StrtokCursor::new(&empty);
+        assert_eq!(cursor.next_token(&mut empty, b","), None);
+        assert_eq!(cursor.next, 3);
+
+        let mut unterminated = *b"a,b";
+        let mut cursor = StrtokCursor::new(&unterminated);
+        assert_eq!(cursor.next_token(&mut unterminated, b","), Some(0..1));
+        assert_eq!(cursor.next_token(&mut unterminated, b","), Some(2..3));
+        assert_eq!(cursor.next_token(&mut unterminated, b","), None);
+
+        let mut no_source = [];
+        let mut cursor = StrtokCursor::new(&no_source);
+        assert_eq!(cursor.next_token(&mut no_source, b","), None);
+        let mut empty_delimiters = *b"a,b\0";
+        let mut cursor = StrtokCursor::new(&empty_delimiters);
+        assert_eq!(cursor.next_token(&mut empty_delimiters, b""), Some(0..3));
     }
 
     #[test]
