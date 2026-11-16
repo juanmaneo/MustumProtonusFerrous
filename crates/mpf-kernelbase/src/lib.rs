@@ -487,6 +487,14 @@ pub fn path_get_drive_number(path: &[u16]) -> i32 {
     }
 }
 
+/// Reports whether a path is a UNC server name, matching Wine's `PathIsUNCServerW`.
+pub fn path_is_unc_server(path: &[u16]) -> bool {
+    wlen(path) >= 2
+        && char_at(path, 0) == b'\\' as u16
+        && char_at(path, 1) == b'\\' as u16
+        && !path[2..wlen(path)].contains(&(b'\\' as u16))
+}
+
 /// Reports whether a path is relative, matching Wine's `PathIsRelativeW`.
 pub fn path_is_relative(path: &[u16]) -> bool {
     let len = wlen(path);
@@ -1414,6 +1422,22 @@ mod tests {
             assert_eq!(path_get_drive_number(&w(path)), expected, "{path}");
         }
         assert_eq!(path_get_drive_number(&[]), -1);
+    }
+
+    #[test]
+    fn is_unc_server_matches_wine_rules() {
+        for (path, expected) in [
+            ("", false),
+            ("\\", false),
+            ("\\\\", true),
+            ("\\\\server", true),
+            ("\\\\server\\", false),
+            ("\\\\server\\share", false),
+            ("server", false),
+        ] {
+            assert_eq!(path_is_unc_server(&w(path)), expected, "{path}");
+        }
+        assert!(!path_is_unc_server(&[]));
     }
 
     #[test]

@@ -111,6 +111,8 @@ fn kernelbase_strip_prefix() {
     assert!(!mpf_kernelbase::path_is_relative(&w("C:\\file.txt")));
     assert!(!mpf_kernelbase::path_is_relative(&w("\\rooted")));
     assert!(mpf_kernelbase::path_is_unc(&w("\\\\server\\share")));
+    assert!(mpf_kernelbase::path_is_unc_server(&w("\\\\server")));
+    assert!(!mpf_kernelbase::path_is_unc_server(&w("\\\\server\\share")));
     assert!(mpf_kernelbase::path_is_unc_server_share(&w(
         "\\\\server\\share"
     )));
