@@ -307,6 +307,21 @@ pub fn path_cch_add_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_add_backslash_ex(path, size).0
 }
 
+/// Finds the extension's UTF-16 offset using Wine's legacy `PathFindExtensionW`
+/// rules. An absent extension points to the terminating NUL.
+pub fn path_find_extension(path: &[u16]) -> usize {
+    let len = wlen(path);
+    let mut last_dot = None;
+    for (index, &unit) in path[..len].iter().enumerate() {
+        if unit == b'\\' as u16 || unit == b' ' as u16 {
+            last_dot = None;
+        } else if unit == b'.' as u16 {
+            last_dot = Some(index);
+        }
+    }
+    last_dot.unwrap_or(len)
+}
+
 /// Finds the extension's UTF-16 offset using Wine's `PathCchFindExtension`
 /// rules. An absent extension points to the terminating NUL.
 pub fn path_cch_find_extension(path: &[u16], size: usize) -> (i32, Option<usize>) {
@@ -1164,6 +1179,24 @@ mod tests {
             path_cch_find_extension(&vec![b'a' as u16; MAX_PATH_CCH], MAX_PATH_CCH),
             (E_INVALIDARG, None)
         );
+    }
+
+    #[test]
+    fn find_extension_matches_wine_legacy_rules() {
+        for (path, expected) in [
+            ("", 0),
+            ("file.txt", 4),
+            ("file", 4),
+            ("file.", 4),
+            ("dir\\file.txt", 8),
+            ("dir with space\\file.txt", 19),
+            ("dir.with.dot\\file", 17),
+            ("file.tar.gz", 8),
+            ("file.txt more", 13),
+        ] {
+            assert_eq!(path_find_extension(&w(path)), expected, "{path}");
+        }
+        assert_eq!(path_find_extension(&[]), 0);
     }
 
     #[test]
