@@ -26,12 +26,33 @@ fn shlwapi_path_helpers() {
     assert_eq!(mpf_shlwapi::path_find_extension(&path), 8);
     assert!(mpf_shlwapi::path_is_relative(&w("file://folder/test.txt")));
     assert!(!mpf_shlwapi::path_is_relative(&w("C:\\test.txt")));
+
+    let unc = w("\\\\server\\share");
+    assert!(mpf_shlwapi::path_is_unc(&unc));
+    assert!(mpf_shlwapi::path_is_unc_server_share(&unc));
+    assert!(mpf_shlwapi::path_is_root(&unc));
+    assert_eq!(mpf_shlwapi::path_skip_root(&w("C:\\folder")), Some(3));
+
     let mut added = w("one\\two");
     assert_eq!(mpf_shlwapi::path_add_backslash(&mut added), Some(8));
     assert_eq!(added, w("one\\two\\"));
+    let mut removed = w("C:\\folder\\file.txt");
+    assert!(mpf_shlwapi::path_remove_file_spec(&mut removed));
+    assert_eq!(removed, w("C:\\folder"));
     let mut stripped = w("short//path\\file.txt");
     mpf_shlwapi::path_strip_path(&mut stripped);
     assert_eq!(stripped, w("file.txt"));
+
+    assert_eq!(mpf_shlwapi::path_get_drive_number(&w("C:\\folder")), 2);
+    assert!(mpf_shlwapi::path_is_file_spec(&w("file.txt")));
+    assert!(mpf_shlwapi::path_is_lfn_file_spec(&w("long file name.txt")));
+    let mut no_extension = w("file.txt");
+    mpf_shlwapi::path_remove_extension(&mut no_extension);
+    assert_eq!(no_extension, w("file"));
+    let mut quoted = w("a path\\file.txt");
+    mpf_shlwapi::path_quote_spaces(&mut quoted);
+    mpf_shlwapi::path_unquote_spaces(&mut quoted);
+    assert_eq!(quoted, w("a path\\file.txt"));
 }
 
 fn msvcrt_wide_compare() {
@@ -380,7 +401,7 @@ fn kernel32_process() {
 pub fn all() -> Vec<Case> {
     vec![
         Case {
-            name: "shlwapi!PathFindFileName/Extension/IsRelative/AddBackslash/StripPathW",
+            name: "shlwapi!PathFindFileName/Extension/IsRelative/UNC/SkipRoot/RemoveFileSpecW",
             run: shlwapi_path_helpers,
         },
         Case {
