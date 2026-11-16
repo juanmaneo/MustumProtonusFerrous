@@ -41,6 +41,25 @@ pub fn wcschr(s: &[u16], needle: u16) -> Option<usize> {
         .position(|&unit| unit == needle)
 }
 
+/// Copies at most `count` UTF-16 units and NUL-pads the remaining destination.
+///
+/// Returns `None` without modifying the destination if it has fewer than
+/// `count` code units. Like Wine's `wcsncpy`, exactly `count` units are written.
+pub fn wcsncpy(destination: &mut [u16], source: &[u16], count: usize) -> Option<()> {
+    let destination = destination.get_mut(..count)?;
+    let mut copied = 0;
+    while copied < count {
+        let unit = source.get(copied).copied().unwrap_or(0);
+        destination[copied] = unit;
+        copied += 1;
+        if unit == 0 {
+            break;
+        }
+    }
+    destination[copied..].fill(0);
+    Some(())
+}
+
 /// Finds a UTF-16 substring and returns its first code-unit offset.
 ///
 /// Matches Wine's `wcsstr`: an empty needle matches any non-empty haystack,
@@ -145,6 +164,34 @@ mod tests {
         assert_eq!(wcsnlen(&[b'a' as u16, b'b' as u16], 20), 2);
         assert_eq!(wcsnlen(&w("string"), 0), 0);
         assert_eq!(wcsnlen(&[], 4), 0);
+    }
+
+    #[test]
+    fn wcsncpy_copies_truncates_pads_and_checks_capacity() {
+        let mut buffer = [0xffff; 6];
+        assert_eq!(wcsncpy(&mut buffer, &w("1234567"), 6), Some(()));
+        assert_eq!(
+            buffer,
+            [
+                b'1' as u16,
+                b'2' as u16,
+                b'3' as u16,
+                b'4' as u16,
+                b'5' as u16,
+                b'6' as u16
+            ]
+        );
+
+        let mut padded = [0xffff; 6];
+        assert_eq!(wcsncpy(&mut padded, &w("abc"), 6), Some(()));
+        assert_eq!(padded, [b'a' as u16, b'b' as u16, b'c' as u16, 0, 0, 0]);
+
+        let mut unchanged = [0xffff; 2];
+        assert_eq!(wcsncpy(&mut unchanged, &w("x"), 3), None);
+        assert_eq!(unchanged, [0xffff; 2]);
+        assert_eq!(wcsncpy(&mut unchanged, &w("x"), 0), Some(()));
+        assert_eq!(wcsncpy(&mut unchanged, &[b'x' as u16], 2), Some(()));
+        assert_eq!(unchanged, [b'x' as u16, 0]);
     }
 
     #[test]
