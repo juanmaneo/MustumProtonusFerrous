@@ -56,6 +56,16 @@ fn shlwapi_path_helpers() {
 }
 
 fn kernelbase_strip_prefix() {
+    assert_eq!(
+        mpf_kernelbase::path_cch_find_extension(&w("C:\\folder\\file.txt"), 64),
+        (mpf_kernelbase::S_OK, Some(14))
+    );
+    let mut extension = w("C:\\folder\\file.txt");
+    assert_eq!(
+        mpf_kernelbase::path_cch_remove_extension(&mut extension, 64),
+        mpf_kernelbase::S_OK
+    );
+    assert_eq!(extension, w("C:\\folder\\file"));
     assert!(mpf_kernelbase::path_cch_is_root(&w("C:\\")));
     assert!(!mpf_kernelbase::path_cch_is_root(&w("C:\\folder")));
     assert!(mpf_kernelbase::path_cch_is_root(&w("\\\\server\\share")));

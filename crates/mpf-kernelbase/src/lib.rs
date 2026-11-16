@@ -249,6 +249,46 @@ pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_remove_backslash_ex(path, size).0
 }
 
+/// Finds the extension's UTF-16 offset using Wine's `PathCchFindExtension`
+/// rules. An absent extension points to the terminating NUL.
+pub fn path_cch_find_extension(path: &[u16], size: usize) -> (i32, Option<usize>) {
+    if size == 0 || size > MAX_PATH_CCH {
+        return (E_INVALIDARG, None);
+    }
+    let mut last_dot = None;
+    let mut index = 0;
+    while char_at(path, index) != 0 {
+        match char_at(path, index) {
+            unit if unit == b'\\' as u16 || unit == b' ' as u16 => last_dot = None,
+            unit if unit == b'.' as u16 => last_dot = Some(index),
+            _ => {}
+        }
+        index += 1;
+        if index == size || index == MAX_PATH_CCH {
+            return (E_INVALIDARG, None);
+        }
+    }
+    (S_OK, Some(last_dot.unwrap_or(index)))
+}
+
+/// Removes the extension from a path with a valid NUL terminator within `size`.
+pub fn path_cch_remove_extension(path: &mut Vec<u16>, size: usize) -> i32 {
+    if size == 0 || size > MAX_PATH_CCH {
+        return E_INVALIDARG;
+    }
+    let (_, Some(extension)) = path_cch_find_extension(path, size) else {
+        return E_INVALIDARG;
+    };
+    let len = wlen(path);
+    path.truncate(extension);
+    path.push(0);
+    if extension == len {
+        S_FALSE
+    } else {
+        S_OK
+    }
+}
+
 /// Reports whether a path begins with two backslashes, matching
 /// Wine's `PathIsUNCW` behavior.
 pub fn path_is_unc(path: &[u16]) -> bool {
@@ -785,6 +825,124 @@ mod tests {
             path_cch_remove_backslash_ex(&mut truncated, 4),
             (E_INVALIDARG, None, 0)
         );
+    }
+
+    #[test]
+    fn find_extension_matches_wine_offsets() {
+        for (path, expected) in [
+            ("1.exe", 1),
+            ("C:1.exe", 3),
+            ("C:\\1.exe", 4),
+            ("\\1.exe", 2),
+            ("\\\\1.exe", 3),
+            ("\\\\?\\C:1.exe", 7),
+            ("\\\\?\\C:\\1.exe", 8),
+            ("\\\\?\\UNC\\1.exe", 9),
+            ("\\\\?\\UNC\\192.168.1.1\\1.exe", 21),
+            (
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\1.exe",
+                50,
+            ),
+            ("C:\\a/1.exe", 6),
+            ("/1.exe", 2),
+            ("//1.exe", 3),
+            ("C:\\a/b/1.exe", 8),
+            ("/a/1.exe", 4),
+            ("", 0),
+            (" ", 1),
+            (".", 0),
+            ("..", 1),
+            ("a", 1),
+            ("a.", 1),
+            (".a.b.", 4),
+            ("a. ", 3),
+            ("a.\\", 3),
+            ("\\\\?\\UNC\\192.168.1.1", 17),
+            ("\\\\?\\UNC\\192.168.1.1\\", 20),
+            ("\\\\?\\UNC\\192.168.1.1\\a", 21),
+        ] {
+            assert_eq!(
+                path_cch_find_extension(&w(path), MAX_PATH_CCH),
+                (S_OK, Some(expected)),
+                "{path}"
+            );
+        }
+        assert_eq!(path_cch_find_extension(&w("file"), 0), (E_INVALIDARG, None));
+        assert_eq!(
+            path_cch_find_extension(&w("file"), MAX_PATH_CCH + 1),
+            (E_INVALIDARG, None)
+        );
+        assert_eq!(path_cch_find_extension(&w("file"), 4), (E_INVALIDARG, None));
+        assert_eq!(path_cch_find_extension(&w("file"), 5), (S_OK, Some(4)));
+        assert_eq!(
+            path_cch_find_extension(&vec![b'a' as u16; MAX_PATH_CCH], MAX_PATH_CCH),
+            (E_INVALIDARG, None)
+        );
+    }
+
+    #[test]
+    fn remove_extension_matches_wine_vectors() {
+        for (input, expected, status) in [
+            ("1.exe", "1", S_OK),
+            ("C:1.exe", "C:1", S_OK),
+            ("C:\\1.exe", "C:\\1", S_OK),
+            ("\\1.exe", "\\1", S_OK),
+            ("\\\\1.exe", "\\\\1", S_OK),
+            ("\\\\?\\C:1.exe", "\\\\?\\C:1", S_OK),
+            ("\\\\?\\C:\\1.exe", "\\\\?\\C:\\1", S_OK),
+            ("\\\\?\\UNC\\1.exe", "\\\\?\\UNC\\1", S_OK),
+            (
+                "\\\\?\\UNC\\192.168.1.1\\1.exe",
+                "\\\\?\\UNC\\192.168.1.1\\1",
+                S_OK,
+            ),
+            (
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\1.exe",
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\1",
+                S_OK,
+            ),
+            ("", "", S_FALSE),
+            (" ", " ", S_FALSE),
+            (".", "", S_OK),
+            ("..", ".", S_OK),
+            ("a", "a", S_FALSE),
+            ("a.", "a", S_OK),
+            (".a.b.", ".a.b", S_OK),
+            ("a. ", "a. ", S_FALSE),
+            ("a.\\", "a.\\", S_FALSE),
+            ("\\\\?\\UNC\\192.168.1.1", "\\\\?\\UNC\\192.168.1", S_OK),
+            (
+                "\\\\?\\UNC\\192.168.1.1\\",
+                "\\\\?\\UNC\\192.168.1.1\\",
+                S_FALSE,
+            ),
+            (
+                "\\\\?\\UNC\\192.168.1.1\\a",
+                "\\\\?\\UNC\\192.168.1.1\\a",
+                S_FALSE,
+            ),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_cch_remove_extension(&mut path, MAX_PATH_CCH),
+                status,
+                "{input}"
+            );
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut path = w("C:\\1.exe");
+        let original = path.clone();
+        assert_eq!(path_cch_remove_extension(&mut path, 0), E_INVALIDARG);
+        assert_eq!(path, original);
+        assert_eq!(
+            path_cch_remove_extension(&mut path, MAX_PATH_CCH + 1),
+            E_INVALIDARG
+        );
+        assert_eq!(path, original);
+        assert_eq!(path_cch_remove_extension(&mut path, 8), E_INVALIDARG);
+        assert_eq!(path, original);
+        assert_eq!(path_cch_remove_extension(&mut path, 9), S_OK);
+        assert_eq!(path, w("C:\\1"));
     }
 
     #[test]
