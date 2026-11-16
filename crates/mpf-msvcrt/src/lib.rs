@@ -6,6 +6,19 @@
 //! variants lower-case with ASCII rules only; locale-aware `_towlower_l`
 //! and the `MSVCRT_CHECK_PMT` invalid-parameter path are not ported here.
 
+/// Duplicates an optional NUL-terminated UTF-16 string.
+///
+/// `None` models a null pointer. For a bounded, unterminated slice, the result
+/// is safely terminated rather than reading beyond the available input.
+pub fn wcsdup(source: Option<&[u16]>) -> Option<Vec<u16>> {
+    source.map(|source| {
+        let length = wcslen(source);
+        let mut duplicate = source[..length].to_vec();
+        duplicate.push(0);
+        duplicate
+    })
+}
+
 /// Length of a byte string before its first NUL, bounded by `max_len`.
 ///
 /// This slice-based equivalent of Wine's `strnlen` cannot read past the
@@ -160,6 +173,14 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn wcsdup_copies_through_the_terminator_and_handles_null() {
+        assert_eq!(wcsdup(None), None);
+        assert_eq!(wcsdup(Some(&w("wine"))), Some(w("wine")));
+        assert_eq!(wcsdup(Some(&[b'a' as u16, b'b' as u16])), Some(w("ab")));
+        assert_eq!(wcsdup(Some(&[])), Some(vec![0]));
     }
 
     #[test]
