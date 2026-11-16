@@ -464,6 +464,21 @@ pub fn path_remove_file_spec(path: &mut Vec<u16>) -> bool {
     true
 }
 
+/// Returns the drive index for a path, matching Wine's `PathGetDriveNumberW`.
+/// ASCII drive letters map to 0–25; paths without a drive spec return -1.
+pub fn path_get_drive_number(path: &[u16]) -> i32 {
+    let start = if starts_with(path, b"\\\\?\\") { 4 } else { 0 };
+    let drive = char_at(path, start);
+    if drive == 0 || char_at(path, start + 1) != b':' as u16 {
+        return -1;
+    }
+    match drive {
+        65..=90 => i32::from(drive - 65),
+        97..=122 => i32::from(drive - 97),
+        _ => -1,
+    }
+}
+
 /// Reports whether a path is relative, matching Wine's `PathIsRelativeW`.
 pub fn path_is_relative(path: &[u16]) -> bool {
     let len = wlen(path);
@@ -1351,6 +1366,27 @@ mod tests {
             assert_eq!(path_remove_file_spec(&mut path), result, "{input}");
             assert_eq!(path, w(expected), "{input}");
         }
+    }
+
+    #[test]
+    fn get_drive_number_matches_wine_rules() {
+        for (path, expected) in [
+            ("", -1),
+            ("C:", 2),
+            ("C:\\folder", 2),
+            ("a:relative", 0),
+            ("z:\\", 25),
+            ("\\\\?\\D:\\folder", 3),
+            ("\\\\?\\z:relative", 25),
+            ("\\\\server\\share", -1),
+            ("1:\\folder", -1),
+            ("C", -1),
+            ("\\\\?\\", -1),
+            ("\\\\?\\1:", -1),
+        ] {
+            assert_eq!(path_get_drive_number(&w(path)), expected, "{path}");
+        }
+        assert_eq!(path_get_drive_number(&[]), -1);
     }
 
     #[test]
