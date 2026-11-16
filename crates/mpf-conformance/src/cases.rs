@@ -56,6 +56,15 @@ fn shlwapi_path_helpers() {
 }
 
 fn kernelbase_strip_prefix() {
+    assert_eq!(
+        mpf_kernelbase::path_cch_skip_root(&w("C:\\folder")),
+        (mpf_kernelbase::S_OK, 3)
+    );
+    assert_eq!(
+        mpf_kernelbase::path_cch_skip_root(&w("\\\\server\\share\\file")),
+        (mpf_kernelbase::S_OK, 15)
+    );
+
     let mut drive = w("\\\\?\\C:\\folder");
     assert_eq!(
         mpf_kernelbase::path_cch_strip_prefix(&mut drive, 64),

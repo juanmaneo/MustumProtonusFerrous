@@ -50,6 +50,102 @@ fn is_prefixed_disk(path: &[u16]) -> bool {
         && char_at(path, 5) == b':' as u16
 }
 
+fn is_prefixed_volume(path: &[u16]) -> bool {
+    let prefix = b"\\\\?\\Volume";
+    if !prefix
+        .iter()
+        .enumerate()
+        .all(|(index, &unit)| ascii_lower(char_at(path, index)) == ascii_lower(u16::from(unit)))
+    {
+        return false;
+    }
+    (0..=37).all(|index| {
+        let unit = char_at(path, 10 + index);
+        match index {
+            0 => unit == b'{' as u16,
+            9 | 14 | 19 | 24 => unit == b'-' as u16,
+            37 => unit == b'}' as u16,
+            _ => matches!(unit, 48..=57 | 65..=70 | 97..=102),
+        }
+    })
+}
+
+fn next_segment(path: &[u16], start: usize) -> (usize, bool) {
+    let len = wlen(path);
+    let end = (start..len)
+        .find(|&index| path[index] == b'\\' as u16)
+        .unwrap_or(len);
+    if end < len {
+        (end + 1, true)
+    } else {
+        (end, false)
+    }
+}
+
+fn root_end(path: &[u16]) -> Option<usize> {
+    if wlen(path) == 0 {
+        return None;
+    }
+    if is_prefixed_volume(path) {
+        Some(if char_at(path, 48) == b'\\' as u16 {
+            48
+        } else {
+            47
+        })
+    } else if is_prefixed_unc(path) {
+        Some(7)
+    } else if is_prefixed_disk(path) {
+        Some(if char_at(path, 6) == b'\\' as u16 {
+            6
+        } else {
+            5
+        })
+    } else if path[0] == b'\\' as u16 && char_at(path, 1) == b'\\' as u16 {
+        Some(1)
+    } else if path[0] == b'\\' as u16 {
+        Some(0)
+    } else if matches!(char_at(path, 0), 65..=90 | 97..=122) && char_at(path, 1) == b':' as u16 {
+        Some(if char_at(path, 2) == b'\\' as u16 {
+            2
+        } else {
+            1
+        })
+    } else {
+        None
+    }
+}
+
+/// Returns the UTF-16 offset just past the drive or UNC share root,
+/// equivalent to Wine's `PathCchSkipRoot`. Root-only paths can return an offset
+/// equal to the string length; non-roots return `E_INVALIDARG` and offset zero.
+pub fn path_cch_skip_root(path: &[u16]) -> (i32, usize) {
+    let len = wlen(path);
+    if len == 0
+        || (starts_with(path, b"\\\\?")
+            && !is_prefixed_volume(path)
+            && !is_prefixed_unc(path)
+            && !is_prefixed_disk(path))
+    {
+        return (E_INVALIDARG, 0);
+    }
+    let Some(mut end) = root_end(path).map(|end| end + 1) else {
+        return (E_INVALIDARG, 0);
+    };
+    if is_prefixed_unc(path) {
+        end = next_segment(path, end).0;
+        end = next_segment(path, end).0;
+    } else if path[0] == b'\\' as u16
+        && char_at(path, 1) == b'\\' as u16
+        && char_at(path, 2) != b'?' as u16
+    {
+        end = next_segment(path, end).0;
+        if char_at(path, end) != b'\\' as u16 {
+            end = next_segment(path, end).0;
+        }
+    }
+    (S_OK, end)
+}
+
 /// Removes a recognized `\\?\` prefix in place, matching Wine's
 /// `PathCchStripPrefix` behavior. The size is measured in UTF-16 code units
 /// and includes space for the terminator.
@@ -89,6 +185,87 @@ mod tests {
 
     fn w(text: &str) -> Vec<u16> {
         text.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn skip_root_matches_wine_drive_and_unc_offsets() {
+        for (path, expected) in [
+            ("C:\\", 3),
+            ("\\", 1),
+            ("\\\\.\\", 4),
+            ("\\\\?\\UNC\\", 8),
+            ("\\\\?\\C:\\", 7),
+            ("C:\\\\", 3),
+            ("\\\\", 2),
+            ("\\\\.\\\\", 4),
+            ("\\\\?\\UNC\\\\", 9),
+            ("\\\\?\\C:\\\\", 7),
+            ("C:\\a", 3),
+            ("\\a", 1),
+            ("\\\\.\\a", 5),
+            ("\\\\?\\UNC\\a", 9),
+            ("C:\\\\a", 3),
+            ("\\\\a", 3),
+            ("\\\\.\\\\a", 4),
+            ("\\\\?\\UNC\\\\a", 10),
+            ("\\\\?\\C:\\\\a", 7),
+            ("C:\\a\\", 3),
+            ("\\a\\", 1),
+            ("\\\\.\\a\\", 6),
+            ("\\\\?\\UNC\\a\\", 10),
+            ("\\\\?\\C:\\a\\", 7),
+            ("\\\\\\\\", 3),
+            ("\\\\a\\", 4),
+            ("\\\\a\\b", 5),
+            ("\\\\a\\b\\", 6),
+            ("\\\\a\\b\\\\", 6),
+            ("\\\\a\\b\\\\c", 6),
+            ("\\\\a\\b\\c", 6),
+            ("\\\\a\\b\\c\\", 6),
+            ("\\\\a\\b\\c\\d", 6),
+            ("\\\\a\\\\b\\c\\", 4),
+            ("\\\\aa\\bb\\cc\\", 8),
+            ("\\\\?\\UNC\\\\", 9),
+            ("\\\\?\\UNC\\a\\b", 11),
+            ("\\\\?\\UNC\\a\\b\\", 12),
+            ("\\\\?\\UNC\\a\\b\\c", 12),
+            ("\\\\?\\UNC\\a\\b\\c\\", 12),
+            ("\\\\?\\UNC\\a\\b\\c\\d", 12),
+            ("\\\\?\\C:", 6),
+            ("\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}", 48),
+            ("\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\", 49),
+            ("\\\\?\\unc\\a\\b", 11),
+            ("\\\\?\\volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\", 49),
+            ("\\\\?\\volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\a", 49),
+            ("C:", 2),
+            ("\\?", 1),
+            ("\\?\\UNC", 1),
+            ("\\.", 1),
+            ("\\\\..", 4),
+            ("\\\\..a", 5),
+            ("\\\\server\\share\\file", 15),
+            ("\\\\?\\UNC\\server\\share\\file", 21),
+        ] {
+            assert_eq!(path_cch_skip_root(&w(path)), (S_OK, expected), "{path}");
+        }
+    }
+
+    #[test]
+    fn skip_root_rejects_empty_relative_and_invalid_extended_prefixes() {
+        assert_eq!(root_end(&[]), None);
+        for path in [
+            "",
+            "a",
+            "\\\\?\\",
+            "\\\\?\\UNC",
+            "\\\\?\\::\\",
+            "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c2g}",
+            ":",
+            ":\\",
+            "C\\",
+        ] {
+            assert_eq!(path_cch_skip_root(&w(path)), (E_INVALIDARG, 0), "{path}");
+        }
     }
 
     #[test]
