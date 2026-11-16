@@ -10,6 +10,7 @@ mpf-advapi32 = { path = "../mpf-advapi32" }
 mpf-kernel32 = { path = "../mpf-kernel32" }
 mpf-loader = { path = "../mpf-loader" }
 mpf-msvcrt = { path = "../mpf-msvcrt" }
+mpf-ole32 = { path = "../mpf-ole32" }
 mpf-oleaut32 = { path = "../mpf-oleaut32" }
 mpf-ntdll = { path = "../mpf-ntdll" }
 mpf-pe = { path = "../mpf-pe" }

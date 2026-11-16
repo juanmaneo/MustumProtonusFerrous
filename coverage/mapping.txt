@@ -35,7 +35,7 @@ dlls/winex11.drv      mpf-graphics    native   P1
 
 dlls/msvcrt           mpf-msvcrt      partial  P1
 dlls/ucrtbase         -               todo     P1
-dlls/ole32            -               todo     P1
+dlls/ole32            mpf-ole32       partial  P1
 dlls/oleaut32         mpf-oleaut32    partial  P1
 dlls/rpcrt4           mpf-rpcrt4      partial  P1
 dlls/shell32          -               todo     P1

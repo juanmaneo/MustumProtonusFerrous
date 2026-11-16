@@ -81,6 +81,22 @@ fn rpcrt4_uuid_string_roundtrip() {
     );
 }
 
+fn ole32_thread_com_state() {
+    // mirrors dlls/ole32/compobj.c CoGetState/CoSetState semantics
+    mpf_ole32::co_set_state(None);
+    assert!(mpf_ole32::co_get_state().is_none());
+    mpf_ole32::co_set_state(Some(std::rc::Rc::new(String::from("apartment state"))));
+    assert_eq!(
+        mpf_ole32::co_get_state()
+            .unwrap()
+            .downcast_ref::<String>()
+            .unwrap(),
+        "apartment state"
+    );
+    mpf_ole32::co_set_state(None);
+    assert!(mpf_ole32::is_equal_guid(None, Some(&[0; 16])));
+}
+
 fn kernel32_lstrlen_semantics() {
     // mirrors dlls/kernel32/tests/string.c lstrlenW expectations
     assert_eq!(
@@ -344,6 +360,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "rpcrt4!UuidFromString/UuidToString roundtrip",
             run: rpcrt4_uuid_string_roundtrip,
+        },
+        Case {
+            name: "ole32!CoGetState/CoSetState thread-local state",
+            run: ole32_thread_com_state,
         },
         Case {
             name: "kernel32!lstrlenW semantics",

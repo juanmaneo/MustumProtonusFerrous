@@ -27,6 +27,7 @@ dependencies = [
  "mpf-loader",
  "mpf-msvcrt",
  "mpf-ntdll",
+ "mpf-ole32",
  "mpf-oleaut32",
  "mpf-pe",
  "mpf-rpcrt4",
@@ -68,6 +69,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-ntdll"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ole32"
 version = "0.1.0"
 
 [[package]]
