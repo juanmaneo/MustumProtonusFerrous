@@ -17,5 +17,6 @@ mpf-pe = { path = "../mpf-pe" }
 mpf-rpcrt4 = { path = "../mpf-rpcrt4" }
 mpf-shlwapi = { path = "../mpf-shlwapi" }
 mpf-shell32 = { path = "../mpf-shell32" }
+mpf-ucrtbase = { path = "../mpf-ucrtbase" }
 mpf-wineboot = { path = "../mpf-wineboot" }
 mpf-winnt = { path = "../mpf-winnt" }

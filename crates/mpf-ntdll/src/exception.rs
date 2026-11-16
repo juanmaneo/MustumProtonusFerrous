@@ -37,6 +37,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static HOOK_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn guard_passes_values_through() {
@@ -47,6 +50,7 @@ mod tests {
 
     #[test]
     fn guard_catches_panics() {
+        let _guard = HOOK_LOCK.lock().unwrap();
         let prev = std::panic::take_hook();
         std::panic::set_hook(Box::new(|_| {})); // keep test output clean
         let r = guard(|| -> i32 { panic!("boom") });
@@ -62,6 +66,7 @@ mod tests {
 
     #[test]
     fn guard_catches_abort_style_panics_from_closures() {
+        let _guard = HOOK_LOCK.lock().unwrap();
         let prev = std::panic::take_hook();
         std::panic::set_hook(Box::new(|_| {}));
         let r = guard(|| {

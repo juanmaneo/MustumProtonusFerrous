@@ -33,6 +33,7 @@ dependencies = [
  "mpf-rpcrt4",
  "mpf-shell32",
  "mpf-shlwapi",
+ "mpf-ucrtbase",
  "mpf-wineboot",
  "mpf-winnt",
 ]
@@ -107,6 +108,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-shlwapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ucrtbase"
 version = "0.1.0"
 
 [[package]]

@@ -106,6 +106,19 @@ fn shell32_pidl_layout() {
     assert_eq!(mpf_shell32::il_get_size(&[0, 0]), Some(2));
 }
 
+fn ucrtbase_onexit_table() {
+    // mirrors dlls/ucrtbase/tests/misc.c on-exit table expectations
+    let mut table = mpf_ucrtbase::OnExitTable::new();
+    assert_eq!(mpf_ucrtbase::initialize_onexit_table(None), -1);
+    assert_eq!(mpf_ucrtbase::register_onexit_function(None, None), -1);
+    assert_eq!(
+        mpf_ucrtbase::register_onexit_function(Some(&mut table), None),
+        0
+    );
+    assert_eq!(mpf_ucrtbase::execute_onexit_table(Some(&mut table)), 0);
+    assert!(table.is_empty());
+}
+
 fn kernel32_lstrlen_semantics() {
     // mirrors dlls/kernel32/tests/string.c lstrlenW expectations
     assert_eq!(
@@ -377,6 +390,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "shell32!ILGetSize/ILGetNext/ILFindLastID PIDL layout",
             run: shell32_pidl_layout,
+        },
+        Case {
+            name: "ucrtbase!_initialize/_register/_execute_onexit_table",
+            run: ucrtbase_onexit_table,
         },
         Case {
             name: "kernel32!lstrlenW semantics",
