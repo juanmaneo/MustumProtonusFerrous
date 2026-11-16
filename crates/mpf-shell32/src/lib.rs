@@ -51,6 +51,19 @@ pub fn il_find_last_id(pidl: &[u8]) -> Option<usize> {
     }
 }
 
+/// Removes the final item by writing a zero length at its header.
+///
+/// Returns `false` for an empty PIDL, matching `ILRemoveLastID` on the desktop.
+pub fn il_remove_last_id(pidl: &mut [u8]) -> bool {
+    match il_find_last_id(pidl) {
+        Some(offset) if read_item_size(pidl, offset) != Some(0) => {
+            pidl[offset..offset + 2].fill(0);
+            true
+        }
+        Some(_) | None => false,
+    }
+}
+
 fn read_item_size(pidl: &[u8], offset: usize) -> Option<usize> {
     let bytes = pidl.get(offset..)?.get(..2)?;
     Some(usize::from(u16::from_le_bytes([bytes[0], bytes[1]])))
@@ -79,6 +92,23 @@ mod tests {
     fn last_id_returns_final_item_or_empty_terminator() {
         assert_eq!(il_find_last_id(PIDL), Some(3));
         assert_eq!(il_find_last_id(&[0, 0]), Some(0));
+    }
+
+    #[test]
+    fn remove_last_id_shortens_and_preserves_terminator() {
+        let mut pidl = PIDL.to_vec();
+        assert!(il_remove_last_id(&mut pidl));
+        assert_eq!(pidl, [3, 0, 0xaa, 0, 0, 0xbb, 0xcc, 0, 0]);
+        assert_eq!(il_get_size(&pidl), Some(5));
+        assert!(il_remove_last_id(&mut pidl));
+        assert_eq!(pidl, [0, 0, 0xaa, 0, 0, 0xbb, 0xcc, 0, 0]);
+        assert!(!il_remove_last_id(&mut pidl));
+    }
+
+    #[test]
+    fn remove_last_id_rejects_malformed_input() {
+        assert!(!il_remove_last_id(&mut []));
+        assert!(!il_remove_last_id(&mut [1, 0, 0, 0]));
     }
 
     #[test]

@@ -104,6 +104,9 @@ fn shell32_pidl_layout() {
     assert_eq!(mpf_shell32::il_get_next(&pidl, 0), Some(3));
     assert_eq!(mpf_shell32::il_find_last_id(&pidl), Some(3));
     assert_eq!(mpf_shell32::il_get_size(&[0, 0]), Some(2));
+    let mut removable = pidl;
+    assert!(mpf_shell32::il_remove_last_id(&mut removable));
+    assert_eq!(mpf_shell32::il_get_size(&removable), Some(5));
 }
 
 fn ucrtbase_onexit_table() {
