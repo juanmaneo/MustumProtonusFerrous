@@ -1,0 +1,6 @@
+[package]
+name = "mpf-ntdll"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ntdll core for the MPF Wine port: NTSTATUS + RTL unicode strings"
