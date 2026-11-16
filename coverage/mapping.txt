@@ -33,7 +33,7 @@ dlls/user32           mpf-user32      partial  P1
 dlls/gdi32            mpf-gdi32       partial  P1
 dlls/winex11.drv      mpf-graphics    native   P1
 
-dlls/msvcrt           -               todo     P1
+dlls/msvcrt           mpf-msvcrt      partial  P1
 dlls/ucrtbase         -               todo     P1
 dlls/ole32            -               todo     P1
 dlls/oleaut32         -               todo     P1

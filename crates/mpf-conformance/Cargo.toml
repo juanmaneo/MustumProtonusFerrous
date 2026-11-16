@@ -9,6 +9,7 @@ description = "Conformance harness: runs MPF API cases derived from wine's dlls/
 mpf-advapi32 = { path = "../mpf-advapi32" }
 mpf-kernel32 = { path = "../mpf-kernel32" }
 mpf-loader = { path = "../mpf-loader" }
+mpf-msvcrt = { path = "../mpf-msvcrt" }
 mpf-ntdll = { path = "../mpf-ntdll" }
 mpf-pe = { path = "../mpf-pe" }
 mpf-shlwapi = { path = "../mpf-shlwapi" }

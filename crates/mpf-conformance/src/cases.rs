@@ -34,6 +34,15 @@ fn shlwapi_path_helpers() {
     assert_eq!(stripped, w("file.txt"));
 }
 
+fn msvcrt_wide_compare() {
+    // mirrors dlls/msvcrt/tests/string.c test_wcscmp: sign-only expectations
+    assert_eq!(mpf_msvcrt::wcscmp(&w("a"), &w("z")).signum(), -1);
+    assert_eq!(mpf_msvcrt::wcscmp(&w("z"), &w("a")).signum(), 1);
+    assert_eq!(mpf_msvcrt::wcscmp(&w("f"), &w("f")), 0);
+    assert_eq!(mpf_msvcrt::wcslen(&w("hello")), 5);
+    assert_eq!(mpf_msvcrt::wcsicmp(&w("HeLLo"), &w("hello")), 0);
+}
+
 fn kernel32_lstrlen_semantics() {
     // mirrors dlls/kernel32/tests/string.c lstrlenW expectations
     assert_eq!(
@@ -285,6 +294,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "shlwapi!PathFindFileName/Extension/IsRelative/AddBackslash/StripPathW",
             run: shlwapi_path_helpers,
+        },
+        Case {
+            name: "msvcrt!wcscmp/wcslen/_wcsicmp",
+            run: msvcrt_wide_compare,
         },
         Case {
             name: "kernel32!lstrlenW semantics",

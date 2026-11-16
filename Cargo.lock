@@ -25,6 +25,7 @@ dependencies = [
  "mpf-advapi32",
  "mpf-kernel32",
  "mpf-loader",
+ "mpf-msvcrt",
  "mpf-ntdll",
  "mpf-pe",
  "mpf-shlwapi",
@@ -58,6 +59,10 @@ version = "0.1.0"
 dependencies = [
  "mpf-pe",
 ]
+
+[[package]]
+name = "mpf-msvcrt"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-ntdll"
