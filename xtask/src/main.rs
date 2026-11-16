@@ -61,24 +61,38 @@ fn execute(action: Action, cargo: &str) -> ExitCode {
     }
 }
 
+/// Per-file line threshold. cargo-llvm-cov compares it with a strict `>`
+/// (`all_files_above_coverage` in its `json.rs`, still so on `main`), so
+/// `--fail-under-file-lines 100` rejects files that are at exactly 100%.
+/// This is the largest threshold below 100 that still fails a file with a
+/// single missed line: such a file scores `100 - 100/N`, so it would need
+/// more than 10^8 lines to slip through.
+const FILE_LINES_THRESHOLD: &str = "99.999999";
+
+/// Arguments of the coverage gate: every metric at 100%, plus each file's
+/// line coverage and zero uncovered lines/regions.
+fn coverage_args() -> Vec<&'static str> {
+    vec![
+        "llvm-cov",
+        "--workspace",
+        "--no-cfg-coverage",
+        "--fail-under-regions",
+        "100",
+        "--fail-under-lines",
+        "100",
+        "--fail-under-functions",
+        "100",
+        "--fail-under-file-lines",
+        FILE_LINES_THRESHOLD,
+        "--fail-uncovered-lines",
+        "0",
+        "--fail-uncovered-regions",
+        "0",
+    ]
+}
+
 fn run_coverage_with(cargo: &str) -> ExitCode {
-    let status = Command::new(cargo)
-        .args([
-            "llvm-cov",
-            "--workspace",
-            "--no-cfg-coverage",
-            "--fail-under-regions",
-            "100",
-            "--fail-under-lines",
-            "100",
-            "--fail-under-functions",
-            "100",
-            "--fail-uncovered-lines",
-            "0",
-            "--fail-uncovered-regions",
-            "0",
-        ])
-        .status();
+    let status = Command::new(cargo).args(coverage_args()).status();
     match status {
         Ok(status) if status.success() => ExitCode::SUCCESS,
         Ok(status) => {
@@ -197,6 +211,41 @@ mod tests {
             execute(Action::Coverage, "mpf-no-such-cargo-command"),
             ExitCode::FAILURE
         );
+    }
+
+    #[test]
+    fn coverage_gate_checks_every_metric_and_every_file() {
+        let args = coverage_args();
+        for flag in [
+            "--fail-under-regions",
+            "--fail-under-lines",
+            "--fail-under-functions",
+            "--fail-under-file-lines",
+            "--fail-uncovered-lines",
+            "--fail-uncovered-regions",
+        ] {
+            assert!(args.contains(&flag), "missing {flag}");
+        }
+        // Every `--fail-*` flag is followed by its value.
+        let value = |flag: &str| {
+            let at = args.iter().position(|a| *a == flag).unwrap();
+            args[at + 1]
+        };
+        assert_eq!(value("--fail-under-regions"), "100");
+        assert_eq!(value("--fail-under-lines"), "100");
+        assert_eq!(value("--fail-under-functions"), "100");
+        assert_eq!(value("--fail-uncovered-lines"), "0");
+        assert_eq!(value("--fail-uncovered-regions"), "0");
+        assert_eq!(value("--fail-under-file-lines"), FILE_LINES_THRESHOLD);
+    }
+
+    #[test]
+    fn file_threshold_is_just_below_100_to_work_around_strict_comparison() {
+        let t: f64 = FILE_LINES_THRESHOLD.parse().unwrap();
+        // Below 100, so a file at exactly 100% passes the strict `>` check...
+        assert!(t < 100.0);
+        // ...but above what a file with one missed line out of 10^6 scores.
+        assert!(t > 100.0 - 100.0 / 1_000_000.0);
     }
 
     #[test]
