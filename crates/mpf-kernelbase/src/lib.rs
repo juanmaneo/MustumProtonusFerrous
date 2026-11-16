@@ -179,6 +179,40 @@ pub fn path_cch_is_root(path: &[u16]) -> bool {
     }
 }
 
+/// Truncates a path to its root, matching Wine's `PathCchStripToRoot`.
+/// The size is measured in UTF-16 code units and includes the terminator.
+pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
+    let len = wlen(path);
+    if len == 0 || size == 0 || size > MAX_PATH_CCH {
+        return E_INVALIDARG;
+    }
+    let (status, mut end) = path_cch_skip_root(path);
+    if status != S_OK {
+        path.clear();
+        path.push(0);
+        return E_INVALIDARG;
+    }
+    if end > 0
+        && char_at(path, end - 1) == b'\\' as u16
+        && ((is_prefixed_unc(path) && char_at(path, 8) != 0)
+            || (path[0] == b'\\' as u16
+                && char_at(path, 1) == b'\\' as u16
+                && char_at(path, 2) != 0
+                && char_at(path, 2) != b'?' as u16))
+    {
+        end -= 1;
+    }
+    if end >= size {
+        return E_INVALIDARG;
+    }
+    if char_at(path, end) == 0 {
+        return S_FALSE;
+    }
+    path.truncate(end);
+    path.push(0);
+    S_OK
+}
+
 /// Removes a recognized `\\?\` prefix in place, matching Wine's
 /// `PathCchStripPrefix` behavior. The size is measured in UTF-16 code units
 /// and includes space for the terminator.
@@ -345,6 +379,80 @@ mod tests {
         ] {
             assert_eq!(path_cch_is_root(&w(path)), expected, "{path}");
         }
+    }
+
+    #[test]
+    fn strip_to_root_matches_wine_vectors() {
+        let volume = "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}";
+        for (input, expected, status) in [
+            ("C:\\", "C:\\", S_FALSE),
+            ("C:\\a", "C:\\", S_OK),
+            ("C:\\a\\b", "C:\\", S_OK),
+            ("C:", "C:", S_FALSE),
+            ("C:a", "C:", S_OK),
+            ("C:a\\b\\c", "C:", S_OK),
+            ("\\", "\\", S_FALSE),
+            ("\\a", "\\", S_OK),
+            ("\\a\\b\\c", "\\", S_OK),
+            ("\\\\", "\\\\", S_FALSE),
+            ("\\\\a", "\\\\a", S_FALSE),
+            ("\\\\a\\b", "\\\\a\\b", S_FALSE),
+            ("\\\\a\\b\\c", "\\\\a\\b", S_OK),
+            ("\\\\\\", "\\\\", S_OK),
+            ("\\\\?\\UNC\\", "\\\\?\\UNC\\", S_FALSE),
+            ("\\\\?\\UNC\\a", "\\\\?\\UNC\\a", S_FALSE),
+            ("\\\\?\\UNC\\a\\b", "\\\\?\\UNC\\a\\b", S_FALSE),
+            ("\\\\?\\UNC\\a\\b\\", "\\\\?\\UNC\\a\\b", S_OK),
+            ("\\\\?\\UNC\\a\\b\\c", "\\\\?\\UNC\\a\\b", S_OK),
+            ("\\\\?\\C:", "\\\\?\\C:", S_FALSE),
+            ("\\\\?\\C:a", "\\\\?\\C:", S_OK),
+            ("\\\\?\\C:a\\b\\c", "\\\\?\\C:", S_OK),
+            ("\\\\?\\C:\\", "\\\\?\\C:\\", S_FALSE),
+            ("\\\\?\\C:\\a\\b", "\\\\?\\C:\\", S_OK),
+            (volume, volume, S_FALSE),
+            (&format!("{volume}a"), volume, S_OK),
+            (&format!("{volume}a\\b\\c"), volume, S_OK),
+            (&format!("{volume}\\"), &format!("{volume}\\"), S_FALSE),
+            (&format!("{volume}\\a\\b"), &format!("{volume}\\"), S_OK),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_cch_strip_to_root(&mut path, MAX_PATH_CCH),
+                status,
+                "{input}"
+            );
+            assert_eq!(path, w(expected), "{input}");
+        }
+    }
+
+    #[test]
+    fn strip_to_root_validates_size_and_clears_invalid_paths() {
+        let mut path = w("C:\\");
+        assert_eq!(
+            path_cch_strip_to_root(&mut path, MAX_PATH_CCH + 1),
+            E_INVALIDARG
+        );
+        assert_eq!(path, w("C:\\"));
+        for size in [0, 1, 2] {
+            let mut path = w("C:\\a");
+            let original = path.clone();
+            assert_eq!(path_cch_strip_to_root(&mut path, size), E_INVALIDARG);
+            assert_eq!(path, original);
+        }
+        for input in ["", "C", "\\\\?\\UNC"] {
+            let mut path = w(input);
+            assert_eq!(
+                path_cch_strip_to_root(&mut path, MAX_PATH_CCH),
+                E_INVALIDARG
+            );
+            assert_eq!(path.first(), Some(&0));
+        }
+        let mut path = w("C:\\a");
+        assert_eq!(path_cch_strip_to_root(&mut path, 4), S_OK);
+        assert_eq!(path, w("C:\\"));
+        let mut unc = w("\\\\a\\b\\c");
+        assert_eq!(path_cch_strip_to_root(&mut unc, 5), E_INVALIDARG);
+        assert_eq!(unc, w("\\\\a\\b\\c"));
     }
 
     #[test]
