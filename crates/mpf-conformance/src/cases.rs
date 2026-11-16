@@ -187,6 +187,10 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::path_find_next_component(&w("C:\\folder\\file.txt")),
         Some(3)
     );
+    assert_eq!(
+        mpf_kernelbase::path_get_args(&w("\"C:\\Program Files\\app.exe\" --help")),
+        27
+    );
     assert_eq!(mpf_kernelbase::path_skip_root(&w("C:\\folder")), Some(3));
     assert_eq!(
         mpf_kernelbase::path_skip_root(&w("\\\\server\\share\\file")),

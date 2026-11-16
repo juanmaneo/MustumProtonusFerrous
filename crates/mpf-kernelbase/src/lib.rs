@@ -339,6 +339,22 @@ pub fn path_cch_add_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_add_backslash_ex(path, size).0
 }
 
+/// Returns the argument offset after the first unquoted space, matching
+/// `PathGetArgsW`. An empty string returns offset zero.
+pub fn path_get_args(path: &[u16]) -> usize {
+    let len = wlen(path);
+    let mut seen_quote = false;
+    for (index, &unit) in path[..len].iter().enumerate() {
+        if unit == b' ' as u16 && !seen_quote {
+            return index + 1;
+        }
+        if unit == b'"' as u16 {
+            seen_quote = !seen_quote;
+        }
+    }
+    len
+}
+
 /// Classifies one UTF-16 code unit using Wine's `PathGetCharTypeW` rules.
 pub fn path_get_char_type(ch: u16) -> u32 {
     if ch == 0 || ch < b' ' as u16 || matches!(ch, 0x22 | 0x2f | 0x3c | 0x3e | 0x7c) {
@@ -1413,6 +1429,22 @@ mod tests {
         let before = too_long.clone();
         assert!(!path_rename_extension(&mut too_long, &w(".x")));
         assert_eq!(too_long, before);
+    }
+
+    #[test]
+    fn get_args_skips_only_spaces_outside_quotes() {
+        for (input, expected) in [
+            ("", 0),
+            ("program.exe arg", 12),
+            ("\"program name.exe\" arg", 19),
+            ("program\targ", 11),
+            ("program.exe", 11),
+            ("\"unterminated name", 18),
+            ("program  arg", 8),
+        ] {
+            assert_eq!(path_get_args(&w(input)), expected, "{input:?}");
+        }
+        assert_eq!(path_get_args(&[]), 0);
     }
 
     #[test]
