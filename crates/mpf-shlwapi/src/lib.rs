@@ -15,10 +15,144 @@ const COLON: u16 = b':' as u16;
 const DOT: u16 = b'.' as u16;
 const SPACE: u16 = b' ' as u16;
 const QUOTE: u16 = b'"' as u16;
+const QUESTION: u16 = b'?' as u16;
+const PATHCCH_MAX_CCH: usize = 0x8000;
 
 /// Length of the UTF-16 string before its first NUL, or the slice length.
 fn wlen(s: &[u16]) -> usize {
     s.iter().position(|&c| c == 0).unwrap_or(s.len())
+}
+
+fn char_at(path: &[u16], index: usize) -> u16 {
+    path.get(index).copied().unwrap_or(0)
+}
+
+fn ascii_lower(c: u16) -> u16 {
+    if (b'A' as u16..=b'Z' as u16).contains(&c) {
+        c + 32
+    } else {
+        c
+    }
+}
+
+fn ascii_upper(c: u16) -> u16 {
+    if (b'a' as u16..=b'z' as u16).contains(&c) {
+        c - 32
+    } else {
+        c
+    }
+}
+
+fn ascii_alpha(c: u16) -> bool {
+    (b'A' as u16..=b'Z' as u16).contains(&c) || (b'a' as u16..=b'z' as u16).contains(&c)
+}
+
+fn starts_with(path: &[u16], offset: usize, prefix: &[u8], ignore_ascii_case: bool) -> bool {
+    prefix.iter().enumerate().all(|(index, &byte)| {
+        let actual = char_at(path, offset + index);
+        let expected = u16::from(byte);
+        if ignore_ascii_case {
+            ascii_lower(actual) == ascii_lower(expected)
+        } else {
+            actual == expected
+        }
+    })
+}
+
+fn is_drive_spec_at(path: &[u16], offset: usize) -> bool {
+    ascii_alpha(char_at(path, offset)) && char_at(path, offset + 1) == COLON
+}
+
+fn is_prefixed_unc(path: &[u16]) -> bool {
+    starts_with(path, 0, b"\\\\?\\UNC\\", true)
+}
+
+fn is_prefixed_disk(path: &[u16]) -> bool {
+    starts_with(path, 0, b"\\\\?\\", false) && is_drive_spec_at(path, 4)
+}
+
+fn is_prefixed_volume(path: &[u16]) -> bool {
+    if !starts_with(path, 0, b"\\\\?\\Volume", true) {
+        return false;
+    }
+    for index in 0..=37 {
+        let unit = char_at(path, 10 + index);
+        let valid = match index {
+            0 => unit == b'{' as u16,
+            9 | 14 | 19 | 24 => unit == b'-' as u16,
+            37 => unit == b'}' as u16,
+            _ => matches!(unit, 48..=57 | 65..=70 | 97..=102),
+        };
+        if !valid {
+            return false;
+        }
+    }
+    true
+}
+
+fn get_root_end(path: &[u16]) -> Option<usize> {
+    if wlen(path) == 0 {
+        return None;
+    }
+    if is_prefixed_volume(path) {
+        return Some(if char_at(path, 48) == BACKSLASH {
+            48
+        } else {
+            47
+        });
+    }
+    if is_prefixed_unc(path) {
+        return Some(7);
+    }
+    if is_prefixed_disk(path) {
+        return Some(if char_at(path, 6) == BACKSLASH { 6 } else { 5 });
+    }
+    if path[0] == BACKSLASH && char_at(path, 1) == BACKSLASH {
+        return Some(1);
+    }
+    if path[0] == BACKSLASH {
+        return Some(0);
+    }
+    if is_drive_spec_at(path, 0) {
+        return Some(if char_at(path, 2) == BACKSLASH { 2 } else { 1 });
+    }
+    None
+}
+
+fn get_next_segment(path: &[u16], mut next: usize) -> (usize, bool) {
+    let len = wlen(path);
+    while next < len && path[next] != BACKSLASH {
+        next += 1;
+    }
+    if next < len {
+        (next + 1, true)
+    } else {
+        (next, false)
+    }
+}
+
+fn cch_skip_root(path: &[u16]) -> Option<usize> {
+    let len = wlen(path);
+    if len == 0
+        || (starts_with(path, 0, b"\\\\?", true)
+            && !is_prefixed_volume(path)
+            && !is_prefixed_unc(path)
+            && !is_prefixed_disk(path))
+    {
+        return None;
+    }
+    let mut root_end = get_root_end(path)? + 1;
+    if is_prefixed_unc(path) {
+        root_end = get_next_segment(path, root_end).0;
+        root_end = get_next_segment(path, root_end).0;
+    } else if path[0] == BACKSLASH && char_at(path, 1) == BACKSLASH && char_at(path, 2) != QUESTION
+    {
+        root_end = get_next_segment(path, root_end).0;
+        if char_at(path, root_end) != BACKSLASH {
+            root_end = get_next_segment(path, root_end).0;
+        }
+    }
+    Some(root_end)
 }
 
 /// `PathFindFileNameW`: index of the file name portion of `path`.
@@ -99,6 +233,349 @@ pub fn path_strip_path(path: &mut Vec<u16>) {
     }
 }
 
+/// `PathIsUNCW`: checks whether a path starts with two backslashes.
+pub fn path_is_unc(path: &[u16]) -> bool {
+    wlen(path) >= 2 && path[0] == BACKSLASH && path[1] == BACKSLASH
+}
+
+/// `PathIsUNCServerW`: a UNC prefix with no later backslash.
+pub fn path_is_unc_server(path: &[u16]) -> bool {
+    let len = wlen(path);
+    len >= 2 && path[0] == BACKSLASH && path[1] == BACKSLASH && !path[2..len].contains(&BACKSLASH)
+}
+
+/// `PathIsUNCServerShareW`: a UNC path with exactly one separator after its prefix.
+pub fn path_is_unc_server_share(path: &[u16]) -> bool {
+    let len = wlen(path);
+    if len < 2 || path[0] != BACKSLASH || path[1] != BACKSLASH {
+        return false;
+    }
+    let mut seen_separator = false;
+    for &unit in &path[2..len] {
+        if unit == BACKSLASH {
+            if seen_separator {
+                return false;
+            }
+            seen_separator = true;
+        }
+    }
+    seen_separator
+}
+
+/// `PathIsRootW`, following Wine's `PathCchIsRoot` root classification.
+pub fn path_is_root(path: &[u16]) -> bool {
+    let len = wlen(path);
+    if len == 0 {
+        return false;
+    }
+    let Some(root_end) = get_root_end(path) else {
+        return false;
+    };
+    let unc = is_prefixed_unc(path)
+        || (path[0] == BACKSLASH && char_at(path, 1) == BACKSLASH && char_at(path, 2) != QUESTION);
+    if unc {
+        let next = root_end + 1;
+        if next >= len {
+            return true;
+        }
+        let (next, had_separator) = get_next_segment(path, next);
+        if had_separator && next >= len {
+            return false;
+        }
+        if next >= len {
+            return true;
+        }
+        let (next, had_separator) = get_next_segment(path, next);
+        return !had_separator && next >= len;
+    }
+    char_at(path, root_end) == BACKSLASH && root_end + 1 >= len
+}
+
+/// `PathSkipRootW`: returns the UTF-16 offset just past a drive or UNC share root.
+pub fn path_skip_root(path: &[u16]) -> Option<usize> {
+    let len = wlen(path);
+    if len == 0 {
+        return None;
+    }
+    if path[0] == BACKSLASH && char_at(path, 1) == BACKSLASH {
+        let server_separator = (2..len).find(|&index| path[index] == BACKSLASH)?;
+        let share_separator =
+            (server_separator + 1..len).find(|&index| path[index] == BACKSLASH)?;
+        return Some(share_separator + 1);
+    }
+    if len >= 3 && char_at(path, 1) == COLON && char_at(path, 2) == BACKSLASH {
+        return Some(3);
+    }
+    None
+}
+
+/// `PathStripToRootW`: keeps the drive or UNC share root and removes later segments.
+pub fn path_strip_to_root(path: &mut Vec<u16>) -> bool {
+    let len = wlen(path);
+    let Some(mut root_end) = cch_skip_root(path) else {
+        path.clear();
+        path.push(0);
+        return false;
+    };
+    if root_end > 0
+        && char_at(path, root_end - 1) == BACKSLASH
+        && ((is_prefixed_unc(path) && char_at(path, 8) != 0)
+            || (char_at(path, 0) == BACKSLASH
+                && char_at(path, 1) == BACKSLASH
+                && char_at(path, 2) != 0
+                && char_at(path, 2) != QUESTION))
+    {
+        root_end -= 1;
+    }
+    if root_end >= PATHCCH_MAX_CCH || root_end >= len {
+        return false;
+    }
+    path.truncate(root_end);
+    path.push(0);
+    true
+}
+
+/// `PathRemoveFileSpecW`: removes the final path component in place.
+pub fn path_remove_file_spec(path: &mut Vec<u16>) -> bool {
+    let len = wlen(path);
+    if len == 0 {
+        return false;
+    }
+    let mut root_end = if is_prefixed_volume(path) {
+        48
+    } else if is_prefixed_disk(path) {
+        6
+    } else if is_drive_spec_at(path, 0) {
+        2
+    } else {
+        let mut end = usize::from(path[0] == BACKSLASH);
+        if char_at(path, end + 1) != QUESTION {
+            if char_at(path, end) == BACKSLASH {
+                end += 1;
+            }
+            if end > 1 && is_drive_spec_at(path, end) {
+                end += 2;
+            }
+            if char_at(path, end) == BACKSLASH
+                && char_at(path, end + 1) != 0
+                && char_at(path, end + 1) != BACKSLASH
+            {
+                end += 1;
+            }
+        }
+        end
+    };
+    if root_end != 0
+        && (is_prefixed_volume(path) || is_prefixed_disk(path) || is_drive_spec_at(path, 0))
+        && char_at(path, root_end) == BACKSLASH
+    {
+        root_end += 1;
+    }
+    if let Some(mut separator) = (root_end..len).rfind(|&index| path[index] == BACKSLASH) {
+        if separator != root_end {
+            // A distinct separator from `root_end..len` has a preceding unit.
+            if path[..separator].ends_with(&[BACKSLASH]) {
+                separator -= 1;
+            }
+            path.truncate(separator);
+            path.push(0);
+            return true;
+        }
+    }
+    if root_end >= len {
+        return false;
+    }
+    path.truncate(root_end);
+    path.push(0);
+    true
+}
+
+/// `PathRemoveExtensionW`: truncates at the last extension dot, if present.
+pub fn path_remove_extension(path: &mut Vec<u16>) {
+    let len = wlen(path);
+    let extension = path_find_extension(path);
+    if extension < len {
+        path.truncate(extension);
+        path.push(0);
+    }
+}
+
+/// `PathRemoveBackslashW`: removes a trailing backslash unless `path` is a root.
+/// Returns the index corresponding to Wine's returned end pointer.
+pub fn path_remove_backslash(path: &mut Vec<u16>) -> usize {
+    let len = wlen(path);
+    let end = len.saturating_sub(1);
+    if len > 0 && !path_is_root(path) && path[end] == BACKSLASH {
+        path[end] = 0;
+        path.truncate(end + 1);
+    }
+    end
+}
+
+/// `PathGetDriveNumberW`: returns A=0 through Z=25, or -1 when absent.
+pub fn path_get_drive_number(path: &[u16]) -> i32 {
+    let mut start = 0;
+    if starts_with(path, 0, b"\\\\?\\", false) {
+        start = 4;
+    }
+    let drive = char_at(path, start);
+    if drive == 0 || char_at(path, start + 1) != COLON {
+        return -1;
+    }
+    if (b'A' as u16..=b'Z' as u16).contains(&drive) {
+        return i32::from(drive - b'A' as u16);
+    }
+    if (b'a' as u16..=b'z' as u16).contains(&drive) {
+        return i32::from(drive - b'a' as u16);
+    }
+    -1
+}
+
+/// `PathIsFileSpecW`: true when the string contains neither `\\` nor `:`.
+pub fn path_is_file_spec(path: &[u16]) -> bool {
+    let len = wlen(path);
+    path[..len]
+        .iter()
+        .all(|&unit| unit != BACKSLASH && unit != COLON)
+}
+
+/// `PathIsLFNFileSpecW`: checks whether a name exceeds DOS 8.3 restrictions.
+pub fn path_is_lfn_file_spec(path: &[u16]) -> bool {
+    let len = wlen(path);
+    let mut name_len = 0;
+    let mut extension_len = 0;
+    for &unit in &path[..len] {
+        if unit == SPACE {
+            return true;
+        }
+        if unit == DOT {
+            if extension_len != 0 {
+                return true;
+            }
+            extension_len = 1;
+        } else if extension_len != 0 {
+            extension_len += 1;
+            if extension_len > 4 {
+                return true;
+            }
+        } else {
+            name_len += 1;
+            if name_len > 8 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// `PathRemoveBlanksW`: removes leading and trailing spaces in place.
+pub fn path_remove_blanks(path: &mut Vec<u16>) {
+    let len = wlen(path);
+    if len == 0 {
+        return;
+    }
+    let first = path[..len]
+        .iter()
+        .position(|&unit| unit != SPACE)
+        .unwrap_or(len);
+    let mut text = path[first..len].to_vec();
+    while text.last() == Some(&SPACE) {
+        text.pop();
+    }
+    *path = text;
+    path.push(0);
+}
+
+/// `PathQuoteSpacesW`: wraps a path containing spaces in quotes if it fits `MAX_PATH`.
+pub fn path_quote_spaces(path: &mut Vec<u16>) {
+    let len = wlen(path);
+    if path[..len].contains(&SPACE) && len + 3 < MAX_PATH {
+        let mut quoted = Vec::with_capacity(len + 3);
+        quoted.push(QUOTE);
+        quoted.extend_from_slice(&path[..len]);
+        quoted.push(QUOTE);
+        quoted.push(0);
+        *path = quoted;
+    }
+}
+
+/// `PathUnquoteSpacesW`: removes a matching pair of surrounding quotes.
+pub fn path_unquote_spaces(path: &mut Vec<u16>) {
+    let len = wlen(path);
+    if len == 0 || path[0] != QUOTE || path[len - 1] != QUOTE {
+        return;
+    }
+    let mut unquoted = if len == 1 {
+        Vec::new()
+    } else {
+        path[1..len - 1].to_vec()
+    };
+    unquoted.push(0);
+    *path = unquoted;
+}
+
+/// `PathMakePrettyW`: lowercases a DOS-style path after its first character.
+pub fn path_make_pretty(path: &mut [u16]) -> bool {
+    let len = wlen(path);
+    if path[..len]
+        .iter()
+        .any(|&unit| (b'a' as u16..=b'z' as u16).contains(&unit))
+    {
+        return false;
+    }
+    if len > 1 {
+        for unit in &mut path[1..len] {
+            *unit = ascii_lower(*unit);
+        }
+    }
+    true
+}
+
+/// `PathCommonPrefixW`: returns Wine's case-insensitive, separator-aware prefix length.
+pub fn path_common_prefix(file1: &[u16], file2: &[u16]) -> usize {
+    let (mut first, mut second) = (0, 0);
+    if path_is_unc(file1) {
+        if !path_is_unc(file2) {
+            return 0;
+        }
+        first = 2;
+        second = 2;
+    } else if path_is_unc(file2) {
+        return 0;
+    }
+    let mut common = 0;
+    loop {
+        let left = char_at(file1, first);
+        let right = char_at(file2, second);
+        if (left == 0 || left == BACKSLASH) && (right == 0 || right == BACKSLASH) {
+            common = first;
+        }
+        if left == 0 || ascii_upper(left) != ascii_upper(right) {
+            break;
+        }
+        first += 1;
+        second += 1;
+    }
+    if common == 2 {
+        common += 1;
+    }
+    common
+}
+
+/// `PathIsPrefixW`: checks whether `prefix` is a Wine-recognized path prefix.
+pub fn path_is_prefix(prefix: &[u16], path: &[u16]) -> bool {
+    path_common_prefix(path, prefix) == wlen(prefix)
+}
+
+/// `PathIsSameRootW`: compares paths using `PathSkipRootW` and common-prefix semantics.
+pub fn path_is_same_root(path1: &[u16], path2: &[u16]) -> bool {
+    let Some(root_end) = path_skip_root(path1) else {
+        return false;
+    };
+    path_common_prefix(path1, path2) + 1 >= root_end
+}
+
+#[cfg(test)]
 /// `PathBuildRootW`: writes the root `X:\` for drive index `0..=25` (A-Z).
 ///
 /// Writes nothing for an out-of-range drive, and requires at least 4 units.
@@ -145,6 +622,312 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn unc_classifiers_match_server_and_share_shapes() {
+        assert!(path_is_unc(&w("\\\\server\\share")));
+        assert!(!path_is_unc(&w("\\server")));
+        assert!(!path_is_unc(&w("")));
+        assert!(path_is_unc_server(&w("\\\\server")));
+        assert!(path_is_unc_server(&w("\\\\")));
+        assert!(!path_is_unc_server(&w("\\\\server\\share")));
+        assert!(!path_is_unc_server(&w("relative")));
+        assert!(path_is_unc_server_share(&w("\\\\server\\share")));
+        assert!(!path_is_unc_server_share(&w("\\\\server")));
+        assert!(!path_is_unc_server_share(&w("\\\\server\\share\\dir")));
+        assert!(!path_is_unc_server_share(&w("relative")));
+    }
+
+    #[test]
+    fn root_detection_handles_drive_unc_and_volume_roots() {
+        assert!(!path_is_root(&w("")));
+        assert_eq!(get_root_end(&w("")), None);
+        assert!(!path_is_root(&w("relative")));
+        assert!(path_is_root(&w("\\")));
+        assert!(path_is_root(&w("C:\\")));
+        assert!(!path_is_root(&w("C:")));
+        assert!(!path_is_root(&w("C:\\dir")));
+        assert!(path_is_root(&w("\\\\")));
+        assert!(path_is_root(&w("\\\\server")));
+        assert!(!path_is_root(&w("\\\\server\\")));
+        assert!(path_is_root(&w("\\\\server\\share")));
+        assert!(!path_is_root(&w("\\\\server\\share\\dir")));
+        assert!(path_is_root(&w("\\\\?\\C:\\")));
+        assert_eq!(get_root_end(&w("\\\\?\\C:")), Some(5));
+        assert!(path_is_root(&w("\\\\?\\UNC\\server\\share")));
+        assert!(!path_is_root(&w("\\\\?\\UNC\\server\\share\\dir")));
+        assert!(path_is_root(&w(
+            "\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}\\"
+        )));
+        assert_eq!(
+            get_root_end(&w("\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}")),
+            Some(47)
+        );
+        assert!(!path_is_root(&w(
+            "\\\\?\\Volume{12345678-1234-1234-1234-123456789abg}\\"
+        )));
+    }
+
+    #[test]
+    fn skip_root_requires_complete_drive_or_unc_root() {
+        assert_eq!(path_skip_root(&w("C:\\dir")), Some(3));
+        assert_eq!(path_skip_root(&w("\\\\server\\share\\dir")), Some(15));
+        assert_eq!(path_skip_root(&w("\\\\server\\share")), None);
+        assert_eq!(path_skip_root(&w("\\\\server")), None);
+        assert_eq!(path_skip_root(&w("\\\\server\\")), None);
+        assert_eq!(path_skip_root(&w("C:")), None);
+        assert_eq!(path_skip_root(&w("C:relative")), None);
+        assert_eq!(path_skip_root(&w("relative")), None);
+        assert_eq!(path_skip_root(&w("")), None);
+    }
+
+    #[test]
+    fn strip_to_root_preserves_roots_and_clears_invalid_paths() {
+        let mut drive = w("C:\\dir\\file");
+        assert!(path_strip_to_root(&mut drive));
+        assert_eq!(drive, w("C:\\"));
+
+        let mut unc = w("\\\\server\\share\\dir\\file");
+        assert!(path_strip_to_root(&mut unc));
+        assert_eq!(unc, w("\\\\server\\share"));
+
+        let mut empty_share = w("\\\\\\\\name");
+        assert!(path_strip_to_root(&mut empty_share));
+        assert_eq!(empty_share, w("\\\\"));
+
+        let mut prefixed_unc = w("\\\\?\\UNC\\server\\share\\dir");
+        assert!(path_strip_to_root(&mut prefixed_unc));
+        assert_eq!(prefixed_unc, w("\\\\?\\UNC\\server\\share"));
+
+        let mut prefixed_drive = w("\\\\?\\C:\\dir");
+        assert!(path_strip_to_root(&mut prefixed_drive));
+        assert_eq!(prefixed_drive, w("\\\\?\\C:\\"));
+
+        let mut prefixed_volume = w("\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}\\dir");
+        assert!(path_strip_to_root(&mut prefixed_volume));
+        assert_eq!(
+            prefixed_volume,
+            w("\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}\\")
+        );
+
+        let mut already_root = w("C:\\");
+        assert!(!path_strip_to_root(&mut already_root));
+        assert_eq!(already_root, w("C:\\"));
+
+        let mut incomplete_unc = w("\\\\server");
+        assert!(!path_strip_to_root(&mut incomplete_unc));
+        assert_eq!(incomplete_unc, w("\\\\server"));
+
+        let mut invalid_prefix = w("\\\\?x");
+        assert!(!path_strip_to_root(&mut invalid_prefix));
+        assert_eq!(invalid_prefix, w(""));
+
+        let mut relative = w("relative");
+        assert!(!path_strip_to_root(&mut relative));
+        assert_eq!(relative, w(""));
+
+        let mut empty = vec![0];
+        assert!(!path_strip_to_root(&mut empty));
+        assert_eq!(empty, vec![0]);
+
+        let mut too_long_unc = vec![b'\\' as u16, b'\\' as u16];
+        too_long_unc.extend(std::iter::repeat_n(b'a' as u16, PATHCCH_MAX_CCH));
+        too_long_unc.push(0);
+        let before = too_long_unc.clone();
+        assert!(!path_strip_to_root(&mut too_long_unc));
+        assert_eq!(too_long_unc, before);
+    }
+
+    #[test]
+    fn remove_file_spec_handles_roots_prefixes_and_components() {
+        let mut relative = w("dir\\file.txt");
+        assert!(path_remove_file_spec(&mut relative));
+        assert_eq!(relative, w("dir"));
+
+        let mut file_only = w("file.txt");
+        assert!(path_remove_file_spec(&mut file_only));
+        assert_eq!(file_only, w(""));
+
+        let mut drive = w("C:\\file.txt");
+        assert!(path_remove_file_spec(&mut drive));
+        assert_eq!(drive, w("C:\\"));
+
+        let mut drive_root = w("C:\\");
+        assert!(!path_remove_file_spec(&mut drive_root));
+        assert_eq!(drive_root, w("C:\\"));
+
+        let mut drive_relative = w("C:file");
+        assert!(path_remove_file_spec(&mut drive_relative));
+        assert_eq!(drive_relative, w("C:"));
+
+        let mut disk_prefix = w("\\\\?\\C:\\file");
+        assert!(path_remove_file_spec(&mut disk_prefix));
+        assert_eq!(disk_prefix, w("\\\\?\\C:\\"));
+
+        let mut volume_prefix = w("\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}x");
+        assert!(path_remove_file_spec(&mut volume_prefix));
+        assert_eq!(
+            volume_prefix,
+            w("\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}")
+        );
+
+        let mut doubled = w("\\\\\\\\");
+        assert!(path_remove_file_spec(&mut doubled));
+        assert_eq!(doubled, w("\\\\"));
+
+        let mut drive_like_unc = w("\\\\C:\\file");
+        assert!(path_remove_file_spec(&mut drive_like_unc));
+        assert_eq!(drive_like_unc, w("\\\\C:\\"));
+
+        let mut extended_prefix_only = w("\\\\?");
+        assert!(path_remove_file_spec(&mut extended_prefix_only));
+        assert_eq!(extended_prefix_only, w("\\"));
+
+        let mut question_prefix = w("\\\\?foo\\bar");
+        assert!(path_remove_file_spec(&mut question_prefix));
+        assert_eq!(question_prefix, w("\\\\?foo"));
+
+        let mut separator_at_root = w("C:\\\\foo");
+        assert!(path_remove_file_spec(&mut separator_at_root));
+        assert_eq!(separator_at_root, w("C:\\"));
+
+        let mut empty_unc_server = w("\\\\\\\\server");
+        assert!(path_remove_file_spec(&mut empty_unc_server));
+        assert_eq!(empty_unc_server, w("\\\\"));
+
+        let mut empty = vec![0];
+        assert!(!path_remove_file_spec(&mut empty));
+        assert_eq!(empty, vec![0]);
+    }
+
+    #[test]
+    fn remove_extension_and_backslash_preserve_wine_boundaries() {
+        let mut extension = w("file.txt");
+        path_remove_extension(&mut extension);
+        assert_eq!(extension, w("file"));
+        let mut trailing_dot = w("file.");
+        path_remove_extension(&mut trailing_dot);
+        assert_eq!(trailing_dot, w("file"));
+        let mut no_extension = w("dir\\file");
+        path_remove_extension(&mut no_extension);
+        assert_eq!(no_extension, w("dir\\file"));
+        let mut empty = w("");
+        path_remove_extension(&mut empty);
+        assert_eq!(empty, w(""));
+
+        let mut trailing = w("dir\\file\\");
+        assert_eq!(path_remove_backslash(&mut trailing), 8);
+        assert_eq!(trailing, w("dir\\file"));
+        let mut root = w("C:\\");
+        assert_eq!(path_remove_backslash(&mut root), 2);
+        assert_eq!(root, w("C:\\"));
+        let mut empty = w("");
+        assert_eq!(path_remove_backslash(&mut empty), 0);
+        assert_eq!(empty, w(""));
+        let mut one_char = w("x");
+        assert_eq!(path_remove_backslash(&mut one_char), 0);
+        assert_eq!(one_char, w("x"));
+    }
+
+    #[test]
+    fn drive_number_and_file_spec_follow_wide_path_rules() {
+        assert_eq!(path_get_drive_number(&w("C:\\dir")), 2);
+        assert_eq!(path_get_drive_number(&w("z:")), 25);
+        assert_eq!(path_get_drive_number(&w("\\\\?\\D:\\dir")), 3);
+        assert_eq!(path_get_drive_number(&w("\\\\?d:\\dir")), -1);
+        assert_eq!(path_get_drive_number(&w("1:")), -1);
+        assert_eq!(path_get_drive_number(&w("C")), -1);
+        assert_eq!(path_get_drive_number(&w("")), -1);
+
+        assert!(path_is_file_spec(&w("file.txt")));
+        assert!(path_is_file_spec(&w("")));
+        assert!(!path_is_file_spec(&w("dir\\file")));
+        assert!(!path_is_file_spec(&w("name:stream")));
+    }
+
+    #[test]
+    fn lfn_file_spec_detects_dos_name_limits() {
+        assert!(!path_is_lfn_file_spec(&w("12345678.123")));
+        assert!(!path_is_lfn_file_spec(&w("abc")));
+        assert!(path_is_lfn_file_spec(&w("123456789")));
+        assert!(path_is_lfn_file_spec(&w("a.bbbb")));
+        assert!(path_is_lfn_file_spec(&w("a.b.c")));
+        assert!(path_is_lfn_file_spec(&w("a b")));
+        assert!(path_is_lfn_file_spec(&w("a.12345")));
+    }
+
+    #[test]
+    fn remove_blanks_quotes_and_pretty_format_paths() {
+        let mut blanks = w("  test  ");
+        path_remove_blanks(&mut blanks);
+        assert_eq!(blanks, w("test"));
+        let mut trailing_blanks = w("test ");
+        path_remove_blanks(&mut trailing_blanks);
+        assert_eq!(trailing_blanks, w("test"));
+        let mut only_blanks = w("   ");
+        path_remove_blanks(&mut only_blanks);
+        assert_eq!(only_blanks, w(""));
+        let mut empty = w("");
+        path_remove_blanks(&mut empty);
+        assert_eq!(empty, w(""));
+
+        let mut quote = w("a path");
+        path_quote_spaces(&mut quote);
+        assert_eq!(quote, w("\"a path\""));
+        let mut no_spaces = w("path");
+        path_quote_spaces(&mut no_spaces);
+        assert_eq!(no_spaces, w("path"));
+        let mut max_fit: Vec<u16> = vec![b'a' as u16; 255];
+        max_fit[100] = SPACE;
+        max_fit.push(0);
+        path_quote_spaces(&mut max_fit);
+        assert_eq!(max_fit[0], QUOTE);
+        let mut too_long: Vec<u16> = vec![b'a' as u16; 257];
+        too_long[100] = SPACE;
+        too_long.push(0);
+        let before = too_long.clone();
+        path_quote_spaces(&mut too_long);
+        assert_eq!(too_long, before);
+
+        let mut unquote = w("\"a path\"");
+        path_unquote_spaces(&mut unquote);
+        assert_eq!(unquote, w("a path"));
+        let mut unmatched = w("\"path");
+        path_unquote_spaces(&mut unmatched);
+        assert_eq!(unmatched, w("\"path"));
+        let mut lone_quote = w("\"");
+        path_unquote_spaces(&mut lone_quote);
+        assert_eq!(lone_quote, w(""));
+        let mut not_quoted = w("path");
+        path_unquote_spaces(&mut not_quoted);
+        assert_eq!(not_quoted, w("path"));
+
+        let mut pretty = w("C:\\FOLDER");
+        assert!(path_make_pretty(&mut pretty));
+        assert_eq!(pretty, w("C:\\folder"));
+        let mut mixed = w("C:\\Folder");
+        let before = mixed.clone();
+        assert!(!path_make_pretty(&mut mixed));
+        assert_eq!(mixed, before);
+        let mut empty_pretty = w("");
+        assert!(path_make_pretty(&mut empty_pretty));
+    }
+
+    #[test]
+    fn common_prefix_and_prefix_helpers_match_wine_quirks() {
+        assert_eq!(path_common_prefix(&w("C:\\one\\a"), &w("c:\\one\\b")), 6);
+        assert_eq!(path_common_prefix(&w("one\\.two"), &w("one\\.three")), 3);
+        assert_eq!(path_common_prefix(&w("same"), &w("same")), 4);
+        assert_eq!(path_common_prefix(&w("\\\\server"), &w("C:\\server")), 0);
+        assert_eq!(path_common_prefix(&w("C:\\server"), &w("\\\\server")), 0);
+        assert_eq!(path_common_prefix(&w("\\\\one"), &w("\\\\two")), 0);
+        assert!(path_is_prefix(&w("C:\\"), &w("C:\\folder")));
+        assert!(!path_is_prefix(&w("C:\\folder"), &w("C:\\foo")));
+        assert!(path_is_prefix(&w(""), &w("anything")));
+        assert!(path_is_same_root(&w("C:\\one"), &w("C:\\two")));
+        assert!(!path_is_same_root(&w("C:\\one"), &w("D:\\two")));
+        assert!(!path_is_same_root(&w("relative"), &w("relative")));
     }
 
     #[test]
