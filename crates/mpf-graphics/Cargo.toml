@@ -3,4 +3,4 @@ name = "mpf-graphics"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "MPF graphics layer: dxvk/vkd3d-proton companion detection + dxvk.conf config (Phase 3)"
+description = "MPF graphics layer: dxvk/vkd3d-proton companion detection + dxvk.conf config"

@@ -6,7 +6,7 @@
 |-------------------------------------|----------------------------|-----------|
 | `loader/`                           | `proton` script            | `mpf-loader` (map, relocate, IAT/delay-import resolution, TLS) |
 | `dlls/ntdll/`                       | —                          | `mpf-ntdll` (ntstatus, unicode, heap, critical sections, object handles, exception bridge) |
-| `dlls/kernel32/`, `dlls/kernelbase/`| —                          | `mpf-kernel32` (strings, process, thread, module, file), `mpf-kernelbase` (planned) |
+| `dlls/kernel32/`, `dlls/kernelbase/`| —                          | `mpf-kernel32` (strings, process, thread, module, file), `mpf-kernelbase` (planned, not yet created) |
 | `dlls/advapi32/`                    | —                          | `mpf-advapi32` (`.reg` hives + Reg* API) |
 | `dlls/user32`                       | —                          | `mpf-user32` (headless windowing) |
 | `dlls/gdi32`                        | —                          | `mpf-gdi32` (headless DCs/objects) |
@@ -14,7 +14,7 @@
 | —                                   | vkd3d-proton submodule     | `mpf-graphics` vkd3d module (detect + version); native companion initially |
 | `programs/wineboot`                 | `default_pfx.py`           | `mpf-wineboot` (prefix init + hives) |
 | `dlls/*/tests`                      | —                          | `mpf-conformance` (seeded conformance cases) |
-| —                                   | umu-launcher (Python)      | `mpf-umu` (planned) |
+| —                                   | umu-launcher (Python)      | `mpf-umu` (planned, not yet created) |
 | `include/winnt.h` etc.              | —                          | `mpf-pe` + `mpf-winnt` (PEB/TEB/LDR/critical-section/exception ABI structs) |
 | process startup (`loader/main.c`, `LdrInitializeThunk`) | — | `mpf-cli run` (map → ASLR relocate → resolve imports → PEB/TEB/LDR) |
 
@@ -32,7 +32,7 @@
   (`mpf_winnt::PebLdrData` / `LdrDataTableEntry`), with PEB/TEB built by
   `mpf-cli run`.
 - Tests: unit tests per crate; synthetic PE images from `mpf_pe::testing`;
-  conformance against wine's own `dlls/*/tests` arrives in Phase 2.
+  conformance against wine's own `dlls/*/tests` is seeded by `mpf-conformance` (Phase 2).
 
 ## Comparison workflow
 

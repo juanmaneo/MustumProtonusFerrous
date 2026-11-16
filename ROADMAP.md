@@ -39,7 +39,7 @@ in the dev container for direct comparison.
 - [x] conformance harness `mpf-conformance`: `cargo run -p mpf-conformance`
       runs seeded cases derived from wine's `dlls/*/tests` expectations
 
-## Phase 3 — graphics stack (current)
+## Phase 3 — graphics stack (done)
 
 - [x] `mpf-user32`: headless windowing (class atoms, HWNDs, MessageBoxW,
       GetSystemMetrics, GetClientRect, DestroyWindow)
@@ -50,7 +50,7 @@ in the dev container for direct comparison.
       version. The D3D cores stay native companions (exactly what Proton
       ships); Rust ports come later
 
-## Phase 4 — Proton flavour & umu
+## Phase 4 — Proton flavour & umu (current)
 
 - [ ] Rust equivalent of Proton's `proton` script (prefix setup, env vars,
       DXVK/VKD3D selection, run-in-prefix)
