@@ -211,6 +211,97 @@ pub fn strtoi64(source: &[u8], base: u32) -> Option<ParseI64> {
     })
 }
 
+/// Result of parsing an unsigned 64-bit integer from a bounded byte string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseU64 {
+    /// Parsed value, saturated before applying a negative sign on overflow.
+    pub value: u64,
+    /// Byte offset where parsing stopped; equals zero if no digits were read.
+    pub end: usize,
+    /// Whether the parsed magnitude exceeded the unsigned 64-bit range.
+    pub overflow: bool,
+}
+
+/// Parses a Wine-compatible unsigned integer from a byte string.
+///
+/// Supports the same bases, prefixes, whitespace, and sign handling as
+/// [`strtoi64`]. A negative sign wraps the parsed value using unsigned
+/// arithmetic, matching Wine's `_strtoui64` return behavior.
+pub fn strtoui64(source: &[u8], base: u32) -> Option<ParseU64> {
+    if base != 0 && !(2..=36).contains(&base) {
+        return None;
+    }
+
+    let source_end = strnlen(source, source.len());
+    let mut index = 0;
+    while index < source_end && source[index].is_ascii_whitespace() {
+        index += 1;
+    }
+    let negative = if index < source_end && matches!(source[index], b'+' | b'-') {
+        let is_negative = source[index] == b'-';
+        index += 1;
+        is_negative
+    } else {
+        false
+    };
+
+    let mut radix = base;
+    if (radix == 0 || radix == 16)
+        && index + 1 < source_end
+        && source[index] == b'0'
+        && matches!(source[index + 1], b'x' | b'X')
+    {
+        radix = 16;
+        index += 2;
+    }
+    if radix == 0 {
+        radix = if index < source_end && source[index] == b'0' {
+            8
+        } else {
+            10
+        };
+    }
+
+    let digit_start = index;
+    let mut magnitude = 0_u64;
+    let mut overflow = false;
+    while index < source_end {
+        let Some(digit) = digit_value(source[index]) else {
+            break;
+        };
+        if digit >= radix {
+            break;
+        }
+        if magnitude > u64::MAX / u64::from(radix)
+            || (magnitude == u64::MAX / u64::from(radix)
+                && u64::from(digit) > u64::MAX % u64::from(radix))
+        {
+            overflow = true;
+            magnitude = u64::MAX;
+        } else {
+            magnitude = magnitude * u64::from(radix) + u64::from(digit);
+        }
+        index += 1;
+    }
+
+    if index == digit_start {
+        return Some(ParseU64 {
+            value: 0,
+            end: 0,
+            overflow: false,
+        });
+    }
+    Some(ParseU64 {
+        value: if negative {
+            magnitude.wrapping_neg()
+        } else {
+            magnitude
+        },
+        end: index,
+        overflow,
+    })
+}
+
 fn digit_value(byte: u8) -> Option<u32> {
     match byte {
         b'0'..=b'9' => Some(u32::from(byte - b'0')),
@@ -1029,6 +1120,40 @@ mod tests {
         assert_eq!(strtoi64(b"12\0not digits", 10).unwrap().end, 2);
         assert_eq!(strtoi64(b"12", 1), None);
         assert_eq!(strtoi64(b"12", 37), None);
+
+        assert_eq!(strtoui64(b"31923", 0).unwrap().value, 31923);
+        assert_eq!(strtoui64(b"0779", 0).unwrap().value, 63);
+        assert_eq!(
+            strtoui64(b"-213312", 0).unwrap().value,
+            (-213312_i64) as u64
+        );
+        assert_eq!(strtoui64(b"12aa", 10).unwrap().value, 12);
+        assert_eq!(strtoui64(b"abc12", 10).unwrap().end, 0);
+        assert_eq!(strtoui64(b"0x123", 10).unwrap().end, 1);
+        assert_eq!(strtoui64(b"0x123", 16).unwrap().value, 0x123);
+        assert_eq!(strtoui64(b"        12 212.31", 10).unwrap().end, 10);
+        assert_eq!(
+            strtoui64(b"18446744073709551615", 10).unwrap().value,
+            u64::MAX
+        );
+        assert_eq!(
+            strtoui64(b"18446744073709551616", 10).unwrap(),
+            ParseU64 {
+                value: u64::MAX,
+                end: 20,
+                overflow: true
+            }
+        );
+        assert_eq!(
+            strtoui64(b"-18446744073709551616", 10).unwrap(),
+            ParseU64 {
+                value: 1,
+                end: 21,
+                overflow: true
+            }
+        );
+        assert_eq!(strtoui64(b"12", 1), None);
+        assert_eq!(strtoui64(b"12", 37), None);
     }
 
     #[test]
