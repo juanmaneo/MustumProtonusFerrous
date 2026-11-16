@@ -264,6 +264,51 @@ fn at(s: &[u16], i: usize) -> u16 {
     s.get(i).copied().unwrap_or(0)
 }
 
+fn byte_at(s: &[u8], i: usize) -> u8 {
+    s.get(i).copied().unwrap_or(0)
+}
+
+fn lower_byte(byte: u8) -> u8 {
+    if byte.is_ascii_uppercase() {
+        byte + (b'a' - b'A')
+    } else {
+        byte
+    }
+}
+
+fn compare_bytes(a: &[u8], b: &[u8], count: usize, fold: fn(u8) -> u8) -> i32 {
+    for i in 0..count {
+        let left = fold(byte_at(a, i));
+        let right = fold(byte_at(b, i));
+        if left != right || left == 0 {
+            return i32::from(left) - i32::from(right);
+        }
+    }
+    0
+}
+
+/// Compares NUL-terminated byte strings, returning -1, 0, or 1 like Wine's
+/// Win64/UCRT `strcmp` implementation.
+pub fn strcmp(a: &[u8], b: &[u8]) -> i32 {
+    compare_bytes(a, b, usize::MAX, |byte| byte).signum()
+}
+
+/// Compares at most `count` bytes, returning -1, 0, or 1 like Wine's
+/// Win64/UCRT `strncmp` implementation.
+pub fn strncmp(a: &[u8], b: &[u8], count: usize) -> i32 {
+    compare_bytes(a, b, count, |byte| byte).signum()
+}
+
+/// Case-insensitive byte-string comparison using Wine's C-locale ASCII fold.
+pub fn stricmp(a: &[u8], b: &[u8]) -> i32 {
+    compare_bytes(a, b, usize::MAX, lower_byte)
+}
+
+/// Case-insensitive comparison of at most `count` bytes.
+pub fn strnicmp(a: &[u8], b: &[u8], count: usize) -> i32 {
+    compare_bytes(a, b, count, lower_byte)
+}
+
 fn to_lower(c: u16) -> u16 {
     if (b'A' as u16..=b'Z' as u16).contains(&c) {
         c + 32
@@ -315,6 +360,32 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn byte_comparisons_match_wine_ordering_and_c_locale_folding() {
+        assert_eq!(strcmp(b"same\0tail", b"same"), 0);
+        assert_eq!(strcmp(b"a", b"z"), -1);
+        assert_eq!(strcmp(b"z", b"a"), 1);
+        assert_eq!(strcmp(&[0x80, 0], &[0x7f, 0]), 1);
+        assert_eq!(strcmp(b"a", b"ab"), -1);
+        assert_eq!(strcmp(b"ab", b"a"), 1);
+
+        assert_eq!(strncmp(b"abc", b"abd", 2), 0);
+        assert_eq!(strncmp(b"abc", b"abd", 3), -1);
+        assert_eq!(strncmp(b"abd", b"abc", 3), 1);
+        assert_eq!(strncmp(b"a", b"b", 0), 0);
+        assert_eq!(strncmp(&[0xff], &[0], 1), 1);
+
+        assert_eq!(stricmp(b"HeLLo", b"hello"), 0);
+        assert_eq!(stricmp(b"A", b"b"), i32::from(b'a') - i32::from(b'b'));
+        assert_eq!(strnicmp(b"ABcd", b"abXY", 2), 0);
+        assert_eq!(
+            strnicmp(b"ABcd", b"abXY", 3),
+            i32::from(b'c') - i32::from(b'x')
+        );
+        assert_eq!(strnicmp(b"A", b"a", 0), 0);
+        assert_eq!(stricmp(&[0xc0, 0], &[0xe0, 0]), -32);
     }
 
     #[test]
