@@ -6,6 +6,15 @@
 //! variants lower-case with ASCII rules only; locale-aware `_towlower_l`
 //! and the `MSVCRT_CHECK_PMT` invalid-parameter path are not ported here.
 
+/// Reverses the UTF-16 code units before the first NUL and returns their count.
+///
+/// Like Wine's `_wcsrev`, this reverses code units, not Unicode scalar values.
+pub fn wcsrev(s: &mut [u16]) -> usize {
+    let length = wcslen(s);
+    s[..length].reverse();
+    length
+}
+
 /// Duplicates an optional NUL-terminated UTF-16 string.
 ///
 /// `None` models a null pointer. For a bounded, unterminated slice, the result
@@ -201,6 +210,21 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn wcsrev_reverses_only_the_string_prefix() {
+        let mut value = w("wine");
+        assert_eq!(wcsrev(&mut value), 4);
+        assert_eq!(value, w("eniw"));
+
+        let mut empty = [0, b'x' as u16];
+        assert_eq!(wcsrev(&mut empty), 0);
+        assert_eq!(empty, [0, b'x' as u16]);
+
+        let mut unterminated = [b'a' as u16, b'b' as u16, b'c' as u16];
+        assert_eq!(wcsrev(&mut unterminated), 3);
+        assert_eq!(unterminated, [b'c' as u16, b'b' as u16, b'a' as u16]);
     }
 
     #[test]
