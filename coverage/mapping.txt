@@ -40,9 +40,13 @@ dlls/oleaut32         -               todo     P1
 dlls/rpcrt4           -               todo     P1
 dlls/shell32          -               todo     P1
 dlls/shlwapi          mpf-shlwapi     partial  P1
-dlls/d3d9             -               todo     P1
-dlls/d3d11            -               todo     P1
-dlls/dxgi             -               todo     P1
+dlls/d3d8             -               native   P1
+dlls/d3d9             -               native   P1
+dlls/d3d10            -               native   P1
+dlls/d3d10_1          -               native   P1
+dlls/d3d11            -               native   P1
+dlls/d3d12            -               native   P1
+dlls/dxgi             -               native   P1
 dlls/comctl32         -               todo     P2
 dlls/winmm            -               todo     P2
 dlls/dsound           -               todo     P2
