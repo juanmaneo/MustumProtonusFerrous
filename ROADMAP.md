@@ -71,5 +71,7 @@ in the dev container for direct comparison.
       `cargo xtask compare-all [--watch SECONDS]` diffs every mapped
       component into `target/compare/report.txt`, re-running on a timer
       with `--watch`
+- [x] first P1 port: `dlls/shlwapi` path helpers as `mpf-shlwapi`
+      (string-only subset, conformance case seeded from `dlls/shlwapi/tests`)
 - [ ] all 744 `dlls/` components ported, P1 first, each with conformance
       cases seeded from its `dlls/<dll>/tests`

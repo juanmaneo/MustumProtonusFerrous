@@ -20,6 +20,20 @@ fn w(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
+fn shlwapi_path_helpers() {
+    let path = w("dir\\file.txt");
+    assert_eq!(mpf_shlwapi::path_find_file_name(&path), 4);
+    assert_eq!(mpf_shlwapi::path_find_extension(&path), 8);
+    assert!(mpf_shlwapi::path_is_relative(&w("file://folder/test.txt")));
+    assert!(!mpf_shlwapi::path_is_relative(&w("C:\\test.txt")));
+    let mut added = w("one\\two");
+    assert_eq!(mpf_shlwapi::path_add_backslash(&mut added), Some(8));
+    assert_eq!(added, w("one\\two\\"));
+    let mut stripped = w("short//path\\file.txt");
+    mpf_shlwapi::path_strip_path(&mut stripped);
+    assert_eq!(stripped, w("file.txt"));
+}
+
 fn kernel32_lstrlen_semantics() {
     // mirrors dlls/kernel32/tests/string.c lstrlenW expectations
     assert_eq!(
@@ -268,6 +282,10 @@ fn kernel32_process() {
 /// All seeded cases.
 pub fn all() -> Vec<Case> {
     vec![
+        Case {
+            name: "shlwapi!PathFindFileName/Extension/IsRelative/AddBackslash/StripPathW",
+            run: shlwapi_path_helpers,
+        },
         Case {
             name: "kernel32!lstrlenW semantics",
             run: kernel32_lstrlen_semantics,

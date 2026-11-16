@@ -27,6 +27,7 @@ dependencies = [
  "mpf-loader",
  "mpf-ntdll",
  "mpf-pe",
+ "mpf-shlwapi",
  "mpf-wineboot",
  "mpf-winnt",
 ]
@@ -78,6 +79,10 @@ dependencies = [
  "mpf-pe",
  "mpf-wineboot",
 ]
+
+[[package]]
+name = "mpf-shlwapi"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-umu"

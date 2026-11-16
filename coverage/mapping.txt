@@ -39,7 +39,7 @@ dlls/ole32            -               todo     P1
 dlls/oleaut32         -               todo     P1
 dlls/rpcrt4           -               todo     P1
 dlls/shell32          -               todo     P1
-dlls/shlwapi          -               todo     P1
+dlls/shlwapi          mpf-shlwapi     partial  P1
 dlls/d3d9             -               todo     P1
 dlls/d3d11            -               todo     P1
 dlls/dxgi             -               todo     P1
