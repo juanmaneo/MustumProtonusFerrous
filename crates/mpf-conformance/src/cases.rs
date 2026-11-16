@@ -66,6 +66,21 @@ fn oleaut32_narrowing() {
     );
 }
 
+fn rpcrt4_uuid_string_roundtrip() {
+    // mirrors dlls/rpcrt4/tests/rpc.c test_UuidFromString
+    let text = "00112233-4455-6677-8899-aabbccddeeff";
+    let uuid = mpf_rpcrt4::from_string(Some(text)).unwrap();
+    assert_eq!(mpf_rpcrt4::to_string(Some(&uuid)), text);
+    assert_eq!(
+        mpf_rpcrt4::from_string(Some("g0112233-4455-6677-8899-aabbccddeeff")),
+        Err(mpf_rpcrt4::UuidError)
+    );
+    assert_eq!(
+        mpf_rpcrt4::from_string(None),
+        Ok(mpf_rpcrt4::Uuid::default())
+    );
+}
+
 fn kernel32_lstrlen_semantics() {
     // mirrors dlls/kernel32/tests/string.c lstrlenW expectations
     assert_eq!(
@@ -325,6 +340,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "oleaut32!VarI1From*/VarUI1From* range checks",
             run: oleaut32_narrowing,
+        },
+        Case {
+            name: "rpcrt4!UuidFromString/UuidToString roundtrip",
+            run: rpcrt4_uuid_string_roundtrip,
         },
         Case {
             name: "kernel32!lstrlenW semantics",

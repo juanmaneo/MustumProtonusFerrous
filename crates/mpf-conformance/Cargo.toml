@@ -13,6 +13,7 @@ mpf-msvcrt = { path = "../mpf-msvcrt" }
 mpf-oleaut32 = { path = "../mpf-oleaut32" }
 mpf-ntdll = { path = "../mpf-ntdll" }
 mpf-pe = { path = "../mpf-pe" }
+mpf-rpcrt4 = { path = "../mpf-rpcrt4" }
 mpf-shlwapi = { path = "../mpf-shlwapi" }
 mpf-wineboot = { path = "../mpf-wineboot" }
 mpf-winnt = { path = "../mpf-winnt" }

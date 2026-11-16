@@ -29,6 +29,7 @@ dependencies = [
  "mpf-ntdll",
  "mpf-oleaut32",
  "mpf-pe",
+ "mpf-rpcrt4",
  "mpf-shlwapi",
  "mpf-wineboot",
  "mpf-winnt",
@@ -89,6 +90,10 @@ dependencies = [
  "mpf-pe",
  "mpf-wineboot",
 ]
+
+[[package]]
+name = "mpf-rpcrt4"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-shlwapi"
