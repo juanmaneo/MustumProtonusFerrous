@@ -857,6 +857,18 @@ pub fn strpbrk(s: &[u8], accept: &[u8]) -> Option<usize> {
         .position(|byte| accept[..accept_len].contains(byte))
 }
 
+/// Finds the first UTF-16 unit in `s` that is also in `accept`.
+///
+/// Returns the code-unit offset, analogous to Wine's pointer-returning
+/// `wcspbrk`.
+pub fn wcspbrk(s: &[u16], accept: &[u16]) -> Option<usize> {
+    let length = wcslen(s);
+    let accept_len = wcslen(accept);
+    s[..length]
+        .iter()
+        .position(|unit| accept[..accept_len].contains(unit))
+}
+
 /// Counts the initial UTF-16 units that are not in `reject`.
 ///
 /// Stops at the first NUL in `s`, matching Wine's `wcscspn`.
@@ -1723,6 +1735,16 @@ mod tests {
         assert_eq!(wcsspn(&text, &w("")), 0);
         assert_eq!(wcsspn(&w(""), &w("abc")), 0);
         assert_eq!(wcsspn(&[b'a' as u16, b'b' as u16], &[b'a' as u16]), 1);
+
+        assert_eq!(wcspbrk(&text, &w("xz")), None);
+        assert_eq!(wcspbrk(&text, &w("xd")), Some(3));
+        assert_eq!(wcspbrk(&w(""), &w("a")), None);
+        assert_eq!(wcspbrk(&text, &w("")), None);
+        assert_eq!(wcspbrk(&[0x80, 0xff, 0], &[0xff]), Some(1));
+        assert_eq!(
+            wcspbrk(&[b'a' as u16, b'b' as u16], &[b'b' as u16]),
+            Some(1)
+        );
     }
 
     #[test]
