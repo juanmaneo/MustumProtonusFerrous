@@ -77,31 +77,33 @@ pub fn load_config(
     let mut cfg = UmUConfig::new(DEFAULT_ID);
     let mut umu_id_set = false;
     if let Some(path) = config_path {
-        if path.is_file() {
-            let text =
-                std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))?;
-            let ini = parse_ini(&text);
-            if let Some(umu) = ini.get("umu") {
-                if let Some(v) = umu.get("gameid") {
-                    cfg.game_id = v.clone();
-                }
-                if let Some(v) = umu.get("umu_id") {
-                    cfg.umu_id = v.clone();
-                    umu_id_set = true;
-                }
-                if let Some(v) = umu.get("protonpath") {
-                    cfg.protonpath = v.clone();
-                }
-                if let Some(v) = umu.get("runtime") {
-                    cfg.runtime = Some(v.clone());
-                }
-                if let Some(v) = umu.get("no_protonfixes") {
-                    cfg.no_protonfixes = truthy(v);
-                }
-                if let Some(v) = umu.get("wineprefix") {
-                    cfg.wineprefix = Some(PathBuf::from(v));
+        match std::fs::read_to_string(path) {
+            Ok(text) => {
+                let ini = parse_ini(&text);
+                if let Some(umu) = ini.get("umu") {
+                    if let Some(v) = umu.get("gameid") {
+                        cfg.game_id = v.clone();
+                    }
+                    if let Some(v) = umu.get("umu_id") {
+                        cfg.umu_id = v.clone();
+                        umu_id_set = true;
+                    }
+                    if let Some(v) = umu.get("protonpath") {
+                        cfg.protonpath = v.clone();
+                    }
+                    if let Some(v) = umu.get("runtime") {
+                        cfg.runtime = Some(v.clone());
+                    }
+                    if let Some(v) = umu.get("no_protonfixes") {
+                        cfg.no_protonfixes = truthy(v);
+                    }
+                    if let Some(v) = umu.get("wineprefix") {
+                        cfg.wineprefix = Some(PathBuf::from(v));
+                    }
                 }
             }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(format!("cannot read {}: {e}", path.display())),
         }
     }
     if let Some(v) = getenv("GAMEID").filter(|v| !v.is_empty()) {
@@ -153,14 +155,31 @@ pub fn resolve_prefix(cfg: &UmUConfig, getenv: &dyn Fn(&str) -> Option<String>) 
 
 /// Creates the umu prefix layout (umu_run.setup_pfx): the directory itself,
 /// a `pfx` self-symlink, `shadercache/`, `gstreamer-1.0/` and `tracked_files`.
+fn tolerate_existing_link(result: std::io::Result<()>) -> std::io::Result<()> {
+    match result {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+fn create_pfx_link(path: &Path) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(".", path)
+}
+
 pub fn setup_prefix(path: &Path) -> std::io::Result<()> {
+    setup_prefix_with(path, create_pfx_link)
+}
+
+fn setup_prefix_with(
+    path: &Path,
+    create_link: fn(&Path) -> std::io::Result<()>,
+) -> std::io::Result<()> {
     std::fs::create_dir_all(path)?;
     std::fs::create_dir_all(path.join("shadercache"))?;
     std::fs::create_dir_all(path.join("gstreamer-1.0"))?;
     let pfx = path.join("pfx");
-    if std::fs::symlink_metadata(&pfx).is_err() {
-        std::os::unix::fs::symlink(".", &pfx)?;
-    }
+    tolerate_existing_link(create_link(&pfx))?;
     std::fs::File::create(path.join("tracked_files"))?;
     Ok(())
 }
@@ -178,10 +197,14 @@ pub fn runtime_name(protonpath: &str) -> Option<&'static str> {
 }
 
 /// `$XDG_DATA_HOME/umu` (umu_consts.UMU_LOCAL).
-pub fn umu_local(getenv: &dyn Fn(&str) -> Option<String>) -> PathBuf {
+fn data_home(getenv: &dyn Fn(&str) -> Option<String>) -> PathBuf {
     let home = getenv("HOME").unwrap_or_else(|| ".".to_string());
     let data = getenv("XDG_DATA_HOME").unwrap_or_else(|| format!("{home}/.local/share"));
-    Path::new(&data).join("umu")
+    PathBuf::from(data)
+}
+
+pub fn umu_local(getenv: &dyn Fn(&str) -> Option<String>) -> PathBuf {
+    data_home(getenv).join("umu")
 }
 
 /// First installed `<runtime>_platform_*` dir under `$XDG_DATA_HOME/umu`.
@@ -212,9 +235,7 @@ pub fn ensure_runtime(
 
 /// `$XDG_DATA_HOME/Steam/compatibilitytools.d` (umu_consts.STEAM_COMPAT).
 pub fn steam_compat_dir(getenv: &dyn Fn(&str) -> Option<String>) -> PathBuf {
-    let home = getenv("HOME").unwrap_or_else(|| ".".to_string());
-    let data = getenv("XDG_DATA_HOME").unwrap_or_else(|| format!("{home}/.local/share"));
-    Path::new(&data).join("Steam/compatibilitytools.d")
+    data_home(getenv).join("Steam/compatibilitytools.d")
 }
 
 /// `$PROTONPATH/protonfixes` — a direct path, or a codename resolved under
@@ -224,7 +245,9 @@ pub fn protonfixes_dir(getenv: &dyn Fn(&str) -> Option<String>, protonpath: &str
     if p.is_dir() {
         p.join("protonfixes")
     } else {
-        steam_compat_dir(getenv).join(protonpath).join("protonfixes")
+        steam_compat_dir(getenv)
+            .join(protonpath)
+            .join("protonfixes")
     }
 }
 
@@ -233,15 +256,24 @@ pub fn protonfixes_dir(getenv: &dyn Fn(&str) -> Option<String>, protonpath: &str
 #[derive(Debug, Clone)]
 pub struct Protonfixes {
     pub dir: PathBuf,
+    shell: PathBuf,
 }
 
 impl Protonfixes {
     pub fn new(dir: PathBuf) -> Self {
-        Protonfixes { dir }
+        Protonfixes {
+            dir,
+            shell: PathBuf::from("sh"),
+        }
     }
 
     /// Runs winetricks. Returns Ok(false) when disabled or not installed.
-    pub fn apply(&self, prefix: &Path, game_id: &str, no_protonfixes: bool) -> Result<bool, String> {
+    pub fn apply(
+        &self,
+        prefix: &Path,
+        game_id: &str,
+        no_protonfixes: bool,
+    ) -> Result<bool, String> {
         if no_protonfixes {
             return Ok(false);
         }
@@ -249,7 +281,7 @@ impl Protonfixes {
         if !winetricks.is_file() {
             return Ok(false);
         }
-        let status = std::process::Command::new("sh")
+        let status = std::process::Command::new(&self.shell)
             .arg(&winetricks)
             .current_dir(&self.dir)
             .env("WINEPREFIX", prefix)
@@ -346,12 +378,14 @@ mod tests {
         let mut env = BTreeMap::new();
         env.insert("GAMEID".to_string(), "umu-99".to_string());
         env.insert("PROTONPATH".to_string(), "umu-sniper".to_string());
+        env.insert("UMU_RUNTIME".to_string(), "runtime-override".to_string());
         env.insert("UMU_NO_PROTONFIXES".to_string(), "0".to_string());
         env.insert("WINEPREFIX".to_string(), "/env/pfx".to_string());
         let cfg = load_config(&env_get(&env), Some(&file)).unwrap();
         assert_eq!(cfg.game_id, "umu-99");
         assert_eq!(cfg.umu_id, "custom-id");
         assert_eq!(cfg.protonpath, "umu-sniper");
+        assert_eq!(cfg.runtime.as_deref(), Some("runtime-override"));
         assert!(!cfg.no_protonfixes);
         assert_eq!(cfg.wineprefix, Some(PathBuf::from("/env/pfx")));
 
@@ -360,21 +394,38 @@ mod tests {
         assert_eq!(cfg.umu_id, "umu-99");
 
         let mut env2 = env.clone();
+        env2.remove("UMU_RUNTIME");
         env2.insert("UMU_ID".to_string(), "umu-5".to_string());
         let cfg = load_config(&env_get(&env2), Some(&file)).unwrap();
         assert_eq!(cfg.umu_id, "umu-5");
         assert_eq!(cfg.game_id, "umu-99");
         assert_eq!(cfg.runtime.as_deref(), Some("soldier"));
 
+        let partial = dir.join("partial.toml");
+        std::fs::write(&partial, "[umu]\n").unwrap();
+        assert!(load_config(&env_get(&empty), Some(&partial)).is_ok());
+        let other_section = dir.join("other-section.toml");
+        std::fs::write(&other_section, "[other]\ngameid = ignored\n").unwrap();
+        assert_eq!(
+            load_config(&env_get(&empty), Some(&other_section))
+                .unwrap()
+                .game_id,
+            DEFAULT_ID
+        );
+
         let missing = dir.join("nope.toml");
         assert!(load_config(&env_get(&empty), Some(&missing)).is_ok());
+        assert!(load_config(&env_get(&empty), Some(&dir)).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
     fn steam_compat_app_id_cases() {
         assert_eq!(steam_compat_app_id("umu-1234"), Some("1234".to_string()));
-        assert_eq!(steam_compat_app_id("umu-default"), Some("default".to_string()));
+        assert_eq!(
+            steam_compat_app_id("umu-default"),
+            Some("default".to_string())
+        );
         assert_eq!(steam_compat_app_id("1234"), None);
         assert_eq!(steam_compat_app_id("umu-"), None);
         assert_eq!(steam_compat_app_id("umu-a b"), None);
@@ -382,6 +433,19 @@ mod tests {
 
     #[test]
     fn prefix_resolution() {
+        let empty = BTreeMap::new();
+        assert_eq!(
+            default_prefix(&env_get(&empty), "id"),
+            PathBuf::from("./Games/umu/id")
+        );
+        assert_eq!(
+            umu_local(&env_get(&empty)),
+            PathBuf::from("./.local/share/umu")
+        );
+        assert_eq!(
+            steam_compat_dir(&env_get(&empty)),
+            PathBuf::from("./.local/share/Steam/compatibilitytools.d")
+        );
         let mut env = BTreeMap::new();
         env.insert("HOME".to_string(), "/home/u".to_string());
         assert_eq!(
@@ -395,11 +459,27 @@ mod tests {
         );
         let mut cfg2 = cfg.clone();
         cfg2.wineprefix = Some(PathBuf::from("/custom"));
-        assert_eq!(resolve_prefix(&cfg2, &env_get(&env)), PathBuf::from("/custom"));
+        assert_eq!(
+            resolve_prefix(&cfg2, &env_get(&env)),
+            PathBuf::from("/custom")
+        );
     }
 
     #[test]
     fn setup_prefix_layout_idempotent() {
+        assert!(tolerate_existing_link(Ok(())).is_ok());
+        assert!(tolerate_existing_link(Err(std::io::Error::from(
+            std::io::ErrorKind::AlreadyExists
+        )))
+        .is_ok());
+        assert_eq!(
+            tolerate_existing_link(Err(std::io::Error::from(
+                std::io::ErrorKind::PermissionDenied
+            )))
+            .unwrap_err()
+            .kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
         let dir = temp_dir("pfx");
         let p = dir.join("pfxroot");
         setup_prefix(&p).unwrap();
@@ -408,6 +488,33 @@ mod tests {
         assert!(p.join("gstreamer-1.0").is_dir());
         assert!(p.join("tracked_files").is_file());
         setup_prefix(&p).unwrap();
+
+        let link_error_root = dir.join("link-error-root");
+        let error = setup_prefix_with(&link_error_root, |_| {
+            Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+        })
+        .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::PermissionDenied);
+
+        let blocked_root = dir.join("blocked-root");
+        std::fs::write(&blocked_root, b"file").unwrap();
+        assert!(setup_prefix(&blocked_root).is_err());
+
+        let blocked_shader = dir.join("blocked-shader");
+        std::fs::create_dir_all(&blocked_shader).unwrap();
+        std::fs::write(blocked_shader.join("shadercache"), b"file").unwrap();
+        assert!(setup_prefix(&blocked_shader).is_err());
+
+        let blocked_gstreamer = dir.join("blocked-gstreamer");
+        std::fs::create_dir_all(blocked_gstreamer.join("shadercache")).unwrap();
+        std::fs::write(blocked_gstreamer.join("gstreamer-1.0"), b"file").unwrap();
+        assert!(setup_prefix(&blocked_gstreamer).is_err());
+
+        let blocked_tracked = dir.join("blocked-tracked");
+        std::fs::create_dir_all(&blocked_tracked).unwrap();
+        std::fs::create_dir(blocked_tracked.join("tracked_files")).unwrap();
+        std::fs::create_dir_all(blocked_tracked.join("pfx")).unwrap();
+        assert!(setup_prefix(&blocked_tracked).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -424,18 +531,33 @@ mod tests {
     #[test]
     fn ensure_runtime_found_and_missing() {
         let dir = temp_dir("rt");
+        std::fs::create_dir_all(&dir).unwrap();
         let mut env = BTreeMap::new();
         env.insert("HOME".to_string(), dir.to_string_lossy().into_owned());
-        env.insert("XDG_DATA_HOME".to_string(), dir.join("data").to_string_lossy().into_owned());
+        env.insert(
+            "XDG_DATA_HOME".to_string(),
+            dir.join("data").to_string_lossy().into_owned(),
+        );
         let g = env_get(&env);
         assert!(ensure_runtime(&g, "sniper").is_err());
+        let blocked = dir.join("blocked");
+        std::fs::write(&blocked, b"file").unwrap();
+        let mut blocked_env = BTreeMap::new();
+        blocked_env.insert(
+            "XDG_DATA_HOME".to_string(),
+            blocked.to_string_lossy().into_owned(),
+        );
+        assert_eq!(find_runtime(&env_get(&blocked_env), "sniper"), None);
         std::fs::create_dir_all(dir.join("data/umu/sniper_platform_0.20240530.90143")).unwrap();
         std::fs::create_dir_all(dir.join("data/umu/soldier_platform_1")).unwrap();
         std::fs::write(dir.join("data/umu/sniper_platform_notes.txt"), b"x").unwrap();
         let found = ensure_runtime(&g, "sniper").unwrap();
         assert!(found.ends_with("sniper_platform_0.20240530.90143"));
         assert!(ensure_runtime(&g, "steamrt4").is_err());
-        assert_eq!(find_runtime(&g, "soldier").unwrap().file_name().unwrap(), "soldier_platform_1");
+        assert_eq!(
+            find_runtime(&g, "soldier").unwrap().file_name().unwrap(),
+            "soldier_platform_1"
+        );
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -445,7 +567,10 @@ mod tests {
         std::fs::create_dir_all(dir.join("proton")).unwrap();
         let mut env = BTreeMap::new();
         env.insert("HOME".to_string(), dir.to_string_lossy().into_owned());
-        env.insert("XDG_DATA_HOME".to_string(), dir.join("data").to_string_lossy().into_owned());
+        env.insert(
+            "XDG_DATA_HOME".to_string(),
+            dir.join("data").to_string_lossy().into_owned(),
+        );
         let g = env_get(&env);
         assert_eq!(
             protonfixes_dir(&g, dir.join("proton").to_str().unwrap()),
@@ -467,20 +592,23 @@ mod tests {
         std::fs::create_dir_all(&prefix).unwrap();
         let pf = Protonfixes::new(pf_dir.clone());
 
-        assert_eq!(pf.apply(&prefix, "umu-1", true).unwrap(), false);
-        assert_eq!(pf.apply(&prefix, "umu-1", false).unwrap(), false);
+        assert!(!pf.apply(&prefix, "umu-1", true).unwrap());
+        assert!(!pf.apply(&prefix, "umu-1", false).unwrap());
 
         std::fs::write(
             pf_dir.join("winetricks"),
             "#!/bin/sh\necho \"$GAMEID\" > \"$WINEPREFIX/pf-ran.txt\"\n",
         )
         .unwrap();
-        assert_eq!(pf.apply(&prefix, "umu-77", false).unwrap(), true);
+        assert!(pf.apply(&prefix, "umu-77", false).unwrap());
         let marker = std::fs::read_to_string(prefix.join("pf-ran.txt")).unwrap();
         assert_eq!(marker.trim(), "umu-77");
 
         std::fs::write(pf_dir.join("winetricks"), "#!/bin/sh\nexit 3\n").unwrap();
         assert!(pf.apply(&prefix, "umu-77", false).is_err());
+        let mut broken_shell = Protonfixes::new(pf_dir.clone());
+        broken_shell.shell = dir.join("missing-shell");
+        assert!(broken_shell.apply(&prefix, "umu-77", false).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -488,8 +616,14 @@ mod tests {
     fn run_end_to_end() {
         let dir = temp_dir("run");
         let mut env = BTreeMap::new();
-        env.insert("HOME".to_string(), dir.join("home").to_string_lossy().into_owned());
-        env.insert("XDG_DATA_HOME".to_string(), dir.join("data").to_string_lossy().into_owned());
+        env.insert(
+            "HOME".to_string(),
+            dir.join("home").to_string_lossy().into_owned(),
+        );
+        env.insert(
+            "XDG_DATA_HOME".to_string(),
+            dir.join("data").to_string_lossy().into_owned(),
+        );
         let g = env_get(&env);
         std::fs::create_dir_all(dir.join("data/umu/sniper_platform_0.1")).unwrap();
 
@@ -525,9 +659,27 @@ mod tests {
         cfg3.protonpath = "bogus-codename".to_string();
         assert!(run(&g, &cfg3, &exe, &[]).is_err());
 
+        let failing_proton = dir.join("failing-proton");
+        let failing_pf = failing_proton.join("protonfixes");
+        std::fs::create_dir_all(&failing_pf).unwrap();
+        std::fs::write(failing_pf.join("winetricks"), "#!/bin/sh\nexit 3\n").unwrap();
+        let mut cfg_fail = UmUConfig::new("umu-1234");
+        cfg_fail.protonpath = failing_proton.to_string_lossy().into_owned();
+        cfg_fail.runtime = Some("sniper".to_string());
+        assert!(run(&g, &cfg_fail, &exe, &[]).is_err());
+
+        let blocked = dir.join("not-a-directory");
+        std::fs::write(&blocked, b"file").unwrap();
+        let mut cfg4 = UmUConfig::new("umu-1234");
+        cfg4.wineprefix = Some(blocked.join("prefix"));
+        assert!(run(&g, &cfg4, &exe, &[]).is_err());
+
         let mut env2 = env.clone();
         env2.remove("XDG_DATA_HOME");
-        env2.insert("HOME".to_string(), dir.join("empty-home").to_string_lossy().into_owned());
+        env2.insert(
+            "HOME".to_string(),
+            dir.join("empty-home").to_string_lossy().into_owned(),
+        );
         let g2 = env_get(&env2);
         assert!(run(&g2, &UmUConfig::new("umu-1234"), &exe, &[]).is_err());
 

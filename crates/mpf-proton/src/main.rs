@@ -9,22 +9,23 @@ use std::process::ExitCode;
 const USAGE: &str = "usage: mpf-proton <command>\n  setup <prefix>\n  env <prefix> [--dxvk-conf FILE]\n  run <prefix> <exe> [args...]";
 
 fn main() -> ExitCode {
-    ExitCode::from(run(std::env::args().skip(1)))
+    ExitCode::from(run(std::env::args().skip(1).collect()))
 }
 
-fn run(args: impl IntoIterator<Item = String>) -> u8 {
-    let args: Vec<String> = args.into_iter().collect();
+fn run(args: Vec<String>) -> u8 {
     match args.first().map(String::as_str) {
-        Some("setup") if args.len() == 2 => match mpf_wineboot::init_prefix(std::path::Path::new(&args[1])) {
-            Ok(p) => {
-                println!("prefix ready: {}", p.root.display());
-                0
+        Some("setup") if args.len() == 2 => {
+            match mpf_wineboot::init_prefix(std::path::Path::new(&args[1])) {
+                Ok(p) => {
+                    println!("prefix ready: {}", p.root.display());
+                    0
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    1
+                }
             }
-            Err(e) => {
-                eprintln!("error: {e}");
-                1
-            }
-        },
+        }
         Some("env") => {
             let (prefix, conf) = match parse_env_args(&args[1..]) {
                 Some(v) => v,
@@ -44,7 +45,10 @@ fn run(args: impl IntoIterator<Item = String>) -> u8 {
                 }
             }
             let gfx = mpf_proton::select_graphics(&cfg);
-            print!("{}", mpf_proton::env_string(&mpf_proton::build_env(&cfg, &gfx)));
+            print!(
+                "{}",
+                mpf_proton::env_string(&mpf_proton::build_env(&cfg, &gfx))
+            );
             0
         }
         Some("run") if args.len() >= 3 => {
@@ -106,6 +110,11 @@ mod tests {
     }
 
     #[test]
+    fn main_routes_process_arguments() {
+        assert_eq!(main(), ExitCode::from(2));
+    }
+
+    #[test]
     fn usage_errors() {
         assert_eq!(run(vec![]), 2);
         assert_eq!(run(vec!["bogus".into()]), 2);
@@ -117,16 +126,19 @@ mod tests {
 
     #[test]
     fn parse_env_args_variants() {
-        assert_eq!(parse_env_args(&["p".to_string()]), Some(("p".to_string(), None)));
+        assert_eq!(
+            parse_env_args(&["p".to_string()]),
+            Some(("p".to_string(), None))
+        );
         assert_eq!(
             parse_env_args(&["p".to_string(), "--dxvk-conf".to_string(), "f".to_string()]),
             Some(("p".to_string(), Some("f".to_string())))
         );
-        assert_eq!(parse_env_args(&["--dxvk-conf".to_string(), "f".to_string()]), None);
         assert_eq!(
-            parse_env_args(&["p".to_string(), "q".to_string()]),
+            parse_env_args(&["--dxvk-conf".to_string(), "f".to_string()]),
             None
         );
+        assert_eq!(parse_env_args(&["p".to_string(), "q".to_string()]), None);
     }
 
     #[test]
@@ -134,21 +146,48 @@ mod tests {
         let dir = temp_dir("cmd");
         let prefix = dir.join("prefix").to_string_lossy().into_owned();
         assert_eq!(run(vec!["setup".into(), prefix.clone()]), 0);
-        assert!(std::path::Path::new(&prefix).join("drive_c/windows/system.reg").is_file());
+        assert!(std::path::Path::new(&prefix)
+            .join("drive_c/windows/system.reg")
+            .is_file());
 
         let exe = dir.join("t.dll");
         std::fs::write(&exe, mpf_pe::testing::build_test_pe64()).unwrap();
         assert_eq!(
-            run(vec!["run".into(), prefix.clone(), exe.to_string_lossy().into_owned(), "a".into()]),
+            run(vec![
+                "run".into(),
+                prefix.clone(),
+                exe.to_string_lossy().into_owned(),
+                "a".into()
+            ]),
             0
         );
         assert_eq!(
-            run(vec!["run".into(), prefix.clone(), dir.join("nope.dll").to_string_lossy().into_owned()]),
+            run(vec![
+                "run".into(),
+                prefix.clone(),
+                dir.join("nope.dll").to_string_lossy().into_owned()
+            ]),
             1
         );
         assert_eq!(run(vec!["env".into(), prefix.clone()]), 0);
+        let conf = dir.join("dxvk.conf");
+        std::fs::write(&conf, "dxvk.hud = 1\\n").unwrap();
         assert_eq!(
-            run(vec!["env".into(), prefix.clone(), "--dxvk-conf".into(), dir.join("no.conf").to_string_lossy().into_owned()]),
+            run(vec![
+                "env".into(),
+                prefix.clone(),
+                "--dxvk-conf".into(),
+                conf.to_string_lossy().into_owned()
+            ]),
+            0
+        );
+        assert_eq!(
+            run(vec![
+                "env".into(),
+                prefix.clone(),
+                "--dxvk-conf".into(),
+                dir.join("no.conf").to_string_lossy().into_owned()
+            ]),
             1
         );
         std::fs::remove_dir_all(&dir).unwrap();

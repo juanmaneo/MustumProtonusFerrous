@@ -47,8 +47,7 @@ pub fn default_prefix(getenv: &dyn Fn(&str) -> Option<String>, app_id: Option<&s
         return Path::new(&compat).join(app_id.unwrap_or("default"));
     }
     let home = getenv("HOME").unwrap_or_else(|| ".".to_string());
-    let data = getenv("XDG_DATA_HOME")
-        .unwrap_or_else(|| format!("{home}/.local/share"));
+    let data = getenv("XDG_DATA_HOME").unwrap_or_else(|| format!("{home}/.local/share"));
     Path::new(&data)
         .join("Steam/steamapps/compatdata")
         .join(app_id.unwrap_or("default"))
@@ -77,7 +76,10 @@ pub fn select_graphics(cfg: &ProtonConfig) -> Graphics {
 /// Builds the environment Proton would set for a run.
 pub fn build_env(cfg: &ProtonConfig, graphics: &Graphics) -> BTreeMap<String, String> {
     let mut env = BTreeMap::new();
-    env.insert("WINEPREFIX".to_string(), cfg.prefix.to_string_lossy().into_owned());
+    env.insert(
+        "WINEPREFIX".to_string(),
+        cfg.prefix.to_string_lossy().into_owned(),
+    );
     env.insert("WINEDEBUG".to_string(), cfg.winedebug.clone());
     env.insert(
         "WINEDLLOVERRIDES".to_string(),
@@ -120,17 +122,12 @@ pub fn native_resolver(dll: &str, function: &str, _ordinal: Option<u16>) -> Opti
             _ => None,
         },
         "NTDLL.DLL" => match function {
-            "RtlProcessHeap" => Some(mpf_ntdll_heap_path("rtl_process_heap")),
+            "RtlProcessHeap" => {
+                Some(mpf_ntdll::heap::rtl_process_heap as *const () as usize as u64)
+            }
             _ => None,
         },
         _ => None,
-    }
-}
-
-fn mpf_ntdll_heap_path(name: &str) -> u64 {
-    match name {
-        "rtl_process_heap" => mpf_ntdll::heap::rtl_process_heap as *const () as usize as u64,
-        _ => 0,
     }
 }
 
@@ -166,7 +163,11 @@ pub struct RunReport {
 
 /// Full run-in-prefix pipeline: init prefix, load hives, map + relocate +
 /// resolve the executable, register it as a module, build the env.
-pub fn run_executable(cfg: &ProtonConfig, exe: &Path, _args: &[String]) -> Result<RunReport, String> {
+pub fn run_executable(
+    cfg: &ProtonConfig,
+    exe: &Path,
+    _args: &[String],
+) -> Result<RunReport, String> {
     let prefix = mpf_wineboot::init_prefix(&cfg.prefix).map_err(|e| e.to_string())?;
     mpf_advapi32::init_from_prefix(&cfg.prefix).map_err(|e| e.to_string())?;
     let data = std::fs::read(exe).map_err(|e| format!("cannot read {}: {e}", exe.display()))?;
@@ -176,7 +177,9 @@ pub fn run_executable(cfg: &ProtonConfig, exe: &Path, _args: &[String]) -> Resul
     let imports = module.resolve_imports(&mut |d, f, o| native_resolver(d, f, o));
     let delay = module.resolve_delay_imports(&mut |d, f, o| native_resolver(d, f, o));
     mpf_kernel32::module::register_module(
-        &exe.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+        &exe.file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default(),
         module.base(),
         module.size_of_image,
     );
@@ -215,8 +218,15 @@ mod tests {
     fn default_prefix_paths() {
         let mut env = BTreeMap::new();
         env.insert("HOME".to_string(), "/home/u".to_string());
+        assert_eq!(
+            default_prefix(&env_get(&BTreeMap::new()), None),
+            PathBuf::from("./.local/share/Steam/steamapps/compatdata/default")
+        );
         let p = default_prefix(&env_get(&env), Some("1234"));
-        assert_eq!(p, PathBuf::from("/home/u/.local/share/Steam/steamapps/compatdata/1234"));
+        assert_eq!(
+            p,
+            PathBuf::from("/home/u/.local/share/Steam/steamapps/compatdata/1234")
+        );
         env.insert("XDG_DATA_HOME".to_string(), "/data".to_string());
         assert_eq!(
             default_prefix(&env_get(&env), None),
@@ -240,17 +250,16 @@ mod tests {
         for dll in dxvk::DXVK_DLLS {
             std::fs::write(sys32.join(dll), b"x").unwrap();
         }
-        match select_graphics(&cfg) {
-            Graphics::Dxvk(i) => assert!(i.is_complete()),
-            other => panic!("expected Dxvk, got {other:?}"),
-        }
+        assert!(matches!(select_graphics(&cfg), Graphics::Dxvk(i) if i.is_complete()));
         std::fs::write(sys32.join("d3d12.dll"), b"x").unwrap();
         std::fs::write(sys32.join("d3d12core.dll"), b"x").unwrap();
         assert!(matches!(select_graphics(&cfg), Graphics::Both(_, _)));
 
         let mut cfg2 = ProtonConfig::new(&prefix);
         cfg2.disable_dxvk = true;
-        assert!(matches!(select_graphics(&cfg2), Graphics::Vkd3d(_)));
+        let vkd3d = select_graphics(&cfg2);
+        assert!(matches!(vkd3d, Graphics::Vkd3d(_)));
+        assert!(build_env(&cfg2, &vkd3d).contains_key("PROTON_VKD3D"));
         let mut cfg3 = ProtonConfig::new(&prefix);
         cfg3.disable_vkd3d = true;
         assert!(matches!(select_graphics(&cfg3), Graphics::Dxvk(_)));
@@ -267,11 +276,7 @@ mod tests {
         let mut cfg = ProtonConfig::new(&prefix);
         std::fs::create_dir_all(prefix.join("drive_c/windows/system32")).unwrap();
         for dll in dxvk::DXVK_DLLS {
-            std::fs::write(
-                prefix.join("drive_c/windows/system32").join(dll),
-                b"x",
-            )
-            .unwrap();
+            std::fs::write(prefix.join("drive_c/windows/system32").join(dll), b"x").unwrap();
         }
         std::fs::write(prefix.join("dxvk.conf"), "dxvk.hud = 1\n").unwrap();
         cfg.dxvk_conf = Some("dxvk.async = on".to_string());
@@ -293,6 +298,11 @@ mod tests {
         let mut sorted = keys.clone();
         sorted.sort_unstable();
         assert_eq!(keys, sorted);
+
+        let mut cfg_without_extra = ProtonConfig::new(&prefix);
+        cfg_without_extra.dxvk_conf = None;
+        let env_without_extra = build_env(&cfg_without_extra, &select_graphics(&cfg_without_extra));
+        assert!(env_without_extra.contains_key("PROTON_DXVK"));
 
         let env2 = build_env(&ProtonConfig::new(&prefix), &Graphics::None);
         assert!(!env2.contains_key("DXVK_HUD"));
@@ -341,6 +351,20 @@ mod tests {
 
         let err = run_executable(&cfg, &dir.join("missing.exe"), &[]);
         assert!(err.is_err());
+
+        let blocked_prefix = dir.join("blocked-prefix");
+        std::fs::write(&blocked_prefix, b"file").unwrap();
+        assert!(run_executable(&ProtonConfig::new(&blocked_prefix), &exe, &[]).is_err());
+
+        let registry_error_prefix = dir.join("registry-error");
+        mpf_wineboot::init_prefix(&registry_error_prefix).unwrap();
+        std::fs::remove_file(registry_error_prefix.join("drive_c/users/mpf/user.reg")).unwrap();
+        std::fs::create_dir(registry_error_prefix.join("drive_c/users/mpf/user.reg")).unwrap();
+        assert!(run_executable(&ProtonConfig::new(&registry_error_prefix), &exe, &[]).is_err());
+
+        let invalid = dir.join("invalid.exe");
+        std::fs::write(&invalid, b"not a PE image").unwrap();
+        assert!(run_executable(&cfg, &invalid, &[]).is_err());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

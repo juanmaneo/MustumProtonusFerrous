@@ -10,15 +10,21 @@ use std::process::ExitCode;
 const USAGE: &str = "usage: mpf-umu <command> [--config FILE] [--prefix DIR]\n  config                  print resolved UMU config\n  setup                   create the WINE prefix\n  run <exe> [args...]     run-in-prefix via mpf-proton";
 
 fn main() -> ExitCode {
-    ExitCode::from(run(std::env::args().skip(1)))
+    ExitCode::from(run(std::env::args().skip(1).collect()))
 }
 
-fn run(args: impl IntoIterator<Item = String>) -> u8 {
-    run_with(&|k: &str| std::env::var(k).ok(), args.into_iter().collect())
+fn run(args: Vec<String>) -> u8 {
+    run_with(&|k: &str| std::env::var(k).ok(), args)
 }
 
 fn run_with(getenv: &dyn Fn(&str) -> Option<String>, args: Vec<String>) -> u8 {
-    let Some((cmd, config, prefix, rest)) = parse_args(&args) else {
+    let Some(Args {
+        cmd,
+        config,
+        prefix,
+        rest,
+    }) = parse_args(&args)
+    else {
         eprintln!("{USAGE}");
         return 2;
     };
@@ -89,7 +95,16 @@ fn run_with(getenv: &dyn Fn(&str) -> Option<String>, args: Vec<String>) -> u8 {
     }
 }
 
-fn parse_args(args: &[String]) -> Option<(String, Option<String>, Option<String>, Vec<String>)> {
+/// The parsed command line: a command, its options and the remaining words.
+#[derive(Debug, PartialEq)]
+struct Args {
+    cmd: String,
+    config: Option<String>,
+    prefix: Option<String>,
+    rest: Vec<String>,
+}
+
+fn parse_args(args: &[String]) -> Option<Args> {
     let mut cmd = None;
     let mut config = None;
     let mut prefix = None;
@@ -115,7 +130,12 @@ fn parse_args(args: &[String]) -> Option<(String, Option<String>, Option<String>
             }
         }
     }
-    cmd.map(|c| (c, config, prefix, rest))
+    cmd.map(|cmd| Args {
+        cmd,
+        config,
+        prefix,
+        rest,
+    })
 }
 
 #[cfg(test)]
@@ -137,11 +157,21 @@ mod tests {
     }
 
     #[test]
+    fn main_routes_process_arguments() {
+        assert_eq!(main(), ExitCode::from(2));
+    }
+
+    #[test]
     fn parse_args_variants() {
         assert_eq!(parse_args(&[]), None);
         assert_eq!(
             parse_args(&["config".to_string()]),
-            Some(("config".to_string(), None, None, vec![]))
+            Some(Args {
+                cmd: "config".to_string(),
+                config: None,
+                prefix: None,
+                rest: vec![],
+            })
         );
         assert_eq!(
             parse_args(&[
@@ -153,12 +183,12 @@ mod tests {
                 "--prefix".to_string(),
                 "p".to_string()
             ]),
-            Some((
-                "run".to_string(),
-                Some("f".to_string()),
-                Some("p".to_string()),
-                vec!["e.exe".to_string(), "a".to_string()]
-            ))
+            Some(Args {
+                cmd: "run".to_string(),
+                config: Some("f".to_string()),
+                prefix: Some("p".to_string()),
+                rest: vec!["e.exe".to_string(), "a".to_string()],
+            })
         );
     }
 
@@ -170,6 +200,20 @@ mod tests {
         assert_eq!(run_with(&g, vec!["bogus".into()]), 2);
         assert_eq!(run_with(&g, vec!["run".into()]), 2);
         assert_eq!(run_with(&g, vec!["--config".into()]), 2);
+        let dir = temp_dir("config-error");
+        std::fs::create_dir_all(&dir).unwrap();
+        assert_eq!(
+            run_with(
+                &g,
+                vec![
+                    "config".into(),
+                    "--config".into(),
+                    dir.to_string_lossy().into_owned()
+                ]
+            ),
+            1
+        );
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
@@ -177,16 +221,30 @@ mod tests {
         let mut env = BTreeMap::new();
         env.insert("HOME".to_string(), "/home/u".to_string());
         env.insert("GAMEID".to_string(), "umu-42".to_string());
+        env.insert("UMU_RUNTIME".to_string(), "sniper".to_string());
         let g = env_get(&env);
         assert_eq!(run_with(&g, vec!["config".into()]), 0);
+        let mut defaulted_id = env.clone();
+        defaulted_id.remove("GAMEID");
+        defaulted_id.remove("UMU_RUNTIME");
+        assert_eq!(run_with(&env_get(&defaulted_id), vec!["config".into()]), 0);
+        let mut invalid_id = env.clone();
+        invalid_id.insert("UMU_ID".to_string(), "not-umu".to_string());
+        assert_eq!(run_with(&env_get(&invalid_id), vec!["config".into()]), 0);
     }
 
     #[test]
     fn setup_and_run_commands() {
         let dir = temp_dir("cmd");
         let mut env = BTreeMap::new();
-        env.insert("HOME".to_string(), dir.join("home").to_string_lossy().into_owned());
-        env.insert("XDG_DATA_HOME".to_string(), dir.join("data").to_string_lossy().into_owned());
+        env.insert(
+            "HOME".to_string(),
+            dir.join("home").to_string_lossy().into_owned(),
+        );
+        env.insert(
+            "XDG_DATA_HOME".to_string(),
+            dir.join("data").to_string_lossy().into_owned(),
+        );
         std::fs::create_dir_all(dir.join("data/umu/sniper_platform_0.1")).unwrap();
         let g = env_get(&env);
 
@@ -196,6 +254,20 @@ mod tests {
             0
         );
         assert!(std::path::Path::new(&prefix).join("pfx").is_symlink());
+
+        let blocked = dir.join("blocked-prefix");
+        std::fs::write(&blocked, b"file").unwrap();
+        assert_eq!(
+            run_with(
+                &g,
+                vec![
+                    "setup".into(),
+                    "--prefix".into(),
+                    blocked.to_string_lossy().into_owned()
+                ]
+            ),
+            1
+        );
 
         let exe = dir.join("t.exe");
         std::fs::write(&exe, mpf_pe::testing::build_test_pe64()).unwrap();
@@ -215,7 +287,12 @@ mod tests {
         assert_eq!(
             run_with(
                 &g,
-                vec!["run".into(), dir.join("nope.exe").to_string_lossy().into_owned(), "--prefix".into(), prefix.clone()]
+                vec![
+                    "run".into(),
+                    dir.join("nope.exe").to_string_lossy().into_owned(),
+                    "--prefix".into(),
+                    prefix.clone()
+                ]
             ),
             1
         );
