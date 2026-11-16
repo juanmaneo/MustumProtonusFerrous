@@ -8,6 +8,36 @@
 //! ASCII-only folding; locale-aware behavior and `MSVCRT_CHECK_PMT`
 //! invalid-parameter handling are not ported.
 
+/// Replaces all bytes before the first NUL and returns the count changed.
+///
+/// This slice-based equivalent of Wine's `_strset` reports a count instead of
+/// returning the C string pointer.
+pub fn strset(s: &mut [u8], replacement: u8) -> usize {
+    let length = strnlen(s, s.len());
+    s[..length].fill(replacement);
+    length
+}
+
+/// Replaces at most `count` bytes before the first NUL and returns the count.
+///
+/// This slice-based equivalent of Wine's `_strnset` reports a count instead of
+/// returning the C pointer advanced past the changed prefix.
+pub fn strnset(s: &mut [u8], replacement: u8, count: usize) -> usize {
+    let length = strnlen(s, count);
+    s[..length].fill(replacement);
+    length
+}
+
+/// Reverses the bytes before the first NUL and returns their count.
+///
+/// This slice-based equivalent of Wine's `_strrev` reports a count instead of
+/// returning the C string pointer.
+pub fn strrev(s: &mut [u8]) -> usize {
+    let length = strnlen(s, s.len());
+    s[..length].reverse();
+    length
+}
+
 /// Replaces all UTF-16 units before the first NUL and returns the count changed.
 pub fn wcsset(s: &mut [u16], replacement: u16) -> usize {
     let length = wcslen(s);
@@ -285,6 +315,41 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn byte_set_and_reverse_mutate_only_the_nul_terminated_prefix() {
+        let mut value = *b"wine\0tail";
+        assert_eq!(strset(&mut value, b'x'), 4);
+        assert_eq!(&value, b"xxxx\0tail");
+
+        let mut bounded = *b"wine\0";
+        assert_eq!(strnset(&mut bounded, b'y', 2), 2);
+        assert_eq!(&bounded, b"yyne\0");
+        assert_eq!(strnset(&mut bounded, b'z', 8), 4);
+        assert_eq!(&bounded, b"zzzz\0");
+
+        let mut empty = [0, b'a'];
+        assert_eq!(strset(&mut empty, b'q'), 0);
+        assert_eq!(strnset(&mut empty, b'q', 2), 0);
+        assert_eq!(empty, [0, b'a']);
+        let mut no_nul = *b"abc";
+        assert_eq!(strset(&mut no_nul, b'd'), 3);
+        assert_eq!(no_nul, *b"ddd");
+        assert_eq!(strnset(&mut no_nul, b'e', 0), 0);
+
+        let mut reversed = *b"wine\0tail";
+        assert_eq!(strrev(&mut reversed), 4);
+        assert_eq!(&reversed, b"eniw\0tail");
+        let mut single = *b"x\0";
+        assert_eq!(strrev(&mut single), 1);
+        assert_eq!(&single, b"x\0");
+        let mut empty = [0, b'x'];
+        assert_eq!(strrev(&mut empty), 0);
+        assert_eq!(empty, [0, b'x']);
+        let mut unterminated = *b"abc";
+        assert_eq!(strrev(&mut unterminated), 3);
+        assert_eq!(unterminated, *b"cba");
     }
 
     #[test]
