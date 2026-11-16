@@ -81,8 +81,8 @@ pub fn wait_for_thread(handle: u64, _timeout_ms: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use std::sync::atomic::AtomicU32;
+    use std::sync::Arc;
 
     extern "system" fn sets_value(p: *mut c_void) -> u32 {
         let shared = unsafe { &*(p as *const AtomicU32) };
@@ -107,7 +107,7 @@ mod tests {
         let handle = create_thread(sets_value, ptr);
         assert_eq!(wait_for_thread(handle, 0), WAIT_OBJECT_0);
         assert_eq!(shared.load(Ordering::Relaxed), 42);
-        unsafe { drop(Arc::from_raw(ptr)) };
+        unsafe { drop(Arc::from_raw(ptr as *const AtomicU32)) };
     }
 
     #[test]

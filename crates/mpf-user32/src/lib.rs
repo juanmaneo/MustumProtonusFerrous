@@ -64,7 +64,12 @@ fn with_state<R>(f: impl FnOnce(&mut User32State) -> R) -> R {
                     class: "#Desktop".into(),
                     title: String::new(),
                     style: 0,
-                    rect: Rect { left: 0, top: 0, right: 1920, bottom: 1080 },
+                    rect: Rect {
+                        left: 0,
+                        top: 0,
+                        right: 1920,
+                        bottom: 1080,
+                    },
                 },
             )]),
             desktop,
@@ -124,7 +129,12 @@ pub fn create_window_ex_w(
                 class: class.to_string(),
                 title,
                 style,
-                rect: Rect { left: x, top: y, right: x + w, bottom: y + h },
+                rect: Rect {
+                    left: x,
+                    top: y,
+                    right: x + w,
+                    bottom: y + h,
+                },
             },
         );
         hwnd
@@ -211,10 +221,26 @@ mod tests {
     #[test]
     fn window_lifecycle() {
         register_class_w(&w("TestClass"));
-        let hwnd = create_window_ex_w("TestClass", &w("hello"), WS_OVERLAPPEDWINDOW, 10, 20, 300, 200);
+        let hwnd = create_window_ex_w(
+            "TestClass",
+            &w("hello"),
+            WS_OVERLAPPEDWINDOW,
+            10,
+            20,
+            300,
+            200,
+        );
         assert_ne!(hwnd, 0);
         let rect = get_client_rect(hwnd).unwrap();
-        assert_eq!(rect, Rect { left: 10, top: 20, right: 310, bottom: 220 });
+        assert_eq!(
+            rect,
+            Rect {
+                left: 10,
+                top: 20,
+                right: 310,
+                bottom: 220
+            }
+        );
         assert!(destroy_window(hwnd));
         assert_eq!(get_client_rect(hwnd), None);
         assert!(!destroy_window(hwnd));

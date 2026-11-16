@@ -4,7 +4,6 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    let cases = mpf_conformance::cases::all();
-    let (_passed, failed) = mpf_conformance::run(&cases);
-    ExitCode::from(if failed > 0 { 1 } else { 0 })
+    let (_passed, failed) = mpf_conformance::run(&mpf_conformance::cases::all());
+    mpf_conformance::exit_code(failed)
 }

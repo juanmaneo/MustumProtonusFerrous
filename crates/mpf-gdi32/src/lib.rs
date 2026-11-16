@@ -34,7 +34,7 @@ struct GdiObject {
 
 struct GdiState {
     om: ObjectManager,
-    dcs: HashMap<Hdc, Hdc>,       // dc -> selected object (0 = none)
+    dcs: HashMap<Hdc, Hdc>, // dc -> selected object (0 = none)
     objects: HashMap<Hdc, GdiObject>,
 }
 
@@ -76,7 +76,15 @@ pub fn create_bitmap(width: i32, height: i32, bpp: i32) -> Hdc {
     }
     with_state(|st| {
         let h = st.om.allocate_handle(11);
-        st.objects.insert(h, GdiObject { kind: GdiObjectKind::Bitmap, width, height, bpp });
+        st.objects.insert(
+            h,
+            GdiObject {
+                kind: GdiObjectKind::Bitmap,
+                width,
+                height,
+                bpp,
+            },
+        );
         h
     })
 }

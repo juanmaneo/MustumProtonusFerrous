@@ -121,14 +121,28 @@ mod tests {
         (base, size)
     }
 
+    /// Registers `image` as a module under `name`. The bytes are leaked so
+    /// the address stays valid (and unique) for the rest of the process.
+    fn register_image(name: &str, image: Vec<u8>) -> usize {
+        let image: &'static [u8] = Box::leak(image.into_boxed_slice());
+        let base = image.as_ptr() as usize;
+        register_module(name, base, image.len() as u32);
+        base
+    }
+
+    // The module table is process-wide and tests run in parallel, so each
+    // test registers its modules under a name no other test uses.
     #[test]
     fn module_handle_lookup_is_case_insensitive() {
         let (base, size) = mapped_module();
-        register_module("mpf_test.dll", base, size);
+        register_module("handle_lookup.dll", base, size);
         set_current_exe(base);
         assert_eq!(get_module_handle_w(None) as usize, base);
-        assert_eq!(get_module_handle_w(Some("MPF_TEST.DLL")) as usize, base);
-        assert_eq!(get_module_handle_w(Some("mpf_test")) as usize, base);
+        assert_eq!(
+            get_module_handle_w(Some("HANDLE_LOOKUP.DLL")) as usize,
+            base
+        );
+        assert_eq!(get_module_handle_w(Some("handle_lookup")) as usize, base);
         assert!(get_module_handle_w(Some("other.dll")).is_null());
     }
 
@@ -149,14 +163,57 @@ mod tests {
     }
 
     #[test]
+    fn module_file_name_handles_degenerate_buffers() {
+        let (base, size) = mapped_module();
+        register_module("Degenerate.dll", base, size);
+        // No room for anything, not even the NUL: nothing is written.
+        assert_eq!(get_module_file_name_w(base as *const c_void, &mut []), 0);
+        // An unknown module has an empty name, still NUL-terminated.
+        let mut buf = [0xFFFFu16; 4];
+        assert_eq!(
+            get_module_file_name_w(0xdead_2000 as *const c_void, &mut buf),
+            0
+        );
+        assert_eq!(buf, [0, 0xFFFF, 0xFFFF, 0xFFFF]);
+    }
+
+    #[test]
     fn proc_address_resolves_exports_from_mapped_image() {
         let (base, size) = mapped_module();
-        register_module("mpf_test.dll", base, size);
+        register_module("proc_address.dll", base, size);
         assert_eq!(
             get_proc_address(base as *const c_void, "TestFunc"),
             Some(base + 0x1080)
         );
         assert_eq!(get_proc_address(base as *const c_void, "Missing"), None);
         assert_eq!(get_proc_address(core::ptr::null(), "TestFunc"), None);
+    }
+
+    #[test]
+    fn proc_address_is_none_for_modules_it_cannot_read() {
+        let unknown = 0xdead_0000usize;
+        assert_eq!(get_proc_address(unknown as *const c_void, "F"), None);
+
+        register_module("zero_size.dll", 0xdead_1000, 0);
+        assert_eq!(get_proc_address(0xdead_1000 as *const c_void, "F"), None);
+
+        register_module("null_base.dll", 0, 16);
+        assert_eq!(get_proc_address(core::ptr::null(), "F"), None);
+
+        let not_pe = register_image("not_pe.dll", vec![0; 64]);
+        assert_eq!(get_proc_address(not_pe as *const c_void, "F"), None);
+    }
+
+    #[test]
+    fn proc_address_is_none_when_the_export_table_is_corrupt() {
+        let (base, size) = mapped_module();
+        // SAFETY: `mapped_module` leaks the mapping, so it outlives this read.
+        let mut image =
+            unsafe { std::slice::from_raw_parts(base as *const u8, size as usize) }.to_vec();
+        // The export directory is at RVA 0x1000; point its function table
+        // (offset 28) far outside the image.
+        image[0x1000 + 28..][..4].copy_from_slice(&0xFFFF_0000u32.to_le_bytes());
+        let bad = register_image("corrupt_exports.dll", image);
+        assert_eq!(get_proc_address(bad as *const c_void, "TestFunc"), None);
     }
 }

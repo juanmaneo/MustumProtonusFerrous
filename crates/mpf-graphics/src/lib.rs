@@ -134,7 +134,8 @@ mod tests {
 
     #[test]
     fn dxvk_conf_parse_format_roundtrip() {
-        let text = "# comment\n\ndxvk.hud = 1\ndxvk.enableNVAPI = true\nmalformed line\n dxvk.async=on\n";
+        let text =
+            "# comment\n\ndxvk.hud = 1\ndxvk.enableNVAPI = true\nmalformed line\n dxvk.async=on\n";
         let cfg = dxvk::parse_dxvk_conf(text);
         assert_eq!(cfg.entries.len(), 3);
         assert_eq!(cfg.entries["dxvk.hud"], "1");

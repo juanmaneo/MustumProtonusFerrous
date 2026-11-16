@@ -40,9 +40,7 @@ pub fn system_hive() -> Hive {
     mpf.insert("version".into(), RegValue::String("11.22".into()));
     let win = hive
         .keys
-        .entry(RootKey::LocalMachine.key_path(
-            "System\\CurrentControlSet\\Control\\Windows",
-        ))
+        .entry(RootKey::LocalMachine.key_path("System\\CurrentControlSet\\Control\\Windows"))
         .or_default();
     win.insert(
         "SystemDirectory".into(),
@@ -70,8 +68,16 @@ pub fn init_prefix(root: &Path) -> io::Result<Prefix> {
         drive_c.join("windows").join("system32"),
         drive_c.join("windows").join("syswow64"),
         drive_c.join("windows").join("fonts"),
-        drive_c.join("users").join("mpf").join("AppData").join("Local"),
-        drive_c.join("users").join("mpf").join("AppData").join("Roaming"),
+        drive_c
+            .join("users")
+            .join("mpf")
+            .join("AppData")
+            .join("Local"),
+        drive_c
+            .join("users")
+            .join("mpf")
+            .join("AppData")
+            .join("Roaming"),
         drive_c.join("Program Files"),
         drive_c.join("Program Files (x86)"),
     ];
@@ -135,6 +141,46 @@ mod tests {
         init_prefix(&root).unwrap();
         let after = fs::read_to_string(root.join("drive_c/windows/system.reg")).unwrap();
         assert_eq!(before, after);
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn init_reports_a_root_it_cannot_create() {
+        let root = temp_root();
+        fs::write(&root, b"a file, not a directory").unwrap();
+        assert!(init_prefix(&root).is_err());
+        fs::remove_file(&root).unwrap();
+    }
+
+    /// Makes `root/file` a symlink to a directory that does not exist. Such
+    /// a link does not `exists()`, yet writing through it fails, and unlike a
+    /// read-only directory it fails even when the tests run as root.
+    #[cfg(unix)]
+    fn dangling_symlink(root: &Path, file: &str) {
+        let link = root.join(file);
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(root.join("missing/target"), link).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn init_reports_a_system_hive_it_cannot_write() {
+        let root = temp_root();
+        dangling_symlink(&root, "drive_c/windows/system.reg");
+        let err = init_prefix(&root).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::NotFound);
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn init_reports_a_user_hive_it_cannot_write() {
+        let root = temp_root();
+        dangling_symlink(&root, "drive_c/users/mpf/user.reg");
+        let err = init_prefix(&root).unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::NotFound);
+        // The system hive was written before the user hive failed.
+        assert!(root.join("drive_c/windows/system.reg").is_file());
         fs::remove_dir_all(&root).unwrap();
     }
 

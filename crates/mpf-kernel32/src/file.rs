@@ -103,7 +103,10 @@ mod tests {
             .unwrap()
             .as_nanos();
         let p = std::env::temp_dir().join(format!("mpf-k32-{name}-{nonce}.txt"));
-        p.to_string_lossy().encode_utf16().chain(std::iter::once(0)).collect()
+        p.to_string_lossy()
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect()
     }
 
     #[test]
@@ -133,7 +136,10 @@ mod tests {
     #[test]
     fn missing_file_without_create_fails() {
         let path = temp_path("missing");
-        assert_eq!(create_file_w(&path, GENERIC_READ, false), INVALID_HANDLE_VALUE);
+        assert_eq!(
+            create_file_w(&path, GENERIC_READ, false),
+            INVALID_HANDLE_VALUE
+        );
     }
 
     #[test]
