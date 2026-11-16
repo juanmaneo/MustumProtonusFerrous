@@ -6,7 +6,12 @@ version = 4
 name = "mpf-cli"
 version = "0.1.0"
 dependencies = [
+ "mpf-kernel32",
+ "mpf-loader",
+ "mpf-ntdll",
  "mpf-pe",
+ "mpf-wineboot",
+ "mpf-winnt",
 ]
 
 [[package]]
@@ -26,6 +31,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-pe"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wineboot"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winnt"
 version = "0.1.0"
 
 [[package]]

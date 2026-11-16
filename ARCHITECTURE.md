@@ -4,14 +4,15 @@
 
 | Reference `repos/wine` @ wine-11.22 | Reference Proton component | MPF crate |
 |-------------------------------------|----------------------------|-----------|
-| `loader/`                           | `proton` script            | `mpf-loader` |
-| `dlls/ntdll/`                       | —                          | `mpf-ntdll` |
+| `loader/`                           | `proton` script            | `mpf-loader` (map, relocate, IAT/delay-import resolution, TLS) |
+| `dlls/ntdll/`                       | —                          | `mpf-ntdll` (ntstatus, unicode, heap, critical sections, object handles, exception bridge) |
 | `dlls/kernel32/`, `dlls/kernelbase/`| —                          | `mpf-kernel32`, `mpf-kernelbase` (planned) |
 | `dlls/user32`, `gdi32`, `winex11.drv` | dxvk submodule           | `mpf-user32`, `mpf-gdi32` (planned); dxvk native initially |
 | —                                   | vkd3d-proton submodule     | native companion initially, Rust port later |
-| `programs/wineboot`                 | `default_pfx.py`           | `mpf-wineboot` (planned) |
+| `programs/wineboot`                 | `default_pfx.py`           | `mpf-wineboot` (prefix init) |
 | —                                   | umu-launcher (Python)      | `mpf-umu` (planned) |
-| `include/winnt.h` etc.              | —                          | `mpf-pe` + `mpf-winnt` (planned) |
+| `include/winnt.h` etc.              | —                          | `mpf-pe` + `mpf-winnt` (PEB/TEB/LDR/critical-section/exception ABI structs) |
+| process startup (`loader/main.c`, `LdrInitializeThunk`) | — | `mpf-cli run` (map → ASLR relocate → resolve imports → PEB/TEB/LDR) |
 
 ## Rules
 
@@ -21,7 +22,11 @@
 - Errors: `NTSTATUS` (i32) inside ntdll-style APIs (`mpf_ntdll::ntstatus`);
   Rust `Result` at the loader/CLI boundary.
 - Memory: PE images are mapped by `mpf_loader::map_image` into a flat,
-  section-aligned buffer; the process model mirrors ntdll's LDR.
+  section-aligned buffer, then relocated (`MemoryModule::relocate`,
+  HIGHLOW/DIR64) and their IAT/delay-IAT patched by `resolve_imports` /
+  `resolve_delay_imports`; the process model mirrors ntdll's LDR
+  (`mpf_winnt::PebLdrData` / `LdrDataTableEntry`), with PEB/TEB built by
+  `mpf-cli run`.
 - Tests: unit tests per crate; synthetic PE images from `mpf_pe::testing`;
   conformance against wine's own `dlls/*/tests` arrives in Phase 2.
 

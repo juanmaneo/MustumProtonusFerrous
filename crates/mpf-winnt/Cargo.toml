@@ -1,0 +1,6 @@
+[package]
+name = "mpf-winnt"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Win32 ABI structures (winnt.h equivalents): PEB, TEB, LDR, critical sections, exception records"

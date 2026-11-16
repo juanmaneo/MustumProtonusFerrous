@@ -6,7 +6,7 @@ re-implemented in safe Rust with `unsafe` confined to FFI/loader edges, and the
 reference tree (`../repos/wine`, tag `wine-11.22`) stays mounted side-by-side
 in the dev container for direct comparison.
 
-## Phase 0 — scaffold (current)
+## Phase 0 — scaffold (done)
 
 - [x] workspace + crates: mpf-pe, mpf-ntdll, mpf-kernel32, mpf-loader, mpf-cli
 - [x] PE/COFF parser with synthetic-image tests
@@ -14,14 +14,18 @@ in the dev container for direct comparison.
 - [x] PE mapper (headers + sections into a flat image)
 - [x] podman/docker dev container + `cargo xtask compare`
 
-## Phase 1 — loader & ntdll core
+## Phase 1 — loader & ntdll core (current)
 
-- [ ] base relocations, import (IAT) resolution, TLS directory, delay imports
-- [ ] LDR module list, PEB/TEB structures
-- [ ] ntdll: RtlAllocateHeap/RtlFreeHeap, critical sections, full RTL unicode
-      string API, object manager basics, exception handling design
-      (SEH <-> Rust panic boundary)
-- [ ] process init equivalent of `programs/wineboot` + `loader/main.c`
+- [x] base relocations (`mpf_loader::MemoryModule::relocate`, HIGHLOW/DIR64),
+      import (IAT) resolution, TLS directory, delay imports (`mpf-pe` parsers
+      + `mpf-cli run` pipeline with ASLR base selection)
+- [x] LDR module list, PEB/TEB structures (`mpf-winnt`, offsets pinned by tests)
+- [x] ntdll: RtlAllocateHeap/RtlFreeHeap (`heap`), critical sections
+      (`critical_section`), full RTL unicode string API (`unicode`), object
+      handle table (`object`), exception handling design (`exception::guard`
+      = SEH <-> Rust panic boundary)
+- [x] process init equivalent of `programs/wineboot` (`mpf-wineboot::init_prefix`)
+      + `loader/main.c` (`mpf-cli run`: map -> relocate -> resolve -> PEB/TEB/LDR)
 
 ## Phase 2 — first runnable Win32 app
 

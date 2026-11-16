@@ -1,5 +1,7 @@
 //! RTL unicode strings, mirroring `dlls/ntdll/rtlstr.c` / `unicode.c`.
 
+use crate::ntstatus::{self, NtStatus};
+
 /// Win32 ABI view of a unicode string (`UNICODE_STRING` in winnt.h).
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -117,6 +119,81 @@ pub fn rtl_equal_unicode_string_ignore_case(a: &WideString, b: &WideString) -> b
     a.equals_ignore_case(b)
 }
 
+/// RtlEqualUnicodeString with IgnoreCase = FALSE.
+pub fn rtl_equal_unicode_string(a: &WideString, b: &WideString) -> bool {
+    a == b
+}
+
+/// RtlCopyUnicodeString: copies `src` into `dst` (truncating at dst's
+/// current capacity, like copying into a fixed UNICODE_STRING buffer).
+/// Returns STATUS_BUFFER_OVERFLOW when truncated, STATUS_SUCCESS otherwise.
+pub fn rtl_copy_unicode_string(dst: &mut WideString, src: &WideString) -> NtStatus {
+    let cap = dst.inner.capacity();
+    let n = src.len().min(cap);
+    dst.inner.clear();
+    dst.inner.extend_from_slice(&src.inner[..n]);
+    if n < src.len() {
+        ntstatus::STATUS_BUFFER_OVERFLOW
+    } else {
+        ntstatus::STATUS_SUCCESS
+    }
+}
+
+/// RtlAppendUnicodeStringToString: appends `src` to `dst`.
+pub fn rtl_append_unicode_string_to_string(dst: &mut WideString, src: &WideString) -> NtStatus {
+    dst.inner.extend_from_slice(src.as_slice());
+    ntstatus::STATUS_SUCCESS
+}
+
+/// RtlAppendUnicodeToString: appends a single char.
+pub fn rtl_append_unicode_to_string(dst: &mut WideString, c: u16) -> NtStatus {
+    dst.inner.push(c);
+    ntstatus::STATUS_SUCCESS
+}
+
+/// RtlDuplicateUnicodeString.
+pub fn rtl_duplicate_unicode_string(src: &WideString) -> WideString {
+    src.clone()
+}
+
+/// RtlUpcaseUnicodeChar (ASCII + Latin-1 subset).
+pub fn rtl_upcase_unicode_char(c: u16) -> u16 {
+    match c {
+        0x61..=0x7A => c - 0x20,
+        0xE0..=0xFE if c != 0xF7 => c - 0x20,
+        _ => c,
+    }
+}
+
+/// RtlDowncaseUnicodeChar (ASCII + Latin-1 subset).
+pub fn rtl_downcase_unicode_char(c: u16) -> u16 {
+    fold(c)
+}
+
+/// RtlUpcaseUnicodeString: returns an uppercased copy.
+pub fn rtl_upcase_unicode_string(src: &WideString) -> WideString {
+    WideString::from_slice(
+        &src.inner
+            .iter()
+            .map(|&c| rtl_upcase_unicode_char(c))
+            .collect::<Vec<_>>(),
+    )
+}
+
+/// RtlUnicodeStringToAnsiString: maps each UTF-16 unit to one byte
+/// (units above 0xFF become b'?'), like the ANSI code page truncation.
+pub fn rtl_unicode_string_to_ansi_string(src: &WideString) -> Vec<u8> {
+    src.inner
+        .iter()
+        .map(|&c| if c <= 0xFF { c as u8 } else { b'?' })
+        .collect()
+}
+
+/// RtlAnsiStringToUnicodeString.
+pub fn rtl_ansi_string_to_unicode_string(bytes: &[u8]) -> WideString {
+    WideString::from_slice(&bytes.iter().map(|&b| b as u16).collect::<Vec<_>>())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,5 +281,65 @@ mod tests {
         let view = s.rtl_init();
         assert_eq!(view.length, 65_534);
         assert_eq!(view.maximum_length, u16::MAX);
+    }
+
+    #[test]
+    fn copy_append_duplicate() {
+        let src = WideString::from_utf8("hello");
+        let mut dst = WideString::from_utf8("XXXXXXXXXX"); // capacity >= 10
+        assert_eq!(
+            rtl_copy_unicode_string(&mut dst, &src),
+            ntstatus::STATUS_SUCCESS
+        );
+        assert_eq!(dst, src);
+
+        let mut small = WideString::new();
+        small.inner.reserve_exact(2);
+        assert_eq!(
+            rtl_copy_unicode_string(&mut small, &src),
+            ntstatus::STATUS_BUFFER_OVERFLOW
+        );
+        assert_eq!(small.len(), 2);
+
+        let mut dst = WideString::from_utf8("ab");
+        assert_eq!(
+            rtl_append_unicode_string_to_string(&mut dst, &WideString::from_utf8("cd")),
+            ntstatus::STATUS_SUCCESS
+        );
+        assert_eq!(dst.to_string_lossy(), "abcd");
+        assert_eq!(
+            rtl_append_unicode_to_string(&mut dst, b'e' as u16),
+            ntstatus::STATUS_SUCCESS
+        );
+        assert_eq!(dst.to_string_lossy(), "abcde");
+        assert_eq!(rtl_duplicate_unicode_string(&src), src);
+    }
+
+    #[test]
+    fn case_conversion_and_ansi_roundtrip() {
+        assert_eq!(rtl_upcase_unicode_char(b'a' as u16), b'A' as u16);
+        assert_eq!(rtl_downcase_unicode_char(b'Z' as u16), b'z' as u16);
+        assert_eq!(rtl_upcase_unicode_char(0xE9), 0xC9); // é -> É
+        let s = WideString::from_utf8("KERNEL32.Dll");
+        assert_eq!(
+            rtl_upcase_unicode_string(&s).to_string_lossy(),
+            "KERNEL32.DLL"
+        );
+        assert!(rtl_equal_unicode_string(
+            &s,
+            &WideString::from_utf8("KERNEL32.Dll")
+        ));
+        assert!(!rtl_equal_unicode_string(
+            &s,
+            &WideString::from_utf8("kernel32.dll")
+        ));
+
+        let wide = WideString::from_utf8("abc");
+        let ansi = rtl_unicode_string_to_ansi_string(&wide);
+        assert_eq!(ansi, b"abc");
+        assert_eq!(rtl_ansi_string_to_unicode_string(&ansi), wide);
+        // Non-Latin-1 unit truncates to '?'.
+        let wide2 = WideString::from_slice(&[0x20AC]); // €
+        assert_eq!(rtl_unicode_string_to_ansi_string(&wide2), b"?");
     }
 }

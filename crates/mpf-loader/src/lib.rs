@@ -1,8 +1,8 @@
-//! PE mapper: mirrors the first stage of `loader/` + `dlls/ntdll/loader.c`
-//! in reference Wine — parse the image, then lay headers and sections out in
-//! a flat, section-aligned buffer (before relocations/imports are applied).
+//! PE mapper + loader stage: mirrors `loader/` + `dlls/ntdll/loader.c` in
+//! reference Wine — parse the image, lay headers and sections out in a flat
+//! buffer, then apply base relocations and resolve imports into the IAT.
 
-use mpf_pe::{PeError, PeImage};
+use mpf_pe::{DelayImport, ExportEntry, ImportEntry, PeError, PeImage, RelocBlock, TlsDirectory};
 use std::fmt;
 
 #[derive(Debug)]
@@ -22,11 +22,25 @@ impl fmt::Display for LoadError {
 
 impl std::error::Error for LoadError {}
 
+/// Resolves an import to a native address, mirroring the role of
+/// `find_builtin_dll`/`get_builtin_entry` in ntdll's loader.
+pub type ImportResolver<'a> = dyn FnMut(&str, &str, Option<u16>) -> Option<u64> + 'a;
+
 pub struct MemoryModule {
     image: Vec<u8>,
     pub size_of_image: u32,
     pub entry_point_rva: u32,
+    /// Preferred base from the PE header; `image_base` tracks the actual base
+    /// after relocation.
+    pub preferred_base: u64,
     pub image_base: u64,
+    pub is_64bit: bool,
+    pub relocations: Vec<RelocBlock>,
+    pub tls: Option<TlsDirectory>,
+    pub tls_callbacks: Vec<u32>,
+    pub delay_imports: Vec<DelayImport>,
+    pub imports: Vec<ImportEntry>,
+    pub exports: Vec<ExportEntry>,
 }
 
 impl MemoryModule {
@@ -40,10 +54,110 @@ impl MemoryModule {
     pub fn image(&self) -> &[u8] {
         &self.image
     }
+
+    pub fn image_mut(&mut self) -> &mut [u8] {
+        &mut self.image
+    }
+
+    fn rva_index(&self, rva: u32) -> Option<usize> {
+        let off = rva as usize;
+        (off < self.image.len()).then_some(off)
+    }
+
+    /// Applies base relocations for `new_base` (HIGHLOW and DIR64 entries),
+    /// mirroring `relocate_image` in ntdll. Returns the number of entries
+    /// patched. Updates `image_base`.
+    pub fn relocate(&mut self, new_base: u64) -> usize {
+        let delta = new_base.wrapping_sub(self.image_base);
+        let mut count = 0;
+        for block in &self.relocations {
+            for e in &block.entries {
+                let rva = block.page_rva.wrapping_add(u32::from(e.offset));
+                let Some(off) = self.rva_index(rva) else {
+                    continue;
+                };
+                match e.reloc_type {
+                    3 if off + 4 <= self.image.len() => {
+                        let v = u32::from_le_bytes(self.image[off..off + 4].try_into().unwrap());
+                        self.image[off..off + 4]
+                            .copy_from_slice(&v.wrapping_add(delta as u32).to_le_bytes());
+                        count += 1;
+                    }
+                    10 if off + 8 <= self.image.len() => {
+                        let v = u64::from_le_bytes(self.image[off..off + 8].try_into().unwrap());
+                        self.image[off..off + 8]
+                            .copy_from_slice(&v.wrapping_add(delta).to_le_bytes());
+                        count += 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        self.image_base = new_base;
+        count
+    }
+
+    fn write_thunk(&mut self, thunk_rva: u32, addr: u64) -> bool {
+        let Some(off) = self.rva_index(thunk_rva) else {
+            return false;
+        };
+        if self.is_64bit {
+            if off + 8 <= self.image.len() {
+                self.image[off..off + 8].copy_from_slice(&addr.to_le_bytes());
+                true
+            } else {
+                false
+            }
+        } else if off + 4 <= self.image.len() {
+            self.image[off..off + 4].copy_from_slice(&(addr as u32).to_le_bytes());
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Resolves the import table into the IAT, mirroring `resolve_imports` in
+    /// ntdll's loader. Returns the number of thunks patched.
+    pub fn resolve_imports(&mut self, resolver: &mut ImportResolver) -> usize {
+        let mut patches = Vec::new();
+        for imp in &self.imports {
+            if let Some(addr) = resolver(&imp.dll, &imp.function, imp.ordinal) {
+                patches.push((imp.thunk_rva, addr));
+            }
+        }
+        let mut count = 0;
+        for (rva, addr) in patches {
+            if self.write_thunk(rva, addr) {
+                count += 1;
+            }
+        }
+        count
+    }
+
+    /// Resolves delay-load imports (normally done lazily on first call, as
+    /// `delay_load` in ntdll does; here eagerly). Returns patched count.
+    pub fn resolve_delay_imports(&mut self, resolver: &mut ImportResolver) -> usize {
+        let mut patches = Vec::new();
+        for delay in &self.delay_imports {
+            for imp in &delay.entries {
+                if let Some(addr) = resolver(&delay.dll, &imp.function, imp.ordinal) {
+                    patches.push((imp.thunk_rva, addr));
+                }
+            }
+        }
+        let mut count = 0;
+        for (rva, addr) in patches {
+            if self.write_thunk(rva, addr) {
+                count += 1;
+            }
+        }
+        count
+    }
 }
 
 /// Maps a PE file into a flat buffer of `size_of_image` bytes with headers
-/// at RVA 0 and each section at its `virtual_address`.
+/// at RVA 0 and each section at its `virtual_address`, and parses the
+/// loader-relevant tables (relocations, TLS, imports, delay imports).
 pub fn map_image(data: &[u8]) -> Result<MemoryModule, LoadError> {
     let pe = PeImage::parse(data).map_err(LoadError::Parse)?;
     let size = pe.size_of_image();
@@ -70,12 +184,64 @@ pub fn map_image(data: &[u8]) -> Result<MemoryModule, LoadError> {
         let n = src.len().min(image.len() - dst_off);
         image[dst_off..dst_off + n].copy_from_slice(&src[..n]);
     }
+    let relocations = pe.relocations().map_err(LoadError::Parse)?;
+    let tls = pe.tls_directory().map_err(LoadError::Parse)?;
+    let delay_imports = pe.delay_imports().map_err(LoadError::Parse)?;
+    let imports = pe.imports().map_err(LoadError::Parse)?;
+    let exports = pe.exports().map_err(LoadError::Parse)?;
+    // TLS callback array: VAs converted to RVAs against the preferred base.
+    let mut tls_callbacks = Vec::new();
+    if let Some(t) = &tls {
+        let mut rva = t.address_of_call_backs.wrapping_sub(pe.image_base()) as u32;
+        loop {
+            let off = pe
+                .rva_to_offset(rva)
+                .ok_or(PeError::BadTable)
+                .map_err(LoadError::Parse)?;
+            let next = if pe.is_64bit() {
+                u64_at_pub(pe.raw_data(), off).map_err(LoadError::Parse)?
+            } else {
+                u32_at_pub(pe.raw_data(), off).map_err(LoadError::Parse)? as u64
+            };
+            if next == 0 {
+                break;
+            }
+            tls_callbacks.push(next.wrapping_sub(pe.image_base()) as u32);
+            rva = rva.wrapping_add(if pe.is_64bit() { 8 } else { 4 });
+        }
+    }
     Ok(MemoryModule {
         image,
         size_of_image: size,
         entry_point_rva: pe.entry_point_rva(),
+        preferred_base: pe.image_base(),
         image_base: pe.image_base(),
+        is_64bit: pe.is_64bit(),
+        relocations,
+        tls,
+        tls_callbacks,
+        delay_imports,
+        imports,
+        exports,
     })
+}
+
+fn u64_at_pub(d: &[u8], o: usize) -> Result<u64, PeError> {
+    let b = d
+        .get(o..)
+        .and_then(|s| s.get(..8))
+        .ok_or(PeError::Truncated)?;
+    Ok(u64::from_le_bytes([
+        b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+    ]))
+}
+
+fn u32_at_pub(d: &[u8], o: usize) -> Result<u32, PeError> {
+    let b = d
+        .get(o..)
+        .and_then(|s| s.get(..4))
+        .ok_or(PeError::Truncated)?;
+    Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
 }
 
 #[cfg(test)]
@@ -141,5 +307,71 @@ mod tests {
         data[section3 + 12..section3 + 16].copy_from_slice(&0x1800u32.to_le_bytes());
         let module = map_image(&data).unwrap();
         assert_eq!(module.image().len(), 0x2000);
+    }
+
+    #[test]
+    fn parses_loader_tables() {
+        let m = map_image(&build_test_pe64()).unwrap();
+        assert_eq!(m.relocations.len(), 1);
+        assert!(m.tls.is_some());
+        assert_eq!(m.tls_callbacks, vec![0x1080]);
+        assert_eq!(m.delay_imports.len(), 1);
+        assert_eq!(m.imports.len(), 1);
+        assert_eq!(m.exports.len(), 1);
+        assert!(m.is_64bit);
+    }
+
+    #[test]
+    fn relocates_dir64_entries() {
+        let data = build_test_pe64();
+        let mut m = map_image(&data).unwrap();
+        let new_base = 0x5000_0000u64;
+        let delta = new_base.wrapping_sub(m.image_base);
+        let applied = m.relocate(new_base);
+        assert_eq!(applied, 1);
+        assert_eq!(m.image_base, new_base);
+        let v = u64::from_le_bytes(m.image()[0x1080..0x1088].try_into().unwrap());
+        assert_eq!(v, 0xC3u64.wrapping_add(delta));
+    }
+
+    #[test]
+    fn resolves_imports_into_iat() {
+        let data = build_test_pe64();
+        let mut m = map_image(&data).unwrap();
+        let mut resolver = |dll: &str, func: &str, ord: Option<u16>| {
+            assert_eq!(dll, "KERNEL32.dll");
+            assert_eq!(func, "BaseFunc");
+            assert_eq!(ord, None);
+            Some(0xDEAD_BEEF)
+        };
+        let n = m.resolve_imports(&mut resolver);
+        assert_eq!(n, 1);
+        let v = u64::from_le_bytes(m.image()[0x1170..0x1178].try_into().unwrap());
+        assert_eq!(v, 0xDEAD_BEEF);
+    }
+
+    #[test]
+    fn resolves_delay_imports_into_delay_iat() {
+        let data = build_test_pe64();
+        let mut m = map_image(&data).unwrap();
+        let mut resolver = |dll: &str, func: &str, _ord: Option<u16>| {
+            assert_eq!(dll, "DELAY.dll");
+            assert_eq!(func, "DelayFunc");
+            Some(0x1234)
+        };
+        let n = m.resolve_delay_imports(&mut resolver);
+        assert_eq!(n, 1);
+        let v = u64::from_le_bytes(m.image()[0x1230..0x1238].try_into().unwrap());
+        assert_eq!(v, 0x1234);
+    }
+
+    #[test]
+    fn unresolved_imports_leave_thunk_untouched() {
+        let data = build_test_pe64();
+        let mut m = map_image(&data).unwrap();
+        let mut resolver = |_: &str, _: &str, _: Option<u16>| None;
+        assert_eq!(m.resolve_imports(&mut resolver), 0);
+        let v = u64::from_le_bytes(m.image()[0x1170..0x1178].try_into().unwrap());
+        assert_eq!(v, 0x1190); // original ILT value still there
     }
 }

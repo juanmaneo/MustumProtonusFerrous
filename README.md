@@ -1,4 +1,4 @@
-> **⚠️ Work in progress.** MPF is in early development (Phase 0 scaffold). APIs, crate layout, and behavior will change without notice, and it cannot run Windows applications yet. Do not use it for anything that needs to work.
+> **⚠️ Work in progress.** MPF is in early development (Phase 1: loader & ntdll core). APIs, crate layout, and behavior will change without notice, and it cannot run Windows applications yet. Do not use it for anything that needs to work.
 
 # Mustum Protonus Ferrous (MPF)
 

@@ -18,6 +18,9 @@ pub const MACHINE_ARM64: u16 = 0xAA64;
 
 pub const DIR_EXPORT: usize = 0;
 pub const DIR_IMPORT: usize = 1;
+pub const DIR_BASERELOC: usize = 5;
+pub const DIR_TLS: usize = 9;
+pub const DIR_DELAY_IMPORT: usize = 13;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PeError {
@@ -135,6 +138,8 @@ pub struct ImportEntry {
     pub dll: String,
     pub function: String,
     pub ordinal: Option<u16>,
+    /// RVA of the IAT slot that receives the resolved address.
+    pub thunk_rva: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -142,6 +147,39 @@ pub struct ExportEntry {
     pub name: String,
     pub ordinal: u16,
     pub rva: u32,
+}
+
+/// One base-relocation entry: `reloc_type` (3 = HIGHLOW, 10 = DIR64) and the
+/// `offset` within the block's page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RelocEntry {
+    pub reloc_type: u8,
+    pub offset: u16,
+}
+
+#[derive(Debug, Clone)]
+pub struct RelocBlock {
+    pub page_rva: u32,
+    pub entries: Vec<RelocEntry>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct TlsDirectory {
+    pub start_address_of_raw_data: u64,
+    pub end_address_of_raw_data: u64,
+    pub address_of_index: u64,
+    pub address_of_call_backs: u64,
+    pub size_of_zero_fill: u32,
+    pub characteristics: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct DelayImport {
+    pub dll: String,
+    pub module_handle_rva: u32,
+    pub iat_rva: u32,
+    pub int_rva: u32,
+    pub entries: Vec<ImportEntry>,
 }
 
 #[derive(Debug, Clone)]
@@ -298,6 +336,11 @@ impl<'a> PeImage<'a> {
         self.data_directories.get(index).copied()
     }
 
+    /// The raw file bytes backing this image.
+    pub fn raw_data(&self) -> &'a [u8] {
+        self.data
+    }
+
     pub fn rva_to_offset(&self, rva: u32) -> Option<usize> {
         if rva < self.size_of_headers() {
             return Some(rva as usize);
@@ -402,11 +445,13 @@ impl<'a> PeImage<'a> {
                 if t == 0 {
                     break;
                 }
+                let iat_slot = first_thunk.wrapping_add(j as u32 * thunk_size as u32);
                 if t & ord_flag != 0 {
                     out.push(ImportEntry {
                         dll: dll.clone(),
                         function: String::new(),
                         ordinal: Some((t & 0xFFFF) as u16),
+                        thunk_rva: iat_slot,
                     });
                 } else {
                     let hn = self.rva_to_offset(t as u32).ok_or(PeError::BadTable)?;
@@ -415,10 +460,153 @@ impl<'a> PeImage<'a> {
                         dll: dll.clone(),
                         function,
                         ordinal: None,
+                        thunk_rva: iat_slot,
                     });
                 }
                 j += 1;
             }
+            i += 1;
+        }
+        Ok(out)
+    }
+
+    /// Base relocation blocks (data directory 5). Type 0 (ABSOLUTE) entries
+    /// are padding and skipped.
+    pub fn relocations(&self) -> Result<Vec<RelocBlock>, PeError> {
+        let mut out = Vec::new();
+        let Some(dir) = self.directory(DIR_BASERELOC) else {
+            return Ok(out);
+        };
+        if dir.virtual_address == 0 {
+            return Ok(out);
+        }
+        let mut off = self
+            .rva_to_offset(dir.virtual_address)
+            .ok_or(PeError::BadTable)?;
+        let end = off.saturating_add(dir.size as usize).min(self.data.len());
+        while off + 8 <= end {
+            let page_rva = u32_at(self.data, off)?;
+            let block_size = u32_at(self.data, off + 4)? as usize;
+            if block_size < 8 || off + block_size > self.data.len() {
+                break;
+            }
+            let mut entries = Vec::new();
+            for i in 0..(block_size - 8) / 2 {
+                let e = u16_at(self.data, off + 8 + i * 2)?;
+                let reloc_type = (e >> 12) as u8;
+                if reloc_type != 0 {
+                    entries.push(RelocEntry {
+                        reloc_type,
+                        offset: e & 0xFFF,
+                    });
+                }
+            }
+            out.push(RelocBlock { page_rva, entries });
+            off += block_size;
+        }
+        Ok(out)
+    }
+
+    /// TLS directory (data directory 9), if present.
+    pub fn tls_directory(&self) -> Result<Option<TlsDirectory>, PeError> {
+        let Some(dir) = self.directory(DIR_TLS) else {
+            return Ok(None);
+        };
+        if dir.virtual_address == 0 {
+            return Ok(None);
+        }
+        let off = self
+            .rva_to_offset(dir.virtual_address)
+            .ok_or(PeError::BadTable)?;
+        let d = match self.optional {
+            OptionalHeader::Pe32Plus { .. } => TlsDirectory {
+                start_address_of_raw_data: u64_at(self.data, off)?,
+                end_address_of_raw_data: u64_at(self.data, off + 8)?,
+                address_of_index: u64_at(self.data, off + 16)?,
+                address_of_call_backs: u64_at(self.data, off + 24)?,
+                size_of_zero_fill: u32_at(self.data, off + 32)?,
+                characteristics: u32_at(self.data, off + 36)?,
+            },
+            OptionalHeader::Pe32 { .. } => TlsDirectory {
+                start_address_of_raw_data: u64::from(u32_at(self.data, off)?),
+                end_address_of_raw_data: u64::from(u32_at(self.data, off + 4)?),
+                address_of_index: u64::from(u32_at(self.data, off + 8)?),
+                address_of_call_backs: u64::from(u32_at(self.data, off + 12)?),
+                size_of_zero_fill: u32_at(self.data, off + 16)?,
+                characteristics: u32_at(self.data, off + 20)?,
+            },
+        };
+        Ok(Some(d))
+    }
+
+    /// Delay-load import descriptors (data directory 13). Each entry's
+    /// `thunk_rva` points at the delay-IAT slot to be patched on first use.
+    pub fn delay_imports(&self) -> Result<Vec<DelayImport>, PeError> {
+        let mut out = Vec::new();
+        let Some(dir) = self.directory(DIR_DELAY_IMPORT) else {
+            return Ok(out);
+        };
+        if dir.virtual_address == 0 {
+            return Ok(out);
+        }
+        let desc = self
+            .rva_to_offset(dir.virtual_address)
+            .ok_or(PeError::BadTable)?;
+        let plus = self.is_64bit();
+        let thunk_size = if plus { 8 } else { 4 };
+        let ord_flag: u64 = if plus { 1 << 63 } else { 1 << 31 };
+        let mut i = 0usize;
+        loop {
+            let o = desc + i * 32;
+            let gr_attrs = u32_at(self.data, o)?;
+            let name_rva = u32_at(self.data, o + 4)?;
+            let phmod = u32_at(self.data, o + 8)?;
+            let p_iat = u32_at(self.data, o + 12)?;
+            let p_int = u32_at(self.data, o + 16)?;
+            if gr_attrs == 0 && name_rva == 0 && p_iat == 0 && p_int == 0 {
+                break;
+            }
+            let dll = self.cstr_at_rva(name_rva)?;
+            let lookup_rva = if p_int != 0 { p_int } else { p_iat };
+            let lookup = self.rva_to_offset(lookup_rva).ok_or(PeError::BadTable)?;
+            let mut entries = Vec::new();
+            let mut j = 0usize;
+            loop {
+                let t = if plus {
+                    u64_at(self.data, lookup + j * thunk_size)?
+                } else {
+                    u32_at(self.data, lookup + j * thunk_size)? as u64
+                };
+                if t == 0 {
+                    break;
+                }
+                let iat_slot = p_iat.wrapping_add(j as u32 * thunk_size as u32);
+                if t & ord_flag != 0 {
+                    entries.push(ImportEntry {
+                        dll: dll.clone(),
+                        function: String::new(),
+                        ordinal: Some((t & 0xFFFF) as u16),
+                        thunk_rva: iat_slot,
+                    });
+                } else {
+                    let hn = self.rva_to_offset(t as u32).ok_or(PeError::BadTable)?;
+                    let function = self.cstr_at(hn + 2)?;
+                    entries.push(ImportEntry {
+                        dll: dll.clone(),
+                        function,
+                        ordinal: None,
+                        thunk_rva: iat_slot,
+                    });
+                }
+                j += 1;
+            }
+            out.push(DelayImport {
+                dll,
+                module_handle_rva: phmod,
+                iat_rva: p_iat,
+                int_rva: p_int,
+                entries,
+            });
             i += 1;
         }
         Ok(out)
@@ -444,10 +632,11 @@ pub mod testing {
     }
 
     /// A minimal but fully-formed PE32+ DLL with one `.rdata` section,
-    /// one export (`TestFunc`, ordinal 1) and one import
-    /// (`KERNEL32.dll!BaseFunc`).
+    /// one export (`TestFunc`, ordinal 1), one import (`KERNEL32.dll!BaseFunc`),
+    /// one base-relocation block, a TLS directory with one callback, and one
+    /// delay import (`DELAY.dll!DelayFunc`).
     pub fn build_test_pe64() -> Vec<u8> {
-        let mut b = vec![0u8; 0x400];
+        let mut b = vec![0u8; 0x500];
         // DOS header
         b[0] = b'M';
         b[1] = b'Z';
@@ -484,11 +673,17 @@ pub mod testing {
         p32(&mut b, 0x10C, 0x28);
         p32(&mut b, 0x110, 0x1100);
         p32(&mut b, 0x114, 0x28);
+        p32(&mut b, 0x130, 0x11A0); // [5] base relocations
+        p32(&mut b, 0x134, 12);
+        p32(&mut b, 0x150, 0x11B0); // [9] TLS directory
+        p32(&mut b, 0x154, 40);
+        p32(&mut b, 0x170, 0x11E0); // [13] delay imports
+        p32(&mut b, 0x174, 64);
         // section header at 0x188: .rdata, RVA 0x1000, raw at 0x200
         ps(&mut b, 0x188, ".rdata");
-        p32(&mut b, 0x190, 0x200);
+        p32(&mut b, 0x190, 0x300);
         p32(&mut b, 0x194, 0x1000);
-        p32(&mut b, 0x198, 0x200);
+        p32(&mut b, 0x198, 0x300);
         p32(&mut b, 0x19C, 0x200);
         p32(&mut b, 0x1A8, 0x4000_0040); // initialized read-only data
                                          // raw data (file offset 0x200 == RVA 0x1000)
@@ -518,6 +713,35 @@ pub mod testing {
         ps(&mut b, 0x380, "KERNEL32.dll"); // file 0x380 == RVA 0x1180
         p16(&mut b, 0x390, 0); // hint (file 0x390 == RVA 0x1190)
         ps(&mut b, 0x392, "BaseFunc");
+        // TLS callback array at RVA 0x1098 (file 0x298): one callback VA, then NULL
+        p64(&mut b, 0x298, TEST_IMAGE_BASE + 0x1080);
+        p64(&mut b, 0x2A0, 0);
+        // base relocation block at RVA 0x11A0 (file 0x3A0):
+        // one DIR64 entry at page offset 0x080
+        p32(&mut b, 0x3A0, 0x1000); // page RVA (VirtualAddress)
+        p32(&mut b, 0x3A4, 12); // block size
+        p16(&mut b, 0x3A8, 0xA080); // type 10 (DIR64) | offset 0x080
+                                    // TLS directory at RVA 0x11B0 (file 0x3B0), PE32+ layout (40 bytes)
+        p64(&mut b, 0x3B0, TEST_IMAGE_BASE + 0x1000); // start of raw data
+        p64(&mut b, 0x3B8, TEST_IMAGE_BASE + 0x1080); // end of raw data
+        p64(&mut b, 0x3C0, TEST_IMAGE_BASE + 0x1090); // address of index
+        p64(&mut b, 0x3C8, TEST_IMAGE_BASE + 0x1098); // address of callbacks
+        p32(&mut b, 0x3D0, 0); // size of zero fill
+        p32(&mut b, 0x3D4, 0); // characteristics
+                               // delay import descriptor at RVA 0x11E0 (file 0x3E0), 32 bytes,
+                               // followed by a zero terminator at 0x400..0x420
+        p32(&mut b, 0x3E4, 0x1240); // szName RVA (file 0x440)
+        p32(&mut b, 0x3E8, 0x1228); // phmod RVA (file 0x428)
+        p32(&mut b, 0x3EC, 0x1230); // pIAT (file 0x430)
+        p32(&mut b, 0x3F0, 0x1260); // pINT (file 0x460)
+        p32(&mut b, 0x428, 0); // module handle slot (file 0x428 == RVA 0x1228)
+        p64(&mut b, 0x430, 0x1250); // delay IAT[0] -> by-name (file 0x430 == RVA 0x1230)
+        p64(&mut b, 0x438, 0);
+        ps(&mut b, 0x440, "DELAY.dll"); // file 0x440 == RVA 0x1240
+        p16(&mut b, 0x450, 0); // hint (file 0x450 == RVA 0x1250)
+        ps(&mut b, 0x452, "DelayFunc");
+        p64(&mut b, 0x460, 0x1250); // delay INT[0] (file 0x460 == RVA 0x1260)
+        p64(&mut b, 0x468, 0);
         b
     }
 }
@@ -582,6 +806,61 @@ mod tests {
         assert_eq!(imports[0].dll, "KERNEL32.dll");
         assert_eq!(imports[0].function, "BaseFunc");
         assert_eq!(imports[0].ordinal, None);
+        assert_eq!(imports[0].thunk_rva, 0x1170);
+    }
+
+    #[test]
+    fn reads_relocations() {
+        let data = build_test_pe64();
+        let pe = PeImage::parse(&data).unwrap();
+        let blocks = pe.relocations().unwrap();
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(blocks[0].page_rva, 0x1000);
+        assert_eq!(
+            blocks[0].entries,
+            vec![RelocEntry {
+                reloc_type: 10,
+                offset: 0x080
+            }]
+        );
+    }
+
+    #[test]
+    fn reads_tls_directory() {
+        let data = build_test_pe64();
+        let pe = PeImage::parse(&data).unwrap();
+        let tls = pe.tls_directory().unwrap().unwrap();
+        assert_eq!(
+            tls.start_address_of_raw_data,
+            testing::TEST_IMAGE_BASE + 0x1000
+        );
+        assert_eq!(tls.address_of_call_backs, testing::TEST_IMAGE_BASE + 0x1098);
+    }
+
+    #[test]
+    fn reads_delay_imports() {
+        let data = build_test_pe64();
+        let pe = PeImage::parse(&data).unwrap();
+        let delay = pe.delay_imports().unwrap();
+        assert_eq!(delay.len(), 1);
+        assert_eq!(delay[0].dll, "DELAY.dll");
+        assert_eq!(delay[0].iat_rva, 0x1230);
+        assert_eq!(delay[0].entries.len(), 1);
+        assert_eq!(delay[0].entries[0].function, "DelayFunc");
+        assert_eq!(delay[0].entries[0].thunk_rva, 0x1230);
+    }
+
+    #[test]
+    fn empty_directories_parse_as_empty() {
+        let mut data = build_test_pe64();
+        // Zero out the reloc/TLS/delay directory entries.
+        for off in [0x130usize, 0x150, 0x170] {
+            data[off..off + 8].fill(0);
+        }
+        let pe = PeImage::parse(&data).unwrap();
+        assert!(pe.relocations().unwrap().is_empty());
+        assert!(pe.tls_directory().unwrap().is_none());
+        assert!(pe.delay_imports().unwrap().is_empty());
     }
 
     #[test]
@@ -668,7 +947,7 @@ mod tests {
         let mut data = build_test_pe64();
         // Name at RVA 0x11f0 (file 0x3f0) runs to EOF with no NUL terminator.
         p32(&mut data, 0x238, 0x11f0);
-        data[0x3f0..0x400].copy_from_slice(&[b'A'; 16]);
+        data[0x3f0..].copy_from_slice(&[b'A'; 0x110]);
         let pe = PeImage::parse(&data).unwrap();
         assert!(matches!(pe.exports(), Err(PeError::BadTable)));
 
@@ -733,7 +1012,7 @@ mod tests {
     fn exercises_export_and_import_truncation_paths() {
         // The export name table begins at the last two bytes of the file.
         let mut data = build_test_pe64();
-        p32(&mut data, 0x220, 0x11fe);
+        p32(&mut data, 0x220, 0x12fe);
         assert!(matches!(
             PeImage::parse(&data).unwrap().exports(),
             Err(PeError::Truncated)
@@ -741,7 +1020,7 @@ mod tests {
 
         // The export function table begins at the last two bytes of the file.
         let mut data = build_test_pe64();
-        p32(&mut data, 0x21c, 0x11fe);
+        p32(&mut data, 0x21c, 0x12fe);
         assert!(matches!(
             PeImage::parse(&data).unwrap().exports(),
             Err(PeError::Truncated)
@@ -755,15 +1034,15 @@ mod tests {
             "BaseFunc"
         );
 
-        // 64-bit thunk read straddles EOF (file offset 0x3fc).
+        // 64-bit thunk read straddles EOF (file offset 0x4fc).
         let mut data = build_test_pe64();
-        p32(&mut data, 0x300, 0x11fc);
+        p32(&mut data, 0x300, 0x12fc);
         assert!(matches!(
             PeImage::parse(&data).unwrap().imports(),
             Err(PeError::Truncated)
         ));
 
-        // 32-bit thunk read straddles EOF (file offset 0x3fe).
+        // 32-bit thunk read straddles EOF (file offset 0x4fe).
         let mut data = build_test_pe64();
         p16(&mut data, 0x94, 0xe0);
         p16(&mut data, 0x98, OPT_MAGIC_PE32);
@@ -775,7 +1054,7 @@ mod tests {
         p32(&mut data, 0x104, 0x28);
         data.copy_within(0x188..0x1b0, 0x178);
         p16(&mut data, 0x84, MACHINE_I386);
-        p32(&mut data, 0x300, 0x11fe);
+        p32(&mut data, 0x300, 0x12fe);
         assert!(matches!(
             PeImage::parse(&data).unwrap().imports(),
             Err(PeError::Truncated)
