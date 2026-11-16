@@ -54,6 +54,34 @@ pub fn wcschr(s: &[u16], needle: u16) -> Option<usize> {
         .position(|&unit| unit == needle)
 }
 
+/// Copies a UTF-16 string, including its terminator, into the destination.
+///
+/// Returns `None` without modifying the destination if it is too small. An
+/// unterminated source slice is copied in full and explicitly terminated.
+pub fn wcscpy(destination: &mut [u16], source: &[u16]) -> Option<()> {
+    let length = wcslen(source);
+    let required = length + 1;
+    let destination = destination.get_mut(..required)?;
+    destination[..length].copy_from_slice(&source[..length]);
+    destination[length] = 0;
+    Some(())
+}
+
+/// Appends a UTF-16 string, including its terminator, to the destination.
+///
+/// Returns `None` without modifying the destination when either slice lacks
+/// the required terminator/capacity. An unterminated source is copied in full.
+pub fn wcscat(destination: &mut [u16], source: &[u16]) -> Option<()> {
+    let end = destination.iter().position(|&unit| unit == 0)?;
+    let source_len = wcslen(source);
+    let terminator = end + source_len;
+    let required = terminator + 1;
+    let destination = destination.get_mut(end..required)?;
+    destination[..source_len].copy_from_slice(&source[..source_len]);
+    destination[source_len] = 0;
+    Some(())
+}
+
 /// Appends at most `count` UTF-16 units and NUL-terminates the destination.
 ///
 /// Returns `None` without modifying the destination when it is unterminated or
@@ -199,6 +227,40 @@ mod tests {
         assert_eq!(wcsnlen(&[b'a' as u16, b'b' as u16], 20), 2);
         assert_eq!(wcsnlen(&w("string"), 0), 0);
         assert_eq!(wcsnlen(&[], 4), 0);
+    }
+
+    #[test]
+    fn wcscpy_copies_strings_and_rejects_small_buffers() {
+        let mut destination = [0xffff; 6];
+        assert_eq!(wcscpy(&mut destination, &w("wine")), Some(()));
+        assert_eq!(&destination[..5], &w("wine"));
+        assert_eq!(&destination[5..], &[0xffff]);
+
+        let mut exact = [0xffff; 2];
+        assert_eq!(wcscpy(&mut exact, &[b'x' as u16]), Some(()));
+        assert_eq!(exact, [b'x' as u16, 0]);
+        let mut too_small = [0xffff; 1];
+        assert_eq!(wcscpy(&mut too_small, &w("x")), None);
+        assert_eq!(too_small, [0xffff]);
+        assert_eq!(wcscpy(&mut [], &[]), None);
+    }
+
+    #[test]
+    fn wcscat_appends_strings_and_rejects_invalid_destination() {
+        let mut destination = [0xffff; 8];
+        destination[..3].copy_from_slice(&w("ab"));
+        assert_eq!(wcscat(&mut destination, &w("cd")), Some(()));
+        assert_eq!(&destination[..5], &w("abcd"));
+
+        assert_eq!(wcscat(&mut destination, &[]), Some(()));
+        assert_eq!(&destination[..5], &w("abcd"));
+        assert_eq!(wcscat(&mut [], &w("x")), None);
+        let mut unterminated = [b'a' as u16, b'b' as u16];
+        assert_eq!(wcscat(&mut unterminated, &w("c")), None);
+        assert_eq!(unterminated, [b'a' as u16, b'b' as u16]);
+        let mut too_small = [b'a' as u16, 0];
+        assert_eq!(wcscat(&mut too_small, &w("b")), None);
+        assert_eq!(too_small, [b'a' as u16, 0]);
     }
 
     #[test]
