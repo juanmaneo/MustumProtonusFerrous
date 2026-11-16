@@ -6,6 +6,20 @@
 //! variants lower-case with ASCII rules only; locale-aware `_towlower_l`
 //! and the `MSVCRT_CHECK_PMT` invalid-parameter path are not ported here.
 
+/// Replaces all UTF-16 units before the first NUL and returns the count changed.
+pub fn wcsset(s: &mut [u16], replacement: u16) -> usize {
+    let length = wcslen(s);
+    s[..length].fill(replacement);
+    length
+}
+
+/// Replaces at most `count` UTF-16 units before the first NUL.
+pub fn wcsnset(s: &mut [u16], replacement: u16, count: usize) -> usize {
+    let length = wcsnlen(s, count);
+    s[..length].fill(replacement);
+    length
+}
+
 /// Reverses the UTF-16 code units before the first NUL and returns their count.
 ///
 /// Like Wine's `_wcsrev`, this reverses code units, not Unicode scalar values.
@@ -210,6 +224,37 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn wcsset_and_wcsnset_replace_only_bounded_non_nul_units() {
+        let mut value = w("wine");
+        assert_eq!(wcsset(&mut value, b'x' as u16), 4);
+        assert_eq!(
+            value,
+            [b'x' as u16, b'x' as u16, b'x' as u16, b'x' as u16, 0]
+        );
+
+        let mut bounded = w("wine");
+        assert_eq!(wcsnset(&mut bounded, b'y' as u16, 2), 2);
+        assert_eq!(
+            bounded,
+            [b'y' as u16, b'y' as u16, b'n' as u16, b'e' as u16, 0]
+        );
+        assert_eq!(wcsnset(&mut bounded, b'z' as u16, 8), 4);
+        assert_eq!(
+            bounded,
+            [b'z' as u16, b'z' as u16, b'z' as u16, b'z' as u16, 0]
+        );
+
+        let mut empty = [0, b'a' as u16];
+        assert_eq!(wcsset(&mut empty, b'q' as u16), 0);
+        assert_eq!(wcsnset(&mut empty, b'q' as u16, 2), 0);
+        assert_eq!(empty, [0, b'a' as u16]);
+        let mut no_nul = [b'a' as u16, b'b' as u16];
+        assert_eq!(wcsset(&mut no_nul, b'c' as u16), 2);
+        assert_eq!(no_nul, [b'c' as u16, b'c' as u16]);
+        assert_eq!(wcsnset(&mut no_nul, b'd' as u16, 0), 0);
     }
 
     #[test]
