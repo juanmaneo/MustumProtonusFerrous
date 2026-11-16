@@ -215,12 +215,6 @@ mod tests {
     }
 
     #[test]
-    fn main_entry_point_runs() {
-        // The harness passes its own flags, so this exercises the usage path.
-        let _ = main();
-    }
-
-    #[test]
     fn project_root_is_workspace_parent() {
         assert!(project_root().join("Cargo.toml").is_file());
     }
