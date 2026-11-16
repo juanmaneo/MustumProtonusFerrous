@@ -38,6 +38,20 @@ pub fn strrev(s: &mut [u8]) -> usize {
     length
 }
 
+/// Converts ASCII lowercase bytes to uppercase before the first NUL.
+pub fn strupr(s: &mut [u8]) -> usize {
+    let length = strnlen(s, s.len());
+    s[..length].make_ascii_uppercase();
+    length
+}
+
+/// Converts ASCII uppercase bytes to lowercase before the first NUL.
+pub fn strlwr(s: &mut [u8]) -> usize {
+    let length = strnlen(s, s.len());
+    s[..length].make_ascii_lowercase();
+    length
+}
+
 /// Replaces all UTF-16 units before the first NUL and returns the count changed.
 pub fn wcsset(s: &mut [u16], replacement: u16) -> usize {
     let length = wcslen(s);
@@ -58,6 +72,26 @@ pub fn wcsnset(s: &mut [u16], replacement: u16, count: usize) -> usize {
 pub fn wcsrev(s: &mut [u16]) -> usize {
     let length = wcslen(s);
     s[..length].reverse();
+    length
+}
+
+/// Converts ASCII lowercase UTF-16 units to uppercase before the first NUL.
+pub fn wcsupr(s: &mut [u16]) -> usize {
+    let length = wcslen(s);
+    for unit in &mut s[..length] {
+        if (b'a' as u16..=b'z' as u16).contains(unit) {
+            *unit -= 32;
+        }
+    }
+    length
+}
+
+/// Converts ASCII uppercase UTF-16 units to lowercase before the first NUL.
+pub fn wcslwr(s: &mut [u16]) -> usize {
+    let length = wcslen(s);
+    for unit in &mut s[..length] {
+        *unit = to_lower(*unit);
+    }
     length
 }
 
@@ -574,6 +608,38 @@ mod tests {
         );
         assert_eq!(strnicmp(b"A", b"a", 0), 0);
         assert_eq!(stricmp(&[0xc0, 0], &[0xe0, 0]), -32);
+    }
+
+    #[test]
+    fn ascii_case_conversion_mutates_only_string_prefix() {
+        let mut lower = *b"HeLLo\0tail";
+        assert_eq!(strlwr(&mut lower), 5);
+        assert_eq!(&lower, b"hello\0tail");
+        let mut upper = *b"HeLLo\0tail";
+        assert_eq!(strupr(&mut upper), 5);
+        assert_eq!(&upper, b"HELLO\0tail");
+        let mut non_ascii = [0xc0, b'A', 0];
+        assert_eq!(strlwr(&mut non_ascii), 2);
+        assert_eq!(non_ascii, [0xc0, b'a', 0]);
+        let mut empty = [0, b'x'];
+        assert_eq!(strupr(&mut empty), 0);
+        assert_eq!(empty, [0, b'x']);
+        let mut unterminated = *b"abc";
+        assert_eq!(strlwr(&mut unterminated), 3);
+        assert_eq!(unterminated, *b"abc");
+
+        let mut wide_lower = w("HeLLo");
+        assert_eq!(wcslwr(&mut wide_lower), 5);
+        assert_eq!(wide_lower, w("hello"));
+        let mut wide_upper = w("HeLLo");
+        assert_eq!(wcsupr(&mut wide_upper), 5);
+        assert_eq!(wide_upper, w("HELLO"));
+        let mut wide_non_ascii = [0x00c9, b'A' as u16, 0];
+        assert_eq!(wcslwr(&mut wide_non_ascii), 2);
+        assert_eq!(wide_non_ascii, [0x00c9, b'a' as u16, 0]);
+        let mut wide_unterminated = [b'a' as u16, b'B' as u16];
+        assert_eq!(wcsupr(&mut wide_unterminated), 2);
+        assert_eq!(wide_unterminated, [b'A' as u16, b'B' as u16]);
     }
 
     #[test]
