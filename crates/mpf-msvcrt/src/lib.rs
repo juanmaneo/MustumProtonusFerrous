@@ -379,6 +379,27 @@ fn digit_value(byte: u8) -> Option<u32> {
     }
 }
 
+/// Parses a Wine-compatible signed 64-bit integer from a UTF-16 string.
+///
+/// The ASCII-compatible subset follows [`strtoi64`]; a non-ASCII code unit
+/// terminates parsing rather than being interpreted as a locale digit.
+pub fn wcstoi64(source: &[u16], base: u32) -> Option<ParseI64> {
+    let bytes: Vec<u8> = source
+        .iter()
+        .map(|&unit| if unit <= 0x7f { unit as u8 } else { 0 })
+        .collect();
+    strtoi64(&bytes, base)
+}
+
+/// Parses a Wine-compatible unsigned 64-bit integer from a UTF-16 string.
+pub fn wcstoui64(source: &[u16], base: u32) -> Option<ParseU64> {
+    let bytes: Vec<u8> = source
+        .iter()
+        .map(|&unit| if unit <= 0x7f { unit as u8 } else { 0 })
+        .collect();
+    strtoui64(&bytes, base)
+}
+
 /// Formats an unsigned integer in radix 2 through 36 using lowercase digits.
 pub fn format_u64(value: u64, radix: u32) -> Option<Vec<u8>> {
     if !(2..=36).contains(&radix) {
@@ -1417,6 +1438,40 @@ mod tests {
 
     #[test]
     fn integer_formatting_matches_wine_radix_and_sign_rules() {
+        assert_eq!(
+            wcstoi64(&w("  -42tail"), 10).unwrap(),
+            strtoi64(b"  -42tail", 10).unwrap()
+        );
+        assert_eq!(wcstoi64(&w("0x7f"), 0).unwrap().value, 127);
+        assert_eq!(
+            wcstoi64(&w("9223372036854775808"), 10).unwrap().value,
+            i64::MAX
+        );
+        assert_eq!(wcstoi64(&w("abc"), 10).unwrap().end, 0);
+        assert_eq!(wcstoi64(&w("42"), 1), None);
+        assert_eq!(
+            wcstoi64(&[b'4' as u16, 0x263a, b'2' as u16, 0], 10)
+                .unwrap()
+                .end,
+            1
+        );
+        assert_eq!(
+            wcstoui64(&w("-213312"), 0).unwrap().value,
+            (-213312_i64) as u64
+        );
+        assert_eq!(
+            wcstoui64(&w("18446744073709551616"), 10).unwrap().value,
+            u64::MAX
+        );
+        assert_eq!(wcstoui64(&w("abc"), 10).unwrap().end, 0);
+        assert_eq!(
+            wcstoui64(&[b'4' as u16, 0x263a, b'2' as u16, 0], 10)
+                .unwrap()
+                .end,
+            1
+        );
+        assert_eq!(wcstoui64(&w("12"), 37), None);
+
         assert_eq!(format_u64(0, 10), Some(b"0".to_vec()));
         assert_eq!(format_u64(1234, 10), Some(b"1234".to_vec()));
         assert_eq!(format_u64(u64::MAX, 36), Some(b"3w5e11264sgsf".to_vec()));
