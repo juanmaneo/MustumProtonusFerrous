@@ -803,6 +803,28 @@ pub fn path_is_same_root(path1: &[u16], path2: &[u16]) -> bool {
     path_common_prefix(path1, path2) + 1 >= root_end
 }
 
+/// Reports whether a nonempty path has a syntactically valid URL scheme,
+/// matching Wine's `PathIsURLW` behavior. Unknown schemes are accepted.
+pub fn path_is_url(path: Option<&[u16]>) -> bool {
+    let Some(path) = path else {
+        return false;
+    };
+    let len = wlen(path);
+    if len == 0 {
+        return false;
+    }
+    let Some(colon) = path[..len].iter().position(|&unit| unit == b':' as u16) else {
+        return false;
+    };
+    if colon <= 1 {
+        return false;
+    }
+    path[..colon].iter().all(|&unit| {
+        char::from_u32(u32::from(unit))
+            .is_some_and(|ch| ch.is_alphanumeric() || matches!(unit, 43 | 45 | 46))
+    })
+}
+
 /// Reports whether a UNC path contains exactly one separator after its server
 /// name, matching Wine's `PathIsUNCServerShareW` behavior.
 pub fn path_is_unc_server_share(path: &[u16]) -> bool {
@@ -2196,6 +2218,34 @@ mod tests {
             );
         }
         assert!(!path_is_same_root(&[], &w("C:\\two")));
+    }
+
+    #[test]
+    fn is_url_matches_wine_scheme_syntax() {
+        for (path, expected) in [
+            (Some("http://www.winehq.org/"), true),
+            (Some("https://www.winehq.org/"), true),
+            (Some("ftp://www.winehq.org/"), true),
+            (Some("xxx://www.winehq.org/"), true),
+            (Some("1xx://www.winehq.org/"), true),
+            (Some("-xx://www.winehq.org/"), true),
+            (Some("xx0://www.winehq.org/"), true),
+            (Some("ab-://www.winehq.org/"), true),
+            (Some("HTTP://www.winehq.org/"), true),
+            (Some("a+-.://www.winehq.org/"), true),
+            (Some("test.txt?test=c:/dir"), false),
+            (Some("test.txt"), false),
+            (Some("x://www.winehq.org/"), false),
+            (Some("xx$://www.winehq.org/"), false),
+            (Some("htt?p://www.winehq.org/"), false),
+            (Some(" http://www.winehq.org/"), false),
+            (Some(""), false),
+            (None, false),
+        ] {
+            let path = path.map(w);
+            assert_eq!(path_is_url(path.as_deref()), expected);
+        }
+        assert!(!path_is_url(Some(&[])));
     }
 
     #[test]

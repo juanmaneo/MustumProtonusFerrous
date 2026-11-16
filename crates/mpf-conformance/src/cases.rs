@@ -148,6 +148,10 @@ fn kernelbase_strip_prefix() {
         &w("C:\\one"),
         &w("C:\\two")
     ));
+    assert!(mpf_kernelbase::path_is_url(Some(&w(
+        "https://example.test/path"
+    ))));
+    assert!(!mpf_kernelbase::path_is_url(Some(&w("not a url"))));
     assert!(!mpf_kernelbase::path_is_relative(&w("C:\\file.txt")));
     assert!(!mpf_kernelbase::path_is_relative(&w("\\rooted")));
     assert!(mpf_kernelbase::path_is_unc(&w("\\\\server\\share")));
