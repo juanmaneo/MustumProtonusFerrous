@@ -464,6 +464,14 @@ pub fn path_remove_file_spec(path: &mut Vec<u16>) -> bool {
     true
 }
 
+/// Reports whether a path is a file spec, matching Wine's `PathIsFileSpecW`.
+/// Backslashes and colons make a path a non-file-spec; forward slashes do not.
+pub fn path_is_file_spec(path: &[u16]) -> bool {
+    !path[..wlen(path)]
+        .iter()
+        .any(|&unit| unit == b'\\' as u16 || unit == b':' as u16)
+}
+
 /// Returns the drive index for a path, matching Wine's `PathGetDriveNumberW`.
 /// ASCII drive letters map to 0–25; paths without a drive spec return -1.
 pub fn path_get_drive_number(path: &[u16]) -> i32 {
@@ -1366,6 +1374,25 @@ mod tests {
             assert_eq!(path_remove_file_spec(&mut path), result, "{input}");
             assert_eq!(path, w(expected), "{input}");
         }
+    }
+
+    #[test]
+    fn is_file_spec_matches_wine_rules() {
+        for (path, expected) in [
+            ("", true),
+            ("file.txt", true),
+            ("name with spaces.txt", true),
+            ("directory\\file.txt", false),
+            ("C:file.txt", false),
+            ("C:\\file.txt", false),
+            ("directory/file.txt", true),
+        ] {
+            assert_eq!(path_is_file_spec(&w(path)), expected, "{path}");
+        }
+        assert!(path_is_file_spec(&[]));
+        let mut trailing_storage = w("file.txt");
+        trailing_storage.extend(w("\\ignored"));
+        assert!(path_is_file_spec(&trailing_storage));
     }
 
     #[test]
