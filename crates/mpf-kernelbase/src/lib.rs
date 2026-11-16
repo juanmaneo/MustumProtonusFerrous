@@ -213,6 +213,31 @@ pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
     S_OK
 }
 
+/// Removes one trailing backslash unless it is the path's root separator.
+/// `size` is the available buffer capacity in UTF-16 code units.
+pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
+    if size == 0 {
+        return E_INVALIDARG;
+    }
+    let len = wlen(path);
+    let path_len = len.min(size);
+    if path_len == size && char_at(path, path_len) == 0 {
+        return E_INVALIDARG;
+    }
+    let root = root_end(path);
+    if path_len > 0 && char_at(path, path_len - 1) == b'\\' as u16 {
+        let last = path_len - 1;
+        if root.is_none_or(|root_end| last > root_end) {
+            path.truncate(last);
+            path.push(0);
+            return S_OK;
+        }
+        S_FALSE
+    } else {
+        S_FALSE
+    }
+}
+
 /// Reports whether a path is relative, matching Wine's `PathIsRelativeW`.
 pub fn path_is_relative(path: &[u16]) -> bool {
     let len = wlen(path);
@@ -607,6 +632,75 @@ mod tests {
         assert_eq!(path, w("C:\\a"));
         assert_eq!(path_cch_remove_file_spec(&mut path, 4), S_OK);
         assert_eq!(path, w("C:\\"));
+    }
+
+    #[test]
+    fn remove_backslash_matches_wine_vectors() {
+        for (input, expected, status) in [
+            ("", "", S_FALSE),
+            ("C", "C", S_FALSE),
+            ("C\\", "C", S_OK),
+            ("C:", "C:", S_FALSE),
+            ("C:\\", "C:\\", S_FALSE),
+            ("C:\\\\", "C:\\", S_OK),
+            ("C:\\a\\", "C:\\a", S_OK),
+            ("C:\\a\\\\", "C:\\a\\", S_OK),
+            ("\\", "\\", S_FALSE),
+            ("\\\\", "\\\\", S_FALSE),
+            ("\\?\\", "\\?", S_OK),
+            ("\\?\\\\", "\\?\\", S_OK),
+            ("\\a\\", "\\a", S_OK),
+            ("\\a\\\\", "\\a\\", S_OK),
+            ("\\\\a\\", "\\\\a", S_OK),
+            ("\\\\a\\b\\", "\\\\a\\b", S_OK),
+            ("\\\\a\\\\", "\\\\a\\", S_OK),
+            ("\\\\?\\", "\\\\?", S_OK),
+            ("\\\\?\\\\", "\\\\?\\", S_OK),
+            ("\\\\?\\C:", "\\\\?\\C:", S_FALSE),
+            ("\\\\?\\C:\\", "\\\\?\\C:\\", S_FALSE),
+            ("\\?\\UNC\\", "\\?\\UNC", S_OK),
+            ("\\\\?\\UNC", "\\\\?\\UNC", S_FALSE),
+            ("\\\\?\\UNC\\", "\\\\?\\UNC\\", S_FALSE),
+            ("\\\\?\\UNC\\a", "\\\\?\\UNC\\a", S_FALSE),
+            ("\\\\?\\UNC\\a\\", "\\\\?\\UNC\\a", S_OK),
+            ("\\\\?\\UNC\\a\\b\\", "\\\\?\\UNC\\a\\b", S_OK),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_cch_remove_backslash(&mut path, MAX_PATH_CCH),
+                status,
+                "{input}"
+            );
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let volume = "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}";
+        for (input, expected, status) in [
+            (volume.to_string(), volume.to_string(), S_FALSE),
+            (format!("{volume}\\"), format!("{volume}\\"), S_FALSE),
+            (format!("{volume}\\a"), format!("{volume}\\a"), S_FALSE),
+            (format!("{volume}\\a\\"), format!("{volume}\\a"), S_OK),
+        ] {
+            let mut path = w(&input);
+            assert_eq!(
+                path_cch_remove_backslash(&mut path, MAX_PATH_CCH),
+                status,
+                "{input}"
+            );
+            assert_eq!(path, w(&expected), "{input}");
+        }
+    }
+
+    #[test]
+    fn remove_backslash_checks_capacity() {
+        let mut path = w("C:\\a\\");
+        assert_eq!(path_cch_remove_backslash(&mut path, 0), E_INVALIDARG);
+        assert_eq!(path_cch_remove_backslash(&mut path, 5), E_INVALIDARG);
+        assert_eq!(path, w("C:\\a\\"));
+        assert_eq!(path_cch_remove_backslash(&mut path, 6), S_OK);
+        assert_eq!(path, w("C:\\a"));
+        let mut path = w("C:\\a");
+        assert_eq!(path_cch_remove_backslash(&mut path, 4), E_INVALIDARG);
+        assert_eq!(path, w("C:\\a"));
     }
 
     #[test]

@@ -74,6 +74,12 @@ fn kernelbase_strip_prefix() {
     assert!(mpf_kernelbase::path_is_relative(&w("file.txt")));
     assert!(!mpf_kernelbase::path_is_relative(&w("C:\\file.txt")));
     assert!(!mpf_kernelbase::path_is_relative(&w("\\rooted")));
+    let mut trailing = w("C:\\folder\\");
+    assert_eq!(
+        mpf_kernelbase::path_cch_remove_backslash(&mut trailing, 64),
+        mpf_kernelbase::S_OK
+    );
+    assert_eq!(trailing, w("C:\\folder"));
     let mut root = w("C:\\folder\\file");
     assert_eq!(
         mpf_kernelbase::path_cch_strip_to_root(&mut root, 64),
