@@ -65,6 +65,12 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::S_OK
     );
     assert_eq!(root, w("C:\\"));
+    let mut file_spec = w("C:\\folder\\file.txt");
+    assert_eq!(
+        mpf_kernelbase::path_cch_remove_file_spec(&mut file_spec, 64),
+        mpf_kernelbase::S_OK
+    );
+    assert_eq!(file_spec, w("C:\\folder"));
     assert_eq!(
         mpf_kernelbase::path_cch_skip_root(&w("C:\\folder")),
         (mpf_kernelbase::S_OK, 3)

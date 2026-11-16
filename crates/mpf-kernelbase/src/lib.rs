@@ -213,6 +213,48 @@ pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
     S_OK
 }
 
+/// Removes the final file-spec component while preserving a drive or UNC root.
+/// The size is measured in UTF-16 code units and includes the terminator.
+pub fn path_cch_remove_file_spec(path: &mut Vec<u16>, size: usize) -> i32 {
+    let len = wlen(path);
+    if size == 0 || size > MAX_PATH_CCH {
+        return E_INVALIDARG;
+    }
+    let (status, mut start) = path_cch_skip_root(path);
+    if status != S_OK {
+        start = 0;
+    }
+    if start > 0
+        && char_at(path, start - 1) == b'\\' as u16
+        && ((is_prefixed_unc(path) && char_at(path, 8) != 0)
+            || (path[0] == b'\\' as u16
+                && char_at(path, 1) == b'\\' as u16
+                && char_at(path, 2) != 0
+                && char_at(path, 2) != b'?' as u16))
+    {
+        start -= 1;
+    }
+    let mut last = (start..len)
+        .rev()
+        .find(|&index| path[index] == b'\\' as u16)
+        .unwrap_or(start);
+    if last > start
+        && char_at(path, last - 1) == b'\\' as u16
+        && char_at(path, last + 1) != b'?' as u16
+    {
+        last -= 1;
+    }
+    if last >= size {
+        return E_INVALIDARG;
+    }
+    if char_at(path, last) == 0 {
+        return S_FALSE;
+    }
+    path.truncate(last);
+    path.push(0);
+    S_OK
+}
+
 /// Removes a recognized `\\?\` prefix in place, matching Wine's
 /// `PathCchStripPrefix` behavior. The size is measured in UTF-16 code units
 /// and includes space for the terminator.
@@ -453,6 +495,96 @@ mod tests {
         let mut unc = w("\\\\a\\b\\c");
         assert_eq!(path_cch_strip_to_root(&mut unc, 5), E_INVALIDARG);
         assert_eq!(unc, w("\\\\a\\b\\c"));
+    }
+
+    #[test]
+    fn remove_file_spec_matches_wine_vectors() {
+        for (input, expected, status) in [
+            ("", "", S_FALSE),
+            ("a", "", S_OK),
+            ("a\\", "a", S_OK),
+            ("a\\b", "a", S_OK),
+            ("\\", "\\", S_FALSE),
+            ("\\a", "\\", S_OK),
+            ("\\a\\", "\\a", S_OK),
+            ("\\a\\b", "\\a", S_OK),
+            ("\\\\", "\\\\", S_FALSE),
+            ("\\\\a", "\\\\a", S_FALSE),
+            ("\\\\a\\", "\\\\a", S_OK),
+            ("\\\\a\\b", "\\\\a\\b", S_FALSE),
+            ("\\\\a\\b\\", "\\\\a\\b", S_OK),
+            ("\\\\a\\b\\c", "\\\\a\\b", S_OK),
+            ("\\\\\\\\\\\\", "\\\\\\\\", S_OK),
+            ("C:", "C:", S_FALSE),
+            ("C:a", "C:", S_OK),
+            ("C:a\\", "C:a", S_OK),
+            ("C:a\\b", "C:a", S_OK),
+            ("C:\\a\\\\b", "C:\\a", S_OK),
+            ("C:\\", "C:\\", S_FALSE),
+            ("C:\\a", "C:\\", S_OK),
+            ("C:\\a\\", "C:\\a", S_OK),
+            ("C:\\a\\b", "C:\\a", S_OK),
+            ("\\\\?\\", "\\\\?", S_OK),
+            ("\\\\?\\a", "\\\\?", S_OK),
+            ("\\\\?\\a\\", "\\\\?\\a", S_OK),
+            ("\\\\?\\a\\b", "\\\\?\\a", S_OK),
+            ("\\\\?\\C:", "\\\\?\\C:", S_FALSE),
+            ("\\\\?\\C:a", "\\\\?\\C:", S_OK),
+            ("\\\\?\\C:a\\", "\\\\?\\C:a", S_OK),
+            ("\\\\?\\C:a\\b", "\\\\?\\C:a", S_OK),
+            ("\\\\?\\C:\\", "\\\\?\\C:\\", S_FALSE),
+            ("\\\\?\\C:\\a", "\\\\?\\C:\\", S_OK),
+            ("\\\\?\\C:\\a\\", "\\\\?\\C:\\a", S_OK),
+            ("\\\\?\\C:\\a\\b", "\\\\?\\C:\\a", S_OK),
+            ("\\\\?\\UNC\\", "\\\\?\\UNC\\", S_FALSE),
+            ("\\\\?\\UNC\\a", "\\\\?\\UNC\\a", S_FALSE),
+            ("\\\\?\\UNC\\a\\", "\\\\?\\UNC\\a", S_OK),
+            ("\\\\?\\UNC\\a\\b", "\\\\?\\UNC\\a\\b", S_FALSE),
+            ("\\\\?\\UNC\\a\\b\\", "\\\\?\\UNC\\a\\b", S_OK),
+            ("\\\\?\\UNC\\a\\b\\c", "\\\\?\\UNC\\a\\b", S_OK),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_cch_remove_file_spec(&mut path, MAX_PATH_CCH),
+                status,
+                "{input}"
+            );
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let volume = "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}";
+        for (input, expected, status) in [
+            (volume.to_string(), volume.to_string(), S_FALSE),
+            (format!("{volume}a"), volume.to_string(), S_OK),
+            (format!("{volume}a\\"), format!("{volume}a"), S_OK),
+            (format!("{volume}a\\b"), format!("{volume}a"), S_OK),
+            (format!("{volume}\\"), format!("{volume}\\"), S_FALSE),
+            (format!("{volume}\\a"), format!("{volume}\\"), S_OK),
+            (format!("{volume}\\a\\"), format!("{volume}\\a"), S_OK),
+            (format!("{volume}\\a\\b"), format!("{volume}\\a"), S_OK),
+        ] {
+            let mut path = w(&input);
+            assert_eq!(
+                path_cch_remove_file_spec(&mut path, MAX_PATH_CCH),
+                status,
+                "{input}"
+            );
+            assert_eq!(path, w(&expected), "{input}");
+        }
+    }
+
+    #[test]
+    fn remove_file_spec_validates_size() {
+        for size in [0, MAX_PATH_CCH + 1] {
+            let mut path = w("C:\\a");
+            let original = path.clone();
+            assert_eq!(path_cch_remove_file_spec(&mut path, size), E_INVALIDARG);
+            assert_eq!(path, original);
+        }
+        let mut path = w("C:\\a");
+        assert_eq!(path_cch_remove_file_spec(&mut path, 3), E_INVALIDARG);
+        assert_eq!(path, w("C:\\a"));
+        assert_eq!(path_cch_remove_file_spec(&mut path, 4), S_OK);
+        assert_eq!(path, w("C:\\"));
     }
 
     #[test]
