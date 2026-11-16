@@ -1,11 +1,12 @@
 //! Partial `msvcrt` UTF-16 string routines based on Wine's
 //! `dlls/msvcrt/wcs.c`.
 //!
-//! The subset includes comparison, length, search, copy, concatenation, and
-//! mutation routines. Slice-based APIs treat the first NUL as the string end
-//! (or the slice end if no NUL is present) and avoid pointer-style out-of-bounds
-//! reads. Case-insensitive comparison uses ASCII-only folding; locale-aware
-//! behavior and `MSVCRT_CHECK_PMT` invalid-parameter handling are not ported.
+//! The subset includes byte-string span functions and UTF-16 comparison, length,
+//! search, copy, concatenation, and mutation routines. Slice-based APIs treat
+//! the first NUL as the string end (or the slice end if no NUL is present) and
+//! avoid pointer-style out-of-bounds reads. Case-insensitive comparison uses
+//! ASCII-only folding; locale-aware behavior and `MSVCRT_CHECK_PMT`
+//! invalid-parameter handling are not ported.
 
 /// Replaces all UTF-16 units before the first NUL and returns the count changed.
 pub fn wcsset(s: &mut [u16], replacement: u16) -> usize {
@@ -150,6 +151,41 @@ pub fn wcsstr(haystack: &[u16], needle: &[u16]) -> Option<usize> {
         start + needle_len <= haystack_len
             && haystack[start..start + needle_len] == needle[..needle_len]
     })
+}
+
+/// Counts the initial bytes that are not in `reject`.
+///
+/// Stops at the first NUL in `s`, matching Wine's `strcspn`.
+pub fn strcspn(s: &[u8], reject: &[u8]) -> usize {
+    let length = strnlen(s, s.len());
+    let reject_len = strnlen(reject, reject.len());
+    s[..length]
+        .iter()
+        .position(|byte| reject[..reject_len].contains(byte))
+        .unwrap_or(length)
+}
+
+/// Counts the initial bytes that are in `accept`.
+///
+/// Stops at the first NUL in `s`, matching Wine's `strspn`.
+pub fn strspn(s: &[u8], accept: &[u8]) -> usize {
+    let length = strnlen(s, s.len());
+    let accept_len = strnlen(accept, accept.len());
+    s[..length]
+        .iter()
+        .position(|byte| !accept[..accept_len].contains(byte))
+        .unwrap_or(length)
+}
+
+/// Finds the first byte in `s` that is also in `accept`.
+///
+/// Returns the byte offset, analogous to Wine's pointer-returning `strpbrk`.
+pub fn strpbrk(s: &[u8], accept: &[u8]) -> Option<usize> {
+    let length = strnlen(s, s.len());
+    let accept_len = strnlen(accept, accept.len());
+    s[..length]
+        .iter()
+        .position(|byte| accept[..accept_len].contains(byte))
 }
 
 /// Counts the initial UTF-16 units that are not in `reject`.
@@ -432,6 +468,31 @@ mod tests {
         assert_eq!(wcsrchr(&[0], 0), Some(0));
         assert_eq!(wcschr(&[b'x' as u16], b'x' as u16), Some(0));
         assert_eq!(wcschr(&[b'x' as u16], 0), None);
+    }
+
+    #[test]
+    fn byte_spans_and_search_use_unsigned_byte_membership() {
+        let text = b"abcde\0ignored";
+        assert_eq!(strcspn(text, b"xyz"), 5);
+        assert_eq!(strcspn(text, b"xd"), 3);
+        assert_eq!(strcspn(text, b""), 5);
+        assert_eq!(strcspn(b"", b"a"), 0);
+        assert_eq!(strcspn(&[0x80, 0xff, 0], &[0xff, 0]), 1);
+        assert_eq!(strcspn(b"abc", b"b\0c"), 1);
+
+        assert_eq!(strspn(text, b"abc"), 3);
+        assert_eq!(strspn(text, b"abcde"), 5);
+        assert_eq!(strspn(text, b""), 0);
+        assert_eq!(strspn(b"", b"abc"), 0);
+        assert_eq!(strspn(&[0x80, 0xff, 0], &[0x80, 0xff, 0]), 2);
+        assert_eq!(strspn(b"abc", b"a\0bc"), 1);
+
+        assert_eq!(strpbrk(text, b"xd"), Some(3));
+        assert_eq!(strpbrk(text, b""), None);
+        assert_eq!(strpbrk(b"", b"a"), None);
+        assert_eq!(strpbrk(b"abc", b"z"), None);
+        assert_eq!(strpbrk(&[0x80, 0xff, 0], &[0xff]), Some(1));
+        assert_eq!(strpbrk(b"ab", b"b"), Some(1));
     }
 
     #[test]
