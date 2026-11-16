@@ -27,7 +27,7 @@ in the dev container for direct comparison.
 - [x] process init equivalent of `programs/wineboot` (`mpf-wineboot::init_prefix`)
       + `loader/main.c` (`mpf-cli run`: map -> relocate -> resolve -> PEB/TEB/LDR)
 
-## Phase 2 — first runnable Win32 app (current)
+## Phase 2 — first runnable Win32 app (done)
 
 - [x] kernel32 subset: process (`GetCurrentProcess[Id]`), threads
       (`CreateThread`/`WaitForSingleObject`, thread ids), modules
@@ -39,12 +39,16 @@ in the dev container for direct comparison.
 - [x] conformance harness `mpf-conformance`: `cargo run -p mpf-conformance`
       runs seeded cases derived from wine's `dlls/*/tests` expectations
 
-## Phase 3 — graphics stack
+## Phase 3 — graphics stack (current)
 
-- [ ] user32/gdi32/winex11.drv-equivalent surface
-- [ ] DXVK: initially a native companion (exactly what Proton ships), with a
-      Rust configuration layer; port D3D core to Rust later
-- [ ] vkd3d-proton: same strategy — native companion first, Rust port later
+- [x] `mpf-user32`: headless windowing (class atoms, HWNDs, MessageBoxW,
+      GetSystemMetrics, GetClientRect, DestroyWindow)
+- [x] `mpf-gdi32`: headless DCs and GDI objects (GetDeviceCaps fixed
+      1920x1080x32@96dpi, CreateCompatibleDC/CreateBitmap/SelectObject/DeleteObject)
+- [x] `mpf-graphics`: dxvk companion detection in the prefix + dxvk.conf
+      parse/format + DXVK_* env mapping; vkd3d-proton detection + changelog
+      version. The D3D cores stay native companions (exactly what Proton
+      ships); Rust ports come later
 
 ## Phase 4 — Proton flavour & umu
 

@@ -1,4 +1,4 @@
-> **⚠️ Work in progress.** MPF is in early development (Phase 2: first runnable Win32 app). APIs, crate layout, and behavior will change without notice, and it cannot run Windows applications yet. Do not use it for anything that needs to work.
+> **⚠️ Work in progress.** MPF is in early development (Phase 3: graphics stack — user32/gdi32 headless + dxvk/vkd3d config layer). APIs, crate layout, and behavior will change without notice, and it cannot run Windows applications yet. Do not use it for anything that needs to work.
 
 # Mustum Protonus Ferrous (MPF)
 

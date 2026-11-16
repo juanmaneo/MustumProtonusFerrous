@@ -8,8 +8,10 @@
 | `dlls/ntdll/`                       | —                          | `mpf-ntdll` (ntstatus, unicode, heap, critical sections, object handles, exception bridge) |
 | `dlls/kernel32/`, `dlls/kernelbase/`| —                          | `mpf-kernel32` (strings, process, thread, module, file), `mpf-kernelbase` (planned) |
 | `dlls/advapi32/`                    | —                          | `mpf-advapi32` (`.reg` hives + Reg* API) |
-| `dlls/user32`, `gdi32`, `winex11.drv` | dxvk submodule           | `mpf-user32`, `mpf-gdi32` (planned); dxvk native initially |
-| —                                   | vkd3d-proton submodule     | native companion initially, Rust port later |
+| `dlls/user32`                       | —                          | `mpf-user32` (headless windowing) |
+| `dlls/gdi32`                        | —                          | `mpf-gdi32` (headless DCs/objects) |
+| `dlls/winex11.drv`                  | dxvk submodule             | `mpf-graphics` dxvk module (detect + dxvk.conf + DXVK_* env); native dxvk initially |
+| —                                   | vkd3d-proton submodule     | `mpf-graphics` vkd3d module (detect + version); native companion initially |
 | `programs/wineboot`                 | `default_pfx.py`           | `mpf-wineboot` (prefix init + hives) |
 | `dlls/*/tests`                      | —                          | `mpf-conformance` (seeded conformance cases) |
 | —                                   | umu-launcher (Python)      | `mpf-umu` (planned) |
