@@ -356,6 +356,18 @@ pub fn path_cch_add_backslash_ex(path: &mut Vec<u16>, size: usize) -> (i32, Opti
     (S_OK, Some(length + 1), size - length - 1)
 }
 
+/// Removes a trailing backslash unless the path is a root, matching
+/// `PathRemoveBackslashW`. Returns the offset corresponding to Wine's pointer.
+pub fn path_remove_backslash(path: &mut Vec<u16>) -> usize {
+    let len = wlen(path);
+    let last = len.saturating_sub(1);
+    if len > 0 && !path_is_root(path) && path[last] == b'\\' as u16 {
+        path[last] = 0;
+        path.truncate(last + 1);
+    }
+    last
+}
+
 /// Adds a trailing backslash when missing.
 pub fn path_cch_add_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_add_backslash_ex(path, size).0
@@ -1578,6 +1590,27 @@ mod tests {
         let mut unterminated = "C:\\folder\\file".encode_utf16().collect::<Vec<_>>();
         path_strip_path(&mut unterminated);
         assert_eq!(unterminated, w("file"));
+    }
+
+    #[test]
+    fn legacy_remove_backslash_matches_wine_root_and_pointer_rules() {
+        for (input, expected, offset) in [
+            ("", "", 0),
+            ("folder", "folder", 5),
+            ("folder\\", "folder", 6),
+            ("C:\\", "C:\\", 2),
+            ("C:\\folder\\", "C:\\folder", 9),
+            ("\\\\server\\share", "\\\\server\\share", 13),
+            ("\\\\server\\share\\", "\\\\server\\share", 14),
+            ("/folder/", "/folder/", 7),
+        ] {
+            let mut path = w(input);
+            assert_eq!(path_remove_backslash(&mut path), offset, "{input:?}");
+            assert_eq!(path, w(expected), "{input:?}");
+        }
+        let mut unterminated = "folder\\".encode_utf16().collect::<Vec<_>>();
+        assert_eq!(path_remove_backslash(&mut unterminated), 6);
+        assert_eq!(unterminated, w("folder"));
     }
 
     #[test]

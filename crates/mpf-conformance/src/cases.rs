@@ -153,6 +153,12 @@ fn kernelbase_strip_prefix() {
     let mut legacy_path = w("C:\\folder\\file.txt");
     assert!(mpf_kernelbase::path_remove_file_spec(&mut legacy_path));
     assert_eq!(legacy_path, w("C:\\folder"));
+    let mut legacy_trailing = w("C:\\folder\\");
+    assert_eq!(
+        mpf_kernelbase::path_remove_backslash(&mut legacy_trailing),
+        9
+    );
+    assert_eq!(legacy_trailing, w("C:\\folder"));
     let mut trailing = w("C:\\folder\\");
     assert_eq!(
         mpf_kernelbase::path_cch_remove_backslash(&mut trailing, 64),
