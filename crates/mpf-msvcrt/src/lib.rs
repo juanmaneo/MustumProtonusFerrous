@@ -1,8 +1,8 @@
-//! Partial `msvcrt` UTF-16 string routines based on Wine's
-//! `dlls/msvcrt/wcs.c`.
+//! Partial `msvcrt` byte-string and UTF-16 routines based on Wine's
+//! `dlls/msvcrt/string.c` and `dlls/msvcrt/wcs.c`.
 //!
-//! The subset includes byte-string span functions and UTF-16 comparison, length,
-//! search, copy, concatenation, and mutation routines. Slice-based APIs treat
+//! The subset includes byte-string comparison, length, search, copy,
+//! concatenation, and mutation routines alongside UTF-16 equivalents. Slice-based APIs treat
 //! the first NUL as the string end (or the slice end if no NUL is present) and
 //! avoid pointer-style out-of-bounds reads. Case-insensitive comparison uses
 //! ASCII-only folding; locale-aware behavior and `MSVCRT_CHECK_PMT`
@@ -68,6 +68,19 @@ pub fn wcsrev(s: &mut [u16]) -> usize {
 pub fn wcsdup(source: Option<&[u16]>) -> Option<Vec<u16>> {
     source.map(|source| {
         let length = wcslen(source);
+        let mut duplicate = source[..length].to_vec();
+        duplicate.push(0);
+        duplicate
+    })
+}
+
+/// Duplicates an optional NUL-terminated byte string.
+///
+/// `None` models a null pointer. A bounded, unterminated slice is copied in
+/// full and explicitly terminated, avoiding an out-of-bounds pointer read.
+pub fn strdup(source: Option<&[u8]>) -> Option<Vec<u8>> {
+    source.map(|source| {
+        let length = strnlen(source, source.len());
         let mut duplicate = source[..length].to_vec();
         duplicate.push(0);
         duplicate
@@ -650,6 +663,14 @@ mod tests {
         assert_eq!(wcsdup(Some(&w("wine"))), Some(w("wine")));
         assert_eq!(wcsdup(Some(&[b'a' as u16, b'b' as u16])), Some(w("ab")));
         assert_eq!(wcsdup(Some(&[])), Some(vec![0]));
+    }
+
+    #[test]
+    fn strdup_copies_through_terminator_and_handles_null() {
+        assert_eq!(strdup(None), None);
+        assert_eq!(strdup(Some(b"wine\0ignored")), Some(b"wine\0".to_vec()));
+        assert_eq!(strdup(Some(b"ab")), Some(b"ab\0".to_vec()));
+        assert_eq!(strdup(Some(b"")), Some(vec![0]));
     }
 
     #[test]
