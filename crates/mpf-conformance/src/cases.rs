@@ -56,6 +56,12 @@ fn shlwapi_path_helpers() {
 }
 
 fn kernelbase_strip_prefix() {
+    let mut with_backslash = w("C:\\folder");
+    assert_eq!(
+        mpf_kernelbase::path_cch_add_backslash(&mut with_backslash, 64),
+        mpf_kernelbase::S_OK
+    );
+    assert_eq!(with_backslash, w("C:\\folder\\"));
     assert_eq!(
         mpf_kernelbase::path_cch_find_extension(&w("C:\\folder\\file.txt"), 64),
         (mpf_kernelbase::S_OK, Some(14))

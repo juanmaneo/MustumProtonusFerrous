@@ -251,6 +251,34 @@ pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_remove_backslash_ex(path, size).0
 }
 
+/// Adds a trailing backslash when missing, returning `(HRESULT, end_offset,
+/// remaining_capacity)` in UTF-16 code units. `None` offsets indicate a failed call.
+pub fn path_cch_add_backslash_ex(path: &mut Vec<u16>, size: usize) -> (i32, Option<usize>, usize) {
+    let length = wlen(path);
+    let needs_termination = size != 0 && length != 0 && char_at(path, length - 1) != b'\\' as u16;
+    if length
+        >= if needs_termination {
+            size.saturating_sub(1)
+        } else {
+            size
+        }
+    {
+        return (STRSAFE_E_INSUFFICIENT_BUFFER, None, 0);
+    }
+    if !needs_termination {
+        return (S_FALSE, Some(length), size - length);
+    }
+    path.truncate(length);
+    path.push(b'\\' as u16);
+    path.push(0);
+    (S_OK, Some(length + 1), size - length - 1)
+}
+
+/// Adds a trailing backslash when missing.
+pub fn path_cch_add_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
+    path_cch_add_backslash_ex(path, size).0
+}
+
 /// Finds the extension's UTF-16 offset using Wine's `PathCchFindExtension`
 /// rules. An absent extension points to the terminating NUL.
 pub fn path_cch_find_extension(path: &[u16], size: usize) -> (i32, Option<usize>) {
@@ -878,6 +906,36 @@ mod tests {
             path_cch_remove_backslash_ex(&mut truncated, 4),
             (E_INVALIDARG, None, 0)
         );
+    }
+
+    #[test]
+    fn add_backslash_matches_wine_vectors() {
+        for (input, expected, size, expected_status, expected_end, remaining) in [
+            ("C:", "C:\\", 260, S_OK, Some(3), 257),
+            ("a.txt", "a.txt\\", 260, S_OK, Some(6), 254),
+            ("a/b", "a/b\\", 260, S_OK, Some(4), 256),
+            ("C:\\", "C:\\", 260, S_FALSE, Some(3), 257),
+            ("C:\\", "C:\\", 4, S_FALSE, Some(3), 1),
+            ("C:", "C:", 2, STRSAFE_E_INSUFFICIENT_BUFFER, None, 0),
+            ("C:", "C:", 3, STRSAFE_E_INSUFFICIENT_BUFFER, None, 0),
+            ("C:\\", "C:\\", 2, STRSAFE_E_INSUFFICIENT_BUFFER, None, 0),
+            ("C:\\", "C:\\", 3, STRSAFE_E_INSUFFICIENT_BUFFER, None, 0),
+            ("C:\\", "C:\\", 0, STRSAFE_E_INSUFFICIENT_BUFFER, None, 0),
+            ("C:", "C:", 0, STRSAFE_E_INSUFFICIENT_BUFFER, None, 0),
+            ("", "", 0, STRSAFE_E_INSUFFICIENT_BUFFER, None, 0),
+            ("", "", 1, S_FALSE, Some(0), 1),
+            ("", "", 2, S_FALSE, Some(0), 2),
+        ] {
+            let mut path = w(input);
+            let result = path_cch_add_backslash_ex(&mut path, size);
+            assert_eq!(
+                result,
+                (expected_status, expected_end, remaining),
+                "{input} {size}"
+            );
+            assert_eq!(path, w(expected), "{input} {size}");
+            assert_eq!(path_cch_add_backslash(&mut w(input), size), expected_status);
+        }
     }
 
     #[test]
