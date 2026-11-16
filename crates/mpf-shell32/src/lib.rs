@@ -26,6 +26,22 @@ pub fn il_clone_first(pidl: &[u8]) -> Option<Vec<u8>> {
     Some(clone)
 }
 
+/// Concatenates two PIDLs, with `None` representing a null input pointer.
+pub fn il_combine(first: Option<&[u8]>, second: Option<&[u8]>) -> Option<Vec<u8>> {
+    match (first, second) {
+        (None, None) => None,
+        (Some(pidl), None) | (None, Some(pidl)) => il_clone(pidl),
+        (Some(first), Some(second)) => {
+            let first_size = il_get_size(first)?;
+            let second_size = il_get_size(second)?;
+            let mut combined = Vec::with_capacity(first_size - 2 + second_size);
+            combined.extend_from_slice(&first[..first_size - 2]);
+            combined.extend_from_slice(&second[..second_size]);
+            Some(combined)
+        }
+    }
+}
+
 /// Returns the byte size of a terminated PIDL, including its zero terminator.
 pub fn il_get_size(pidl: &[u8]) -> Option<usize> {
     let mut offset = 0usize;
@@ -113,6 +129,22 @@ mod tests {
         assert_eq!(il_clone_first(&[]), None);
         assert_eq!(il_clone_first(&[1]), None);
         assert_eq!(il_clone_first(&[1, 0, 0, 0]), None);
+    }
+
+    #[test]
+    fn combine_handles_nulls_and_concatenates_lists() {
+        let first = &[3, 0, 0xaa, 0, 0];
+        let second = &[4, 0, 0xbb, 0xcc, 0, 0];
+        assert_eq!(il_combine(None, None), None);
+        assert_eq!(il_combine(Some(first), None), Some(first.to_vec()));
+        assert_eq!(il_combine(None, Some(second)), Some(second.to_vec()));
+        assert_eq!(il_combine(Some(first), Some(second)), Some(PIDL.to_vec()));
+    }
+
+    #[test]
+    fn combine_rejects_malformed_lists() {
+        assert_eq!(il_combine(Some(&[3, 0, 0xaa]), Some(&[0, 0])), None);
+        assert_eq!(il_combine(Some(&[0, 0]), Some(&[1, 0, 0, 0])), None);
     }
 
     #[test]

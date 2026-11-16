@@ -101,6 +101,10 @@ fn shell32_pidl_layout() {
     // mirrors dlls/shell32/pidl.c ILGetSize/ILGetNext/ILFindLastID
     let pidl = [3, 0, 0xaa, 4, 0, 0xbb, 0xcc, 0, 0];
     assert_eq!(mpf_shell32::il_get_size(&pidl), Some(9));
+    assert_eq!(
+        mpf_shell32::il_combine(Some(&[3, 0, 0xaa, 0, 0]), Some(&[4, 0, 0xbb, 0xcc, 0, 0])),
+        Some(pidl.to_vec())
+    );
     assert_eq!(mpf_shell32::il_clone(&pidl), Some(pidl.to_vec()));
     assert_eq!(
         mpf_shell32::il_clone_first(&pidl),
