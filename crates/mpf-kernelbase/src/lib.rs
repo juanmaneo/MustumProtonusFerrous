@@ -369,6 +369,39 @@ pub fn path_quote_spaces(path: &mut Vec<u16>) {
     }
 }
 
+/// Reports whether a name exceeds DOS 8.3 restrictions, matching
+/// `PathIsLFNFileSpecW`. `None` represents Wine's false result for NULL.
+pub fn path_is_lfn_file_spec(path: Option<&[u16]>) -> bool {
+    let Some(path) = path else {
+        return false;
+    };
+    let len = wlen(path);
+    let mut name_len = 0;
+    let mut extension_len = 0;
+    for &unit in &path[..len] {
+        if unit == b' ' as u16 {
+            return true;
+        }
+        if unit == b'.' as u16 {
+            if extension_len != 0 {
+                return true;
+            }
+            extension_len = 1;
+        } else if extension_len != 0 {
+            extension_len += 1;
+            if extension_len > 4 {
+                return true;
+            }
+        } else {
+            name_len += 1;
+            if name_len > 8 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// Parses and removes the optional icon index, then unquotes and trims the
 /// path, matching Wine's `PathParseIconLocationW`.
 pub fn path_parse_icon_location(path: &mut Vec<u16>) -> i32 {
@@ -1639,6 +1672,24 @@ mod tests {
         let mut unterminated = "C:\\folder\\file".encode_utf16().collect::<Vec<_>>();
         path_strip_path(&mut unterminated);
         assert_eq!(unterminated, w("file"));
+    }
+
+    #[test]
+    fn is_lfn_file_spec_matches_wine_dos_name_limits() {
+        for (path, expected) in [
+            ("", false),
+            ("12345678.123", false),
+            ("no_extension", true),
+            ("123456789", true),
+            ("name.extx", true),
+            ("name.a.b", true),
+            ("name with space", true),
+            ("a.", false),
+        ] {
+            assert_eq!(path_is_lfn_file_spec(Some(&w(path))), expected, "{path:?}");
+        }
+        assert!(!path_is_lfn_file_spec(None));
+        assert!(!path_is_lfn_file_spec(Some(&[])));
     }
 
     #[test]

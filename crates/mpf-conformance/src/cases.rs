@@ -195,6 +195,10 @@ fn kernelbase_strip_prefix() {
     let mut icon_path = w("\" C:\\Program Files\\app.exe \",5");
     assert_eq!(mpf_kernelbase::path_parse_icon_location(&mut icon_path), 5);
     assert_eq!(icon_path, w("C:\\Program Files\\app.exe"));
+    assert!(mpf_kernelbase::path_is_lfn_file_spec(Some(&w(
+        "program-file.exe"
+    ))));
+    assert!(!mpf_kernelbase::path_is_lfn_file_spec(Some(&w("PROG.EXE"))));
     assert!(mpf_kernelbase::path_is_valid_char(
         b'?' as u16,
         mpf_kernelbase::PATH_CHAR_CLASS_LETTER
