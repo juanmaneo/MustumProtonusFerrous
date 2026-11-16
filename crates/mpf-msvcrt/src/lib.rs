@@ -17,6 +17,17 @@ pub fn strnlen(s: &[u8], max_len: usize) -> usize {
         .unwrap_or(s.len().min(max_len))
 }
 
+/// Length of a UTF-16 string before its first NUL, bounded by `max_len`.
+///
+/// This slice-based equivalent of Wine's `wcsnlen` cannot read beyond the
+/// supplied slice, so an unterminated slice ends at its available length.
+pub fn wcsnlen(s: &[u16], max_len: usize) -> usize {
+    s.iter()
+        .take(max_len)
+        .position(|&unit| unit == 0)
+        .unwrap_or(s.len().min(max_len))
+}
+
 /// Length of the string before its first NUL, or the slice length.
 pub fn wcslen(s: &[u16]) -> usize {
     s.iter().position(|&c| c == 0).unwrap_or(s.len())
@@ -86,6 +97,15 @@ mod tests {
         assert_eq!(strnlen(b"string", 20), 6);
         assert_eq!(strnlen(b"string\0", 0), 0);
         assert_eq!(strnlen(b"", 4), 0);
+    }
+
+    #[test]
+    fn wcsnlen_stops_at_nul_or_limit() {
+        assert_eq!(wcsnlen(&w("string"), 20), 6);
+        assert_eq!(wcsnlen(&w("string"), 3), 3);
+        assert_eq!(wcsnlen(&[b'a' as u16, b'b' as u16], 20), 2);
+        assert_eq!(wcsnlen(&w("string"), 0), 0);
+        assert_eq!(wcsnlen(&[], 4), 0);
     }
 
     #[test]

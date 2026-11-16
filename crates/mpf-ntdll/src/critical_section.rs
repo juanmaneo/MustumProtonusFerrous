@@ -2,7 +2,7 @@
 //! `TryEnter` equivalents, mirroring `dlls/ntdll/sync.c` semantics
 //! (recursive, owned by one thread).
 
-use std::sync::Mutex;
+use std::sync::{Condvar, Mutex};
 use std::thread::ThreadId;
 
 struct State {
@@ -12,6 +12,7 @@ struct State {
 
 pub struct CriticalSection {
     state: Mutex<State>,
+    available: Condvar,
 }
 
 impl CriticalSection {
@@ -21,6 +22,7 @@ impl CriticalSection {
                 recursion: 0,
                 owner: None,
             }),
+            available: Condvar::new(),
         }
     }
 
@@ -35,20 +37,20 @@ impl CriticalSection {
     pub fn enter(&self) -> CriticalSectionGuard<'_> {
         let id = std::thread::current().id();
         let mut state = self.state.lock().unwrap();
-        match state.owner {
-            Some(owner) if owner == id => {
-                state.recursion += 1;
-            }
-            None => {
-                state.owner = Some(id);
-                state.recursion = 1;
-            }
-            // Another thread owns it: block, like a real critical section.
-            Some(_) => {
-                drop(state);
-                let mut state = self.state.lock().unwrap();
-                state.owner = Some(id);
-                state.recursion = 1;
+        loop {
+            match state.owner {
+                Some(owner) if owner == id => {
+                    state.recursion += 1;
+                    break;
+                }
+                Some(_) => {
+                    state = self.available.wait(state).unwrap();
+                }
+                None => {
+                    state.owner = Some(id);
+                    state.recursion = 1;
+                    break;
+                }
             }
         }
         CriticalSectionGuard { cs: self }
@@ -78,6 +80,7 @@ impl CriticalSection {
             state.recursion -= 1;
             if state.recursion == 0 {
                 state.owner = None;
+                self.available.notify_one();
             }
             true
         } else {
@@ -128,6 +131,40 @@ mod tests {
         let other = std::thread::spawn(move || cs2.try_enter().is_none());
         assert!(other.join().unwrap());
         drop(g);
+    }
+
+    #[test]
+    fn enter_waits_until_another_thread_releases_the_section() {
+        let cs = Arc::new(CriticalSection::new());
+        let guard = cs.enter();
+        let cs2 = Arc::clone(&cs);
+        let (started_tx, started_rx) = std::sync::mpsc::channel();
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let other = std::thread::spawn(move || {
+            started_tx.send(()).unwrap();
+            let _guard = cs2.enter();
+            entered_tx.send(()).unwrap();
+        });
+
+        started_rx.recv().unwrap();
+        assert!(entered_rx
+            .recv_timeout(std::time::Duration::from_millis(20))
+            .is_err());
+        drop(guard);
+        entered_rx
+            .recv_timeout(std::time::Duration::from_secs(1))
+            .unwrap();
+        other.join().unwrap();
+    }
+
+    #[test]
+    fn leave_rejects_a_thread_that_does_not_own_the_section() {
+        let cs = CriticalSection::new();
+        let guard = cs.enter();
+        let cs_ref = &cs;
+        let result = std::thread::scope(|scope| scope.spawn(|| cs_ref.leave()).join().unwrap());
+        assert!(!result);
+        drop(guard);
     }
 
     #[test]
