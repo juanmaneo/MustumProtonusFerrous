@@ -332,6 +332,41 @@ pub fn strspn(s: &[u8], accept: &[u8]) -> usize {
         .unwrap_or(length)
 }
 
+/// Fills the first `count` destination bytes with `byte`.
+///
+/// Returns `None` without mutation if the destination is too short.
+pub fn memset(destination: &mut [u8], byte: i32, count: usize) -> Option<()> {
+    destination.get_mut(..count)?.fill(byte as u8);
+    Some(())
+}
+
+/// Copies exactly `count` bytes from `source` into `destination`.
+///
+/// Returns `None` without mutation if either slice is too short. Rust's borrow
+/// rules prevent the overlapping source/destination aliasing that Wine's
+/// `memcpy` supports through its `memmove` implementation.
+pub fn memcpy(destination: &mut [u8], source: &[u8], count: usize) -> Option<()> {
+    let source = source.get(..count)?;
+    let destination = destination.get_mut(..count)?;
+    destination.copy_from_slice(source);
+    Some(())
+}
+
+/// Copies up to `count` bytes until `byte` is copied, returning the offset just
+/// past the match. Returns `None` if no match is copied or either slice is short.
+pub fn memccpy(destination: &mut [u8], source: &[u8], byte: i32, count: usize) -> Option<usize> {
+    let source = source.get(..count)?;
+    let destination = destination.get_mut(..count)?;
+    let byte = byte as u8;
+    for (index, (&value, output)) in source.iter().zip(destination.iter_mut()).enumerate() {
+        *output = value;
+        if value == byte {
+            return Some(index + 1);
+        }
+    }
+    None
+}
+
 /// Compares exactly `count` bytes as unsigned binary data.
 ///
 /// Returns `None` if either bounded slice is shorter than `count`; like Wine's
@@ -553,6 +588,36 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn binary_memory_mutation_copies_fills_and_stops_after_match() {
+        let mut filled = [0xff; 5];
+        assert_eq!(memset(&mut filled, 0x1ff, 3), Some(()));
+        assert_eq!(filled, [0xff, 0xff, 0xff, 0xff, 0xff]);
+        assert_eq!(memset(&mut filled, 0x123, 2), Some(()));
+        assert_eq!(filled, [0x23, 0x23, 0xff, 0xff, 0xff]);
+        assert_eq!(memset(&mut filled, 0, 6), None);
+        assert_eq!(filled, [0x23, 0x23, 0xff, 0xff, 0xff]);
+        assert_eq!(memset(&mut filled, 7, 0), Some(()));
+
+        let mut copied = [0xff; 5];
+        assert_eq!(memcpy(&mut copied, b"a\0bc", 4), Some(()));
+        assert_eq!(&copied, &[b'a', 0, b'b', b'c', 0xff]);
+        assert_eq!(memcpy(&mut copied, b"x", 2), None);
+        assert_eq!(memcpy(&mut [0; 1], b"xx", 2), None);
+        assert_eq!(memcpy(&mut copied, b"", 0), Some(()));
+
+        let mut through_match = [0xff; 5];
+        assert_eq!(memccpy(&mut through_match, b"ab\0cd", 0, 5), Some(3));
+        assert_eq!(through_match, [b'a', b'b', 0, 0xff, 0xff]);
+        assert_eq!(memccpy(&mut through_match, b"abc", b'z' as i32, 3), None);
+        assert_eq!(memccpy(&mut through_match, b"abc", b'a' as i32, 4), None);
+        assert_eq!(memccpy(&mut [0; 1], b"ab", b'a' as i32, 2), None);
+        assert_eq!(memccpy(&mut [0; 1], b"a", b'a' as i32, 0), None);
+        let mut high_byte = [0; 2];
+        assert_eq!(memccpy(&mut high_byte, &[0xff, 0], 0x1ff, 2), Some(1));
+        assert_eq!(high_byte, [0xff, 0]);
     }
 
     #[test]
