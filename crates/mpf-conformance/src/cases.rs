@@ -43,6 +43,29 @@ fn msvcrt_wide_compare() {
     assert_eq!(mpf_msvcrt::wcsicmp(&w("HeLLo"), &w("hello")), 0);
 }
 
+fn oleaut32_narrowing() {
+    // mirrors dlls/oleaut32/tests/vartype.c CONVERTRANGE/OVERFLOWRANGE bounds
+    assert_eq!(mpf_oleaut32::var_i1_from_i2(-128), Ok(-128));
+    assert_eq!(
+        mpf_oleaut32::var_i1_from_i2(128),
+        Err(mpf_oleaut32::DISP_E_OVERFLOW)
+    );
+    assert_eq!(mpf_oleaut32::var_i1_from_ui1(127), Ok(127));
+    assert_eq!(
+        mpf_oleaut32::var_i1_from_ui1(128),
+        Err(mpf_oleaut32::DISP_E_OVERFLOW)
+    );
+    assert_eq!(
+        mpf_oleaut32::var_ui1_from_i1(-1),
+        Err(mpf_oleaut32::DISP_E_OVERFLOW)
+    );
+    assert_eq!(mpf_oleaut32::var_ui1_from_i2(255), Ok(255));
+    assert_eq!(
+        mpf_oleaut32::var_ui1_from_i2(256),
+        Err(mpf_oleaut32::DISP_E_OVERFLOW)
+    );
+}
+
 fn kernel32_lstrlen_semantics() {
     // mirrors dlls/kernel32/tests/string.c lstrlenW expectations
     assert_eq!(
@@ -298,6 +321,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "msvcrt!wcscmp/wcslen/_wcsicmp",
             run: msvcrt_wide_compare,
+        },
+        Case {
+            name: "oleaut32!VarI1From*/VarUI1From* range checks",
+            run: oleaut32_narrowing,
         },
         Case {
             name: "kernel32!lstrlenW semantics",
