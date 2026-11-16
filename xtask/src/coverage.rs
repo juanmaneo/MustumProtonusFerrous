@@ -1,0 +1,417 @@
+//! The coverage gate: every file must be at 100% regions, lines and functions.
+//!
+//! cargo-llvm-cov can only gate regions on the workspace total (there is no
+//! per-file regions flag) and its per-file lines flag compares with a strict
+//! `>` that rejects exactly 100%. So the gate is owned here instead: run the
+//! tests, export the per-file summary and require `covered == count` for
+//! every metric of every file.
+
+use crate::json::{self, Value};
+use std::process::{Child, Command, ExitCode, Stdio};
+
+/// Metrics that must be fully covered in every file.
+const METRICS: [&str; 3] = ["regions", "lines", "functions"];
+
+/// Runs the workspace tests under coverage and prints the usual table.
+const TEST_ARGS: [&str; 3] = ["llvm-cov", "--workspace", "--no-cfg-coverage"];
+
+/// Exports the per-file summary of the run above as JSON on stdout.
+const REPORT_ARGS: [&str; 4] = ["llvm-cov", "report", "--json", "--summary-only"];
+
+/// Runs `program`, returning its stdout when `capture` is set (otherwise the
+/// child shares ours and the result is empty). Failing to start and a
+/// non-zero exit are both errors.
+fn run(program: &str, args: &[&str], capture: bool) -> Result<String, String> {
+    let stdout = if capture {
+        Stdio::piped()
+    } else {
+        Stdio::inherit()
+    };
+    Command::new(program)
+        .args(args)
+        .stdout(stdout)
+        .spawn()
+        .and_then(Child::wait_with_output)
+        .map_err(|error| format!("failed to run `{program}`: {error}"))
+        .and_then(|output| {
+            if output.status.success() {
+                Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+            } else {
+                Err(format!(
+                    "`{program} {}` exited with {}",
+                    args.join(" "),
+                    output.status
+                ))
+            }
+        })
+}
+
+/// Runs the tests, then returns the JSON summary of that run.
+fn coverage_report(cargo: &str) -> Result<String, String> {
+    run(cargo, &TEST_ARGS, false).and_then(|_| run(cargo, &REPORT_ARGS, true))
+}
+
+/// The value reached by following `keys` from `value`.
+fn path<'a>(value: &'a Value, keys: &[&str]) -> Option<&'a Value> {
+    keys.iter().try_fold(value, |value, key| value.get(key))
+}
+
+fn count_at(file: &Value, metric: &str, field: &str) -> Option<f64> {
+    path(file, &["summary", metric, field]).and_then(Value::as_f64)
+}
+
+/// Describes how `file` falls short on `metric`, or `None` if it is fully
+/// covered. A metric the report does not state counts as a shortfall, so a
+/// change in the report format cannot make the gate pass silently.
+fn shortfall(file: &Value, metric: &str) -> Option<String> {
+    let name = file
+        .get("filename")
+        .and_then(Value::as_str)
+        .unwrap_or("<unnamed file>");
+    match (
+        count_at(file, metric, "covered"),
+        count_at(file, metric, "count"),
+    ) {
+        (Some(covered), Some(count)) if covered == count => None,
+        (Some(covered), Some(count)) => Some(format!("{name}: {metric} {covered}/{count}")),
+        _ => Some(format!("{name}: {metric} is missing from the report")),
+    }
+}
+
+/// Checks a cargo-llvm-cov JSON summary: `Ok` with a one-line summary if
+/// every file is complete, otherwise `Err` naming each file and metric that
+/// is not. A report without any file is an error, so the gate cannot pass
+/// by measuring nothing.
+pub fn verify(report: &str) -> Result<String, String> {
+    let report = json::parse(report)?;
+    let files: Vec<&Value> = report
+        .get("data")
+        .and_then(Value::as_array)
+        .unwrap_or_default()
+        .iter()
+        .flat_map(|export| {
+            export
+                .get("files")
+                .and_then(Value::as_array)
+                .unwrap_or_default()
+        })
+        .collect();
+    let problems: Vec<String> = files
+        .iter()
+        .flat_map(|file| {
+            METRICS
+                .iter()
+                .filter_map(move |metric| shortfall(file, metric))
+        })
+        .collect();
+
+    if files.is_empty() {
+        Err("the coverage report lists no files".to_string())
+    } else if problems.is_empty() {
+        Ok(format!(
+            "coverage gate passed: {} files, each at 100% of {}",
+            files.len(),
+            METRICS.join(", ")
+        ))
+    } else {
+        Err(format!(
+            "coverage is below 100% in {} place(s):\n  {}",
+            problems.len(),
+            problems.join("\n  ")
+        ))
+    }
+}
+
+fn conclude(outcome: Result<String, String>) -> ExitCode {
+    match outcome {
+        Ok(summary) => {
+            println!("{summary}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// The `coverage` command, with the cargo executable injectable for tests.
+pub fn run_coverage_with(cargo: &str) -> ExitCode {
+    conclude(coverage_report(cargo).and_then(|report| verify(&report)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `(count, covered)` of one metric, in the shape llvm-cov exports.
+    type Counts = (u32, u32);
+
+    const FULL: Counts = (10, 10);
+
+    fn metric((count, covered): Counts) -> String {
+        format!(r#"{{"count":{count},"covered":{covered},"percent":0.0}}"#)
+    }
+
+    fn file(name: &str, regions: Counts, lines: Counts, functions: Counts) -> String {
+        format!(
+            r#"{{"filename":"{name}","summary":{{"regions":{},"lines":{},"functions":{}}}}}"#,
+            metric(regions),
+            metric(lines),
+            metric(functions)
+        )
+    }
+
+    fn complete(name: &str) -> String {
+        file(name, FULL, FULL, FULL)
+    }
+
+    fn report(files: &[String]) -> String {
+        format!(r#"{{"data":[{{"files":[{}]}}]}}"#, files.join(","))
+    }
+
+    /// Two files and the trailer of a real `cargo llvm-cov report --json
+    /// --summary-only` (0.9.1, export format 3.1.0), to pin the layout the
+    /// helpers above only imitate.
+    const REAL_SAMPLE: &str = r#"{"data":[{"files":[{"filename":"/home/neo/dev/mustum/crates/mpf-cli/src/main.rs","summary":{"branches":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"mcdc":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"functions":{"count":28,"covered":28,"percent":100.0},"instantiations":{"count":34,"covered":34,"percent":100.0},"lines":{"count":342,"covered":342,"percent":100.0},"regions":{"count":477,"covered":477,"notcovered":0,"percent":100.0}}},{"filename":"/home/neo/dev/mustum/crates/mpf-kernel32/src/lib.rs","summary":{"branches":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"mcdc":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"functions":{"count":9,"covered":9,"percent":100.0},"instantiations":{"count":13,"covered":9,"percent":69.23076923076923},"lines":{"count":46,"covered":46,"percent":100.0},"regions":{"count":78,"covered":78,"notcovered":0,"percent":100.0}}}],"totals":{"branches":{"count":0,"covered":0,"notcovered":0,"percent":0},"functions":{"count":37,"covered":37,"percent":100},"instantiations":{"count":47,"covered":43,"percent":91.48936170212765},"lines":{"count":388,"covered":388,"percent":100},"mcdc":{"count":0,"covered":0,"notcovered":0,"percent":0},"regions":{"count":555,"covered":555,"notcovered":0,"percent":100}}}],"type":"llvm.coverage.json.export","version":"3.1.0","cargo_llvm_cov":{"version":"0.9.1","manifest_path":"/home/neo/dev/mustum/Cargo.toml"}}"#;
+
+    fn failure(report: &str) -> String {
+        verify(report).unwrap_err()
+    }
+
+    #[test]
+    fn accepts_a_report_where_every_file_is_complete() {
+        let summary = verify(&report(&[complete("a.rs"), complete("b.rs")])).unwrap();
+        assert_eq!(
+            summary,
+            "coverage gate passed: 2 files, each at 100% of regions, lines, functions"
+        );
+    }
+
+    #[test]
+    fn accepts_the_real_report_format() {
+        assert!(verify(REAL_SAMPLE).unwrap().contains("2 files"));
+    }
+
+    #[test]
+    fn rejects_the_real_report_format_when_a_metric_slips() {
+        for (metric, from, to) in [
+            (
+                "regions",
+                r#""count":78,"covered":78"#,
+                r#""count":78,"covered":77"#,
+            ),
+            (
+                "lines",
+                r#""count":342,"covered":342"#,
+                r#""count":342,"covered":341"#,
+            ),
+            (
+                "functions",
+                r#""count":9,"covered":9,"#,
+                r#""count":9,"covered":8,"#,
+            ),
+        ] {
+            let tampered = REAL_SAMPLE.replacen(from, to, 1);
+            assert_ne!(tampered, REAL_SAMPLE, "{metric}: sample did not change");
+            let message = failure(&tampered);
+            assert!(message.contains(metric), "{metric}: {message}");
+            assert!(message.contains("in 1 place(s)"), "{metric}: {message}");
+        }
+    }
+
+    #[test]
+    fn a_regions_shortfall_names_the_file_and_only_regions() {
+        let message = failure(&report(&[
+            complete("ok.rs"),
+            file("a.rs", (4, 3), FULL, FULL),
+        ]));
+        assert_eq!(
+            message,
+            "coverage is below 100% in 1 place(s):\n  a.rs: regions 3/4"
+        );
+    }
+
+    #[test]
+    fn a_lines_shortfall_names_the_file_and_only_lines() {
+        let message = failure(&report(&[file("a.rs", FULL, (7, 6), FULL)]));
+        assert_eq!(
+            message,
+            "coverage is below 100% in 1 place(s):\n  a.rs: lines 6/7"
+        );
+    }
+
+    #[test]
+    fn a_functions_shortfall_names_the_file_and_only_functions() {
+        let message = failure(&report(&[file("a.rs", FULL, FULL, (2, 1))]));
+        assert_eq!(
+            message,
+            "coverage is below 100% in 1 place(s):\n  a.rs: functions 1/2"
+        );
+    }
+
+    #[test]
+    fn a_file_is_judged_on_its_own_not_on_the_total() {
+        // Across the two files 19 of 20 regions are covered, yet the gate
+        // must still name the file that is short.
+        let message = failure(&report(&[
+            file("a.rs", (10, 10), FULL, FULL),
+            file("b.rs", (10, 9), FULL, FULL),
+        ]));
+        assert!(message.ends_with("b.rs: regions 9/10"), "{message}");
+        assert!(!message.contains("a.rs"), "{message}");
+    }
+
+    #[test]
+    fn every_shortfall_of_every_file_is_listed() {
+        let message = failure(&report(&[
+            file("a.rs", (4, 3), (7, 6), FULL),
+            complete("ok.rs"),
+            file("b.rs", FULL, (5, 0), (3, 2)),
+        ]));
+        assert_eq!(
+            message,
+            "coverage is below 100% in 4 place(s):\n  \
+             a.rs: regions 3/4\n  a.rs: lines 6/7\n  \
+             b.rs: lines 0/5\n  b.rs: functions 2/3"
+        );
+    }
+
+    #[test]
+    fn files_of_every_data_entry_are_checked() {
+        let report = format!(
+            r#"{{"data":[{{"files":[{}]}},{{"files":[{}]}}]}}"#,
+            complete("a.rs"),
+            file("b.rs", (2, 1), FULL, FULL)
+        );
+        assert!(failure(&report).ends_with("b.rs: regions 1/2"));
+    }
+
+    #[test]
+    fn a_file_without_a_name_is_still_reported() {
+        let report = r#"{"data":[{"files":[{"summary":{
+            "regions":{"count":2,"covered":1},
+            "lines":{"count":1,"covered":1},
+            "functions":{"count":1,"covered":1}}}]}]}"#;
+        assert!(failure(report).ends_with("<unnamed file>: regions 1/2"));
+    }
+
+    #[test]
+    fn a_metric_the_report_does_not_state_is_a_shortfall() {
+        const OK: &str = r#"{"count":1,"covered":1}"#;
+        for (name, regions) in [
+            ("absent", String::new()),
+            ("no covered", r#""regions":{"count":1},"#.to_string()),
+            ("no count", r#""regions":{"covered":1},"#.to_string()),
+            (
+                "not a number",
+                r#""regions":{"count":"1","covered":1},"#.to_string(),
+            ),
+        ] {
+            let report = format!(
+                r#"{{"data":[{{"files":[{{"filename":"a.rs","summary":{{{regions}"lines":{OK},"functions":{OK}}}}}]}}]}}"#
+            );
+            assert_eq!(
+                failure(&report),
+                "coverage is below 100% in 1 place(s):\n  \
+                 a.rs: regions is missing from the report",
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_file_without_any_summary_misses_every_metric() {
+        let message = failure(r#"{"data":[{"files":[{"filename":"a.rs"}]}]}"#);
+        assert_eq!(
+            message,
+            "coverage is below 100% in 3 place(s):\n  \
+             a.rs: regions is missing from the report\n  \
+             a.rs: lines is missing from the report\n  \
+             a.rs: functions is missing from the report"
+        );
+    }
+
+    #[test]
+    fn a_report_without_files_is_an_error_not_a_pass() {
+        for (name, report) in [
+            ("empty object", r#"{}"#),
+            ("no entries", r#"{"data":[]}"#),
+            ("data not an array", r#"{"data":{}}"#),
+            ("entry without files", r#"{"data":[{}]}"#),
+            ("files not an array", r#"{"data":[{"files":5}]}"#),
+            ("no files", r#"{"data":[{"files":[]}]}"#),
+            ("not an object", r#"[]"#),
+        ] {
+            assert_eq!(
+                failure(report),
+                "the coverage report lists no files",
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn unparsable_reports_are_errors() {
+        assert!(failure("").starts_with("invalid JSON at offset 0"));
+        assert!(failure(r#"{"data":"#).starts_with("invalid JSON"));
+    }
+
+    #[test]
+    fn conclude_maps_outcomes_to_exit_codes() {
+        assert_eq!(conclude(Ok("fine".into())), ExitCode::SUCCESS);
+        assert_eq!(conclude(Err("bad".into())), ExitCode::FAILURE);
+    }
+
+    #[test]
+    fn run_returns_stdout_only_when_capturing() {
+        assert_eq!(run("echo", &["hello"], true), Ok("hello\n".to_string()));
+        assert_eq!(run("true", &[], false), Ok(String::new()));
+    }
+
+    #[test]
+    fn run_reports_a_failing_program() {
+        for capture in [true, false] {
+            let message = run("false", &["--flag", "x"], capture).unwrap_err();
+            assert!(
+                message.starts_with("`false --flag x` exited with"),
+                "{message}"
+            );
+        }
+    }
+
+    #[test]
+    fn run_reports_a_program_that_cannot_start() {
+        let message = run("mpf-no-such-program", &[], true).unwrap_err();
+        assert!(
+            message.starts_with("failed to run `mpf-no-such-program`:"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn the_command_stops_when_the_tests_fail() {
+        assert_eq!(run_coverage_with("false"), ExitCode::FAILURE);
+        // The error is the test step's, so the report step never ran.
+        let message = coverage_report("false").unwrap_err();
+        assert!(
+            message.starts_with("`false llvm-cov --workspace --no-cfg-coverage` exited"),
+            "{message}"
+        );
+    }
+
+    #[test]
+    fn the_command_fails_when_cargo_cannot_start() {
+        assert_eq!(
+            run_coverage_with("mpf-no-such-cargo-command"),
+            ExitCode::FAILURE
+        );
+    }
+
+    #[test]
+    fn the_command_fails_on_an_empty_report() {
+        // `true` succeeds at both steps but exports nothing to verify.
+        assert_eq!(coverage_report("true"), Ok(String::new()));
+        assert_eq!(run_coverage_with("true"), ExitCode::FAILURE);
+    }
+}

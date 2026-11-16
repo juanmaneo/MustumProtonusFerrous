@@ -17,6 +17,8 @@ cargo xtask compare dlls/kernel32 mpf-kernel32
 cargo xtask coverage
 ```
 
+`cargo xtask coverage` needs [cargo-llvm-cov](https://github.com/taiki-e/cargo-llvm-cov) and fails unless **every file** is at 100% of regions, lines and functions, naming each file and metric that falls short.
+
 ## License
 
 MPF is licensed under the GNU Lesser General Public License, version 2.1 or (at your option) any later version (`LGPL-2.1-or-later`). See [LICENSE](LICENSE).

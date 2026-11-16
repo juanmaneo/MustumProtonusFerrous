@@ -4,7 +4,12 @@
 //! Commands:
 //!   compare <wine-subdir> <crate>   diff a reference Wine/Proton directory
 //!                                   against an MPF port crate's `src/`
-//!   coverage                        run cargo-llvm-cov, failing below 100%
+//!   coverage                        run the tests under cargo-llvm-cov and fail
+//!                                   unless every file is at 100% of regions,
+//!                                   lines and functions
+
+mod coverage;
+mod json;
 
 use std::env;
 use std::ffi::OsString;
@@ -14,7 +19,8 @@ use std::process::{Command, ExitCode};
 const USAGE: &str = "usage: cargo xtask <command>
   compare <wine-subdir> <crate>   diff a Wine/Proton dir against a port crate
       e.g. cargo xtask compare dlls/kernel32 mpf-kernel32
-  coverage                        cargo-llvm-cov; fails unless 100% per metric
+  coverage                        cargo-llvm-cov; fails unless every file is at
+                                  100% of regions, lines and functions
 
 env: MPF_REFS overrides the reference root (default: <project>/../repos)";
 
@@ -49,7 +55,7 @@ fn parse(args: &[String]) -> Action {
 fn execute(action: Action, cargo: &str) -> ExitCode {
     match action {
         Action::Compare { wine_dir, krate } => compare(&wine_dir, &krate),
-        Action::Coverage => run_coverage_with(cargo),
+        Action::Coverage => coverage::run_coverage_with(cargo),
         Action::Help => {
             println!("{USAGE}");
             ExitCode::SUCCESS
@@ -57,51 +63,6 @@ fn execute(action: Action, cargo: &str) -> ExitCode {
         Action::Usage => {
             eprintln!("{USAGE}");
             ExitCode::from(2)
-        }
-    }
-}
-
-/// Per-file line threshold. cargo-llvm-cov compares it with a strict `>`
-/// (`all_files_above_coverage` in its `json.rs`, still so on `main`), so
-/// `--fail-under-file-lines 100` rejects files that are at exactly 100%.
-/// This is the largest threshold below 100 that still fails a file with a
-/// single missed line: such a file scores `100 - 100/N`, so it would need
-/// more than 10^8 lines to slip through.
-const FILE_LINES_THRESHOLD: &str = "99.999999";
-
-/// Arguments of the coverage gate: every metric at 100%, plus each file's
-/// line coverage and zero uncovered lines/regions.
-fn coverage_args() -> Vec<&'static str> {
-    vec![
-        "llvm-cov",
-        "--workspace",
-        "--no-cfg-coverage",
-        "--fail-under-regions",
-        "100",
-        "--fail-under-lines",
-        "100",
-        "--fail-under-functions",
-        "100",
-        "--fail-under-file-lines",
-        FILE_LINES_THRESHOLD,
-        "--fail-uncovered-lines",
-        "0",
-        "--fail-uncovered-regions",
-        "0",
-    ]
-}
-
-fn run_coverage_with(cargo: &str) -> ExitCode {
-    let status = Command::new(cargo).args(coverage_args()).status();
-    match status {
-        Ok(status) if status.success() => ExitCode::SUCCESS,
-        Ok(status) => {
-            eprintln!("error: coverage gate failed with {status}");
-            ExitCode::FAILURE
-        }
-        Err(error) => {
-            eprintln!("error: failed to run coverage tool: {error}");
-            ExitCode::FAILURE
         }
     }
 }
@@ -204,53 +165,15 @@ mod tests {
     }
 
     #[test]
-    fn coverage_gate_reports_success_failure_and_spawn_error() {
-        assert_eq!(execute(Action::Coverage, "true"), ExitCode::SUCCESS);
+    fn executes_coverage_through_the_given_cargo() {
+        // `false` fails at the first step, so no real coverage run starts.
         assert_eq!(execute(Action::Coverage, "false"), ExitCode::FAILURE);
-        assert_eq!(
-            execute(Action::Coverage, "mpf-no-such-cargo-command"),
-            ExitCode::FAILURE
-        );
-    }
-
-    #[test]
-    fn coverage_gate_checks_every_metric_and_every_file() {
-        let args = coverage_args();
-        for flag in [
-            "--fail-under-regions",
-            "--fail-under-lines",
-            "--fail-under-functions",
-            "--fail-under-file-lines",
-            "--fail-uncovered-lines",
-            "--fail-uncovered-regions",
-        ] {
-            assert!(args.contains(&flag), "missing {flag}");
-        }
-        // Every `--fail-*` flag is followed by its value.
-        let value = |flag: &str| {
-            let at = args.iter().position(|a| *a == flag).unwrap();
-            args[at + 1]
-        };
-        assert_eq!(value("--fail-under-regions"), "100");
-        assert_eq!(value("--fail-under-lines"), "100");
-        assert_eq!(value("--fail-under-functions"), "100");
-        assert_eq!(value("--fail-uncovered-lines"), "0");
-        assert_eq!(value("--fail-uncovered-regions"), "0");
-        assert_eq!(value("--fail-under-file-lines"), FILE_LINES_THRESHOLD);
-    }
-
-    #[test]
-    fn file_threshold_is_just_below_100_to_work_around_strict_comparison() {
-        let t: f64 = FILE_LINES_THRESHOLD.parse().unwrap();
-        // Below 100, so a file at exactly 100% passes the strict `>` check...
-        assert!(t < 100.0);
-        // ...but above what a file with one missed line out of 10^6 scores.
-        assert!(t > 100.0 - 100.0 / 1_000_000.0);
     }
 
     #[test]
     fn coverage_command_is_listed_in_help() {
         assert!(USAGE.contains("coverage"));
+        assert!(USAGE.contains("every file"));
     }
 
     #[test]
