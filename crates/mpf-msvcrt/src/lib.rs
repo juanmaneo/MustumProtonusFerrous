@@ -109,6 +109,117 @@ pub fn wcsdup(source: Option<&[u16]>) -> Option<Vec<u16>> {
     })
 }
 
+/// Result of parsing a signed 64-bit integer from a bounded byte string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseI64 {
+    /// Parsed value, saturated to the signed 64-bit range on overflow.
+    pub value: i64,
+    /// Byte offset where parsing stopped; equals zero if no digits were read.
+    pub end: usize,
+    /// Whether the parsed magnitude exceeded the signed 64-bit range.
+    pub overflow: bool,
+}
+
+/// Parses a Wine-compatible signed integer from a byte string.
+///
+/// Supports bases 2 through 36, base autodetection (octal for leading zero,
+/// decimal otherwise), optional `0x` prefix for base 0 or 16, ASCII whitespace,
+/// and a sign. Invalid bases return `None`. Overflow saturates and is reported;
+/// if no digit is present, the value is zero and `end` is zero.
+pub fn strtoi64(source: &[u8], base: u32) -> Option<ParseI64> {
+    if base != 0 && !(2..=36).contains(&base) {
+        return None;
+    }
+
+    let source_end = strnlen(source, source.len());
+    let mut index = 0;
+    while index < source_end && source[index].is_ascii_whitespace() {
+        index += 1;
+    }
+    let negative = if index < source_end && matches!(source[index], b'+' | b'-') {
+        let is_negative = source[index] == b'-';
+        index += 1;
+        is_negative
+    } else {
+        false
+    };
+
+    let mut radix = base;
+    if (radix == 0 || radix == 16)
+        && index + 1 < source_end
+        && source[index] == b'0'
+        && matches!(source[index + 1], b'x' | b'X')
+    {
+        radix = 16;
+        index += 2;
+    }
+    if radix == 0 {
+        radix = if index < source_end && source[index] == b'0' {
+            8
+        } else {
+            10
+        };
+    }
+
+    let digit_start = index;
+    let limit = if negative {
+        i64::MAX as u64 + 1
+    } else {
+        i64::MAX as u64
+    };
+    let mut magnitude = 0_u64;
+    let mut overflow = false;
+    while index < source_end {
+        let Some(digit) = digit_value(source[index]) else {
+            break;
+        };
+        if digit >= radix {
+            break;
+        }
+        if magnitude > limit / u64::from(radix)
+            || (magnitude == limit / u64::from(radix)
+                && u64::from(digit) > limit % u64::from(radix))
+        {
+            overflow = true;
+            magnitude = limit;
+        } else {
+            magnitude = magnitude * u64::from(radix) + u64::from(digit);
+        }
+        index += 1;
+    }
+
+    if index == digit_start {
+        return Some(ParseI64 {
+            value: 0,
+            end: 0,
+            overflow: false,
+        });
+    }
+    let value = if negative {
+        if magnitude == i64::MAX as u64 + 1 {
+            i64::MIN
+        } else {
+            -(magnitude as i64)
+        }
+    } else {
+        magnitude as i64
+    };
+    Some(ParseI64 {
+        value,
+        end: index,
+        overflow,
+    })
+}
+
+fn digit_value(byte: u8) -> Option<u32> {
+    match byte {
+        b'0'..=b'9' => Some(u32::from(byte - b'0')),
+        b'a'..=b'z' => Some(u32::from(byte - b'a') + 10),
+        b'A'..=b'Z' => Some(u32::from(byte - b'A') + 10),
+        _ => None,
+    }
+}
+
 /// Caller-owned tokenizer state, preserving the source's original end after
 /// delimiters are replaced with NUL bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -860,6 +971,64 @@ mod tests {
         assert_eq!(wcsdup(Some(&w("wine"))), Some(w("wine")));
         assert_eq!(wcsdup(Some(&[b'a' as u16, b'b' as u16])), Some(w("ab")));
         assert_eq!(wcsdup(Some(&[])), Some(vec![0]));
+    }
+
+    #[test]
+    fn signed_integer_parser_handles_radix_sign_offsets_and_overflow() {
+        let parsed = strtoi64(b"  -42tail", 10).unwrap();
+        assert_eq!(parsed.value, -42);
+        assert_eq!(parsed.end, 5);
+        assert!(!parsed.overflow);
+        assert_eq!(strtoi64(b"123", 0).unwrap().value, 123);
+        assert_eq!(strtoi64(b"0x7f!", 0).unwrap().value, 127);
+        assert_eq!(strtoi64(b"0779", 0).unwrap().value, 63);
+        assert_eq!(strtoi64(b"0xFF", 16).unwrap().value, 255);
+        assert_eq!(strtoi64(b"12aa", 16).unwrap().value, 0x12aa);
+        assert_eq!(strtoi64(b"zZ", 36).unwrap().value, 1295);
+        assert_eq!(strtoi64(b"0x123", 10).unwrap().end, 1);
+        assert_eq!(strtoi64(b"0x", 0).unwrap().end, 0);
+        assert_eq!(strtoi64(b"abc12", 10).unwrap().end, 0);
+        assert_eq!(strtoi64(b"        12 212.31", 10).unwrap().end, 10);
+        assert_eq!(strtoi64(b"-0x8000000000000000", 0).unwrap().value, i64::MIN);
+        assert_eq!(
+            strtoi64(b"9223372036854775807", 10).unwrap(),
+            ParseI64 {
+                value: i64::MAX,
+                end: 19,
+                overflow: false
+            }
+        );
+        assert_eq!(
+            strtoi64(b"9223372036854775808!", 10).unwrap(),
+            ParseI64 {
+                value: i64::MAX,
+                end: 19,
+                overflow: true
+            }
+        );
+        assert_eq!(
+            strtoi64(b"-9223372036854775809", 10).unwrap(),
+            ParseI64 {
+                value: i64::MIN,
+                end: 20,
+                overflow: true
+            }
+        );
+        let overflow_with_more_digits = strtoi64(b"922337203685477580899", 10).unwrap();
+        assert_eq!(overflow_with_more_digits.value, i64::MAX);
+        assert_eq!(overflow_with_more_digits.end, 21);
+        assert!(overflow_with_more_digits.overflow);
+        assert_eq!(
+            strtoi64(b"  +x", 10).unwrap(),
+            ParseI64 {
+                value: 0,
+                end: 0,
+                overflow: false
+            }
+        );
+        assert_eq!(strtoi64(b"12\0not digits", 10).unwrap().end, 2);
+        assert_eq!(strtoi64(b"12", 1), None);
+        assert_eq!(strtoi64(b"12", 37), None);
     }
 
     #[test]
