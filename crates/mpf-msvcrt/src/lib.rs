@@ -1,10 +1,11 @@
-//! msvcrt wide-string subset: the comparison and length routines from
-//! Wine's `dlls/msvcrt/wcs.c`.
+//! Partial `msvcrt` UTF-16 string routines based on Wine's
+//! `dlls/msvcrt/wcs.c`.
 //!
-//! Strings are NUL-terminated UTF-16 slices. Comparison returns the first
-//! code-unit difference, as Wine's `c1 - c2` does. The case-insensitive
-//! variants lower-case with ASCII rules only; locale-aware `_towlower_l`
-//! and the `MSVCRT_CHECK_PMT` invalid-parameter path are not ported here.
+//! The subset includes comparison, length, search, copy, concatenation, and
+//! mutation routines. Slice-based APIs treat the first NUL as the string end
+//! (or the slice end if no NUL is present) and avoid pointer-style out-of-bounds
+//! reads. Case-insensitive comparison uses ASCII-only folding; locale-aware
+//! behavior and `MSVCRT_CHECK_PMT` invalid-parameter handling are not ported.
 
 /// Replaces all UTF-16 units before the first NUL and returns the count changed.
 pub fn wcsset(s: &mut [u16], replacement: u16) -> usize {
@@ -149,6 +150,30 @@ pub fn wcsstr(haystack: &[u16], needle: &[u16]) -> Option<usize> {
         start + needle_len <= haystack_len
             && haystack[start..start + needle_len] == needle[..needle_len]
     })
+}
+
+/// Counts the initial UTF-16 units that are not in `reject`.
+///
+/// Stops at the first NUL in `s`, matching Wine's `wcscspn`.
+pub fn wcscspn(s: &[u16], reject: &[u16]) -> usize {
+    let length = wcslen(s);
+    let reject_len = wcslen(reject);
+    s[..length]
+        .iter()
+        .position(|unit| reject[..reject_len].contains(unit))
+        .unwrap_or(length)
+}
+
+/// Counts the initial UTF-16 units that are in `accept`.
+///
+/// Stops at the first NUL in `s`, matching Wine's `wcsspn`.
+pub fn wcsspn(s: &[u16], accept: &[u16]) -> usize {
+    let length = wcslen(s);
+    let accept_len = wcslen(accept);
+    s[..length]
+        .iter()
+        .position(|unit| !accept[..accept_len].contains(unit))
+        .unwrap_or(length)
 }
 
 /// Last code-unit offset containing `needle`, including the terminating NUL.
@@ -407,6 +432,22 @@ mod tests {
         assert_eq!(wcsrchr(&[0], 0), Some(0));
         assert_eq!(wcschr(&[b'x' as u16], b'x' as u16), Some(0));
         assert_eq!(wcschr(&[b'x' as u16], 0), None);
+    }
+
+    #[test]
+    fn spans_count_prefixes_using_wine_string_boundaries() {
+        let text = w("abcde");
+        assert_eq!(wcscspn(&text, &w("xyz")), 5);
+        assert_eq!(wcscspn(&text, &w("xd")), 3);
+        assert_eq!(wcscspn(&text, &w("")), 5);
+        assert_eq!(wcscspn(&w(""), &w("a")), 0);
+        assert_eq!(wcscspn(&[b'a' as u16, b'b' as u16], &[b'b' as u16]), 1);
+
+        assert_eq!(wcsspn(&text, &w("abc")), 3);
+        assert_eq!(wcsspn(&text, &w("abcde")), 5);
+        assert_eq!(wcsspn(&text, &w("")), 0);
+        assert_eq!(wcsspn(&w(""), &w("abc")), 0);
+        assert_eq!(wcsspn(&[b'a' as u16, b'b' as u16], &[b'a' as u16]), 1);
     }
 
     #[test]
