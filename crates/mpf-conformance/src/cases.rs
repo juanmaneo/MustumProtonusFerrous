@@ -71,6 +71,9 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::path_is_unc_ex(&w("C:\\path")),
         (false, None)
     );
+    assert!(mpf_kernelbase::path_is_relative(&w("file.txt")));
+    assert!(!mpf_kernelbase::path_is_relative(&w("C:\\file.txt")));
+    assert!(!mpf_kernelbase::path_is_relative(&w("\\rooted")));
     let mut root = w("C:\\folder\\file");
     assert_eq!(
         mpf_kernelbase::path_cch_strip_to_root(&mut root, 64),

@@ -213,6 +213,12 @@ pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
     S_OK
 }
 
+/// Reports whether a path is relative, matching Wine's `PathIsRelativeW`.
+pub fn path_is_relative(path: &[u16]) -> bool {
+    let len = wlen(path);
+    len == 0 || (path[0] != b'\\' as u16 && char_at(path, 1) != b':' as u16)
+}
+
 /// Identifies UNC paths and returns the UTF-16 offset of the server name.
 /// The returned offset is `Some(8)` for extended UNC paths and `Some(2)` for
 /// conventional UNC paths; other paths return `None`.
@@ -601,6 +607,20 @@ mod tests {
         assert_eq!(path, w("C:\\a"));
         assert_eq!(path_cch_remove_file_spec(&mut path, 4), S_OK);
         assert_eq!(path, w("C:\\"));
+    }
+
+    #[test]
+    fn is_relative_matches_wine_vectors() {
+        for (path, expected) in [
+            ("", true),
+            ("test.txt", true),
+            ("\\\\folder\\test.txt", false),
+            ("file://folder/test.txt", true),
+            ("C:\\test.txt", false),
+            ("file:///C:/test.txt", true),
+        ] {
+            assert_eq!(path_is_relative(&w(path)), expected, "{path}");
+        }
     }
 
     #[test]
