@@ -1,0 +1,51 @@
+# MPF port mapping: reference Wine tree (repos/wine) -> port crates (crates/).
+#
+# One row per line, whitespace-separated:
+#   <wine-subdir> <mpf-crate> <status> <priority>
+#
+#   wine-subdir  path under repos/wine, e.g. dlls/kernel32
+#   mpf-crate    the port crate under crates/, or "-" when there is none yet
+#   status       ported | partial | planned | native | todo
+#                native = stays a native companion in Proton (dxvk, vkd3d-proton)
+#   priority     P1 | P2 | P3 | "-", the Proton game-compatibility order:
+#                P1 is loaded by virtually every game run under Proton
+#                (core runtime + graphics entry points), P2 common,
+#                P3 rare or specialized, "-" not yet ranked
+#
+# Blank lines and lines starting with # are ignored.
+#
+# Cross-cutting crates without a single reference directory:
+#   mpf-pe            PE/COFF parser (loader/ + dlls/ntdll/loader.c level)
+#   mpf-winnt         winnt.h ABI structs (see the `include` row below)
+#   mpf-cli           the run pipeline (loader/main.c equivalent)
+#   mpf-conformance   seeded cases from dlls/*/tests
+#   mpf-proton/mpf-umu  Proton's `proton` script / umu-launcher live in
+#                       repos/proton and repos/umu-launcher, not in the wine tree
+
+loader                mpf-loader      ported   P1
+programs/wineboot     mpf-wineboot    ported   P1
+include               mpf-winnt       partial  P1
+dlls/ntdll            mpf-ntdll       partial  P1
+dlls/kernel32         mpf-kernel32    partial  P1
+dlls/kernelbase       mpf-kernelbase  planned  P1
+dlls/advapi32         mpf-advapi32    partial  P1
+dlls/user32           mpf-user32      partial  P1
+dlls/gdi32            mpf-gdi32       partial  P1
+dlls/winex11.drv      mpf-graphics    native   P1
+
+dlls/msvcrt           -               todo     P1
+dlls/ucrtbase         -               todo     P1
+dlls/ole32            -               todo     P1
+dlls/oleaut32         -               todo     P1
+dlls/rpcrt4           -               todo     P1
+dlls/shell32          -               todo     P1
+dlls/shlwapi          -               todo     P1
+dlls/d3d9             -               todo     P1
+dlls/d3d11            -               todo     P1
+dlls/dxgi             -               todo     P1
+dlls/comctl32         -               todo     P2
+dlls/winmm            -               todo     P2
+dlls/dsound           -               todo     P2
+dlls/gdiplus          -               todo     P2
+dlls/version          -               todo     P2
+dlls/setupapi         -               todo     P2

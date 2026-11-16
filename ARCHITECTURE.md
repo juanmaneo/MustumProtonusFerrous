@@ -39,4 +39,9 @@
 
 See [COMPARE.md](COMPARE.md): the dev container mounts `../repos` next to the
 project and `cargo xtask compare` (in `xtask/`) diffs a reference directory
-against its port crate.
+against its port crate. The mapping of reference directories to port crates
+lives in `coverage/mapping.txt` (status + Proton game-compatibility
+priority per component); `cargo xtask compare-all` diffs every mapped
+component into `target/compare/report.txt` (`--watch SECONDS` re-runs it
+continuously in the container), and `cargo xtask dlls` prints the `dlls/`
+inventory classified by the mapping.

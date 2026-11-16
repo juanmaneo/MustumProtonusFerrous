@@ -4,11 +4,21 @@
 //! Commands:
 //!   compare <wine-subdir> <crate>   diff a reference Wine/Proton directory
 //!                                   against an MPF port crate's `src/`
+//!   compare-all [--watch SECONDS]   diff every mapped component (see
+//!                                   coverage/mapping.txt) into
+//!                                   target/compare/report.txt; --watch re-runs
+//!                                   every SECONDS, for the continuous
+//!                                   comparison of the dev container
+//!   dlls                            inventory of the reference `dlls/`
+//!                                   components with port status and Proton
+//!                                   game-compatibility priority
 //!   coverage                        run the tests under cargo-llvm-cov and fail
 //!                                   unless every file is at 100% of regions,
 //!                                   lines and functions
 
+mod compare_all;
 mod coverage;
+mod dlls;
 mod json;
 
 use std::env;
@@ -19,10 +29,43 @@ use std::process::{Command, ExitCode};
 const USAGE: &str = "usage: cargo xtask <command>
   compare <wine-subdir> <crate>   diff a Wine/Proton dir against a port crate
       e.g. cargo xtask compare dlls/kernel32 mpf-kernel32
+  compare-all [--watch SECONDS]   diff every mapped component into
+                                  target/compare/report.txt; --watch re-runs
+                                  every SECONDS (continuous, dev container)
+  dlls                            inventory of the reference dlls/ components
+                                  with port status and priority
   coverage                        cargo-llvm-cov; fails unless every file is at
                                   100% of regions, lines and functions
 
 env: MPF_REFS overrides the reference root (default: <project>/../repos)";
+
+/// Test helpers shared by the unit tests of every module.
+#[cfg(test)]
+pub(crate) mod testing {
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    /// A fresh temporary directory, removed on drop.
+    pub(crate) struct TempDir(pub PathBuf);
+
+    impl TempDir {
+        pub(crate) fn new() -> Self {
+            let id = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!("mpf-xtask-{id}"));
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+}
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
@@ -34,6 +77,8 @@ fn main() -> ExitCode {
 #[derive(Debug, PartialEq, Eq)]
 enum Action {
     Compare { wine_dir: String, krate: String },
+    CompareAll { watch: Option<u64> },
+    Dlls,
     Coverage,
     Help,
     Usage,
@@ -46,6 +91,12 @@ fn parse(args: &[String]) -> Action {
             wine_dir: wine_dir.to_string(),
             krate: krate.to_string(),
         },
+        ["compare-all"] => Action::CompareAll { watch: None },
+        ["compare-all", "--watch", secs] => match secs.parse::<u64>() {
+            Ok(secs) => Action::CompareAll { watch: Some(secs) },
+            Err(_) => Action::Usage,
+        },
+        ["dlls"] => Action::Dlls,
         ["coverage"] => Action::Coverage,
         ["-h" | "--help"] | [] => Action::Help,
         _ => Action::Usage,
@@ -53,8 +104,24 @@ fn parse(args: &[String]) -> Action {
 }
 
 fn execute(action: Action, cargo: &str) -> ExitCode {
+    execute_with_refs(action, cargo, env::var_os("MPF_REFS"))
+}
+
+/// `execute` with the reference root injectable, so the Phase 5 commands can
+/// be exercised in unit tests without touching the process environment.
+fn execute_with_refs(action: Action, cargo: &str, refs: Option<OsString>) -> ExitCode {
     match action {
         Action::Compare { wine_dir, krate } => compare(&wine_dir, &krate),
+        Action::CompareAll { watch } => {
+            let root = project_root();
+            let refs = refs_root(&root, refs);
+            compare_all::run(&root, &refs, watch, "diff")
+        }
+        Action::Dlls => {
+            let root = project_root();
+            let refs = refs_root(&root, refs);
+            dlls::run(&root, &refs)
+        }
         Action::Coverage => coverage::run_coverage_with(cargo),
         Action::Help => {
             println!("{USAGE}");
@@ -117,27 +184,7 @@ fn compare_at(root: &Path, refs: &Path, wine_dir: &str, krate: &str, diff: &str)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    struct TempDir(PathBuf);
-
-    impl TempDir {
-        fn new() -> Self {
-            let id = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let path = env::temp_dir().join(format!("mpf-xtask-{id}"));
-            std::fs::create_dir_all(&path).unwrap();
-            Self(path)
-        }
-    }
-
-    impl Drop for TempDir {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
+    use crate::testing::TempDir;
 
     #[test]
     fn parses_every_command_shape() {
@@ -153,9 +200,33 @@ mod tests {
                 krate: "mpf-x".into()
             }
         );
+        assert_eq!(parse(&args(&["dlls"])), Action::Dlls);
+        assert_eq!(
+            parse(&args(&["compare-all"])),
+            Action::CompareAll { watch: None }
+        );
+        assert_eq!(
+            parse(&args(&["compare-all", "--watch", "30"])),
+            Action::CompareAll { watch: Some(30) }
+        );
+        assert_eq!(
+            parse(&args(&["compare-all", "--watch", "0"])),
+            Action::CompareAll { watch: Some(0) }
+        );
         assert_eq!(parse(&args(&["unknown"])), Action::Usage);
         assert_eq!(parse(&args(&["compare"])), Action::Usage);
         assert_eq!(parse(&args(&["coverage", "extra"])), Action::Usage);
+        assert_eq!(parse(&args(&["dlls", "extra"])), Action::Usage);
+        assert_eq!(parse(&args(&["compare-all", "--watch"])), Action::Usage);
+        assert_eq!(
+            parse(&args(&["compare-all", "--watch", "soon"])),
+            Action::Usage
+        );
+        assert_eq!(
+            parse(&args(&["compare-all", "--watch", "-1"])),
+            Action::Usage
+        );
+        assert_eq!(parse(&args(&["compare-all", "--loop", "5"])), Action::Usage);
     }
 
     #[test]
@@ -171,9 +242,38 @@ mod tests {
     }
 
     #[test]
+    fn executes_the_phase5_commands_with_the_refs_override() {
+        let tmp = TempDir::new();
+        let empty = tmp.0.join("empty-refs");
+        std::fs::create_dir_all(&empty).unwrap();
+        // No reference tree under the override: both commands fail cleanly.
+        assert_eq!(
+            execute_with_refs(Action::Dlls, "cargo", Some(empty.clone().into_os_string())),
+            ExitCode::FAILURE
+        );
+        assert_eq!(
+            execute_with_refs(
+                Action::CompareAll { watch: None },
+                "cargo",
+                Some(empty.into_os_string())
+            ),
+            ExitCode::FAILURE
+        );
+    }
+
+    #[test]
     fn coverage_command_is_listed_in_help() {
         assert!(USAGE.contains("coverage"));
         assert!(USAGE.contains("every file"));
+    }
+
+    #[test]
+    fn the_phase5_commands_are_listed_in_help() {
+        assert!(USAGE.contains("compare-all"));
+        assert!(USAGE.contains("--watch"));
+        assert!(USAGE.contains("report.txt"));
+        assert!(USAGE.contains("dlls"));
+        assert!(USAGE.contains("priority"));
     }
 
     #[test]

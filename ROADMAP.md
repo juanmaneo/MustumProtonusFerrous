@@ -50,7 +50,7 @@ in the dev container for direct comparison.
       version. The D3D cores stay native companions (exactly what Proton
       ships); Rust ports come later
 
-## Phase 4 — Proton flavour & umu (current)
+## Phase 4 — Proton flavour & umu (done)
 
 - [x] `mpf-proton`: Rust equivalent of Proton's `proton` script — prefix
       setup, env vars (WINE*/PROTON_*/DXVK_*), DXVK/VKD3D companion
@@ -61,7 +61,15 @@ in the dev container for direct comparison.
       downloads), protonfixes (winetricks with WINEPREFIX/GAMEID), then
       run-in-prefix via `mpf-proton`
 
-## Phase 5 — coverage
+## Phase 5 — coverage (current)
 
-- [ ] all 744 `dlls/` components, prioritized by Proton game compatibility
-- [ ] continuous reference-vs-port comparison in the dev container
+- [x] the inventory and the priorities: `coverage/mapping.txt` maps every
+      tracked reference component to its port crate with a status and a
+      Proton game-compatibility priority (P1 first); `cargo xtask dlls`
+      prints the whole `dlls/` inventory classified by it
+- [x] continuous reference-vs-port comparison in the dev container:
+      `cargo xtask compare-all [--watch SECONDS]` diffs every mapped
+      component into `target/compare/report.txt`, re-running on a timer
+      with `--watch`
+- [ ] all 744 `dlls/` components ported, P1 first, each with conformance
+      cases seeded from its `dlls/<dll>/tests`
