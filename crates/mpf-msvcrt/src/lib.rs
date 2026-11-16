@@ -268,6 +268,32 @@ pub fn strspn(s: &[u8], accept: &[u8]) -> usize {
         .unwrap_or(length)
 }
 
+/// Compares exactly `count` bytes as unsigned binary data.
+///
+/// Returns `None` if either bounded slice is shorter than `count`; like Wine's
+/// `memcmp`, the comparison itself does not stop at NUL and returns -1, 0, or 1.
+pub fn memcmp(a: &[u8], b: &[u8], count: usize) -> Option<i32> {
+    let a = a.get(..count)?;
+    let b = b.get(..count)?;
+    Some(
+        a.iter()
+            .zip(b)
+            .find_map(|(&left, &right)| {
+                (left != right).then_some(i32::from(left > right) - i32::from(left < right))
+            })
+            .unwrap_or(0),
+    )
+}
+
+/// Finds `needle` in the first `count` bytes, including NUL as ordinary data.
+///
+/// `needle` is narrowed to one byte, matching Wine's `memchr` conversion.
+pub fn memchr(s: &[u8], needle: i32, count: usize) -> Option<usize> {
+    s.get(..count)?
+        .iter()
+        .position(|&byte| byte == needle as u8)
+}
+
 /// Finds the first occurrence of `needle`, including the NUL terminator.
 ///
 /// `needle` is narrowed to one byte, matching Wine's C `char` comparison.
@@ -463,6 +489,25 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn binary_memory_search_and_comparison_are_count_bounded() {
+        assert_eq!(memcmp(b"a\0b", b"a\0b", 3), Some(0));
+        assert_eq!(memcmp(b"a\0b", b"a\0c", 3), Some(-1));
+        assert_eq!(memcmp(b"a\0c", b"a\0b", 3), Some(1));
+        assert_eq!(memcmp(&[0x80], &[0x7f], 1), Some(1));
+        assert_eq!(memcmp(b"x", b"y", 0), Some(0));
+        assert_eq!(memcmp(b"x", b"y", 2), None);
+        assert_eq!(memcmp(b"xy", b"x", 2), None);
+        assert_eq!(memcmp(b"xy", b"xz", 2), Some(-1));
+
+        assert_eq!(memchr(b"a\0b", 0, 3), Some(1));
+        assert_eq!(memchr(&[0x80, 0xff], 0x1ff, 2), Some(1));
+        assert_eq!(memchr(b"abc", b'b' as i32, 1), None);
+        assert_eq!(memchr(b"abc", b'a' as i32, 0), None);
+        assert_eq!(memchr(b"a", b'a' as i32, 2), None);
+        assert_eq!(memchr(b"", 0, 0), None);
     }
 
     #[test]
