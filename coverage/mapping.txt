@@ -27,7 +27,7 @@ programs/wineboot     mpf-wineboot    ported   P1
 include               mpf-winnt       partial  P1
 dlls/ntdll            mpf-ntdll       partial  P1
 dlls/kernel32         mpf-kernel32    partial  P1
-dlls/kernelbase       mpf-kernelbase  planned  P1
+dlls/kernelbase          mpf-kernelbase  partial  P1
 dlls/advapi32         mpf-advapi32    partial  P1
 dlls/user32           mpf-user32      partial  P1
 dlls/gdi32            mpf-gdi32       partial  P1

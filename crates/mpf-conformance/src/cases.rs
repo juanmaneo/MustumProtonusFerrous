@@ -55,6 +55,22 @@ fn shlwapi_path_helpers() {
     assert_eq!(quoted, w("a path\\file.txt"));
 }
 
+fn kernelbase_strip_prefix() {
+    let mut drive = w("\\\\?\\C:\\folder");
+    assert_eq!(
+        mpf_kernelbase::path_cch_strip_prefix(&mut drive, 64),
+        mpf_kernelbase::S_OK
+    );
+    assert_eq!(drive, w("C:\\folder"));
+
+    let mut unc = w("\\\\?\\UNC\\server\\share");
+    assert_eq!(
+        mpf_kernelbase::path_cch_strip_prefix(&mut unc, 64),
+        mpf_kernelbase::S_OK
+    );
+    assert_eq!(unc, w("\\\\server\\share"));
+}
+
 fn msvcrt_wide_compare() {
     // mirrors dlls/msvcrt/tests/string.c test_wcscmp: sign-only expectations
     assert_eq!(mpf_msvcrt::wcscmp(&w("a"), &w("z")).signum(), -1);
@@ -403,6 +419,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "shlwapi!PathFindFileName/Extension/IsRelative/UNC/SkipRoot/RemoveFileSpecW",
             run: shlwapi_path_helpers,
+        },
+        Case {
+            name: "kernelbase!PathCchStripPrefix",
+            run: kernelbase_strip_prefix,
         },
         Case {
             name: "msvcrt!wcscmp/wcslen/_wcsicmp",

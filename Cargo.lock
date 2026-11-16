@@ -24,6 +24,7 @@ version = "0.1.0"
 dependencies = [
  "mpf-advapi32",
  "mpf-kernel32",
+ "mpf-kernelbase",
  "mpf-loader",
  "mpf-msvcrt",
  "mpf-ntdll",
@@ -57,6 +58,10 @@ dependencies = [
  "mpf-ntdll",
  "mpf-pe",
 ]
+
+[[package]]
+name = "mpf-kernelbase"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-loader"

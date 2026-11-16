@@ -1,0 +1,8 @@
+[package]
+name = "mpf-kernelbase"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "kernelbase path API subset for MPF"
+
+[dependencies]
