@@ -11,6 +11,14 @@ pub const S_FALSE: i32 = 1;
 pub const E_INVALIDARG: i32 = 0x8007_0057u32 as i32;
 /// Insufficient buffer HRESULT used by Wine's path extension helpers.
 pub const STRSAFE_E_INSUFFICIENT_BUFFER: i32 = 0x8007_007au32 as i32;
+/// `PathGetCharTypeW` flag for a character valid in long file names.
+pub const GCT_LFNCHAR: u32 = 0x1;
+/// `PathGetCharTypeW` flag for a character valid in DOS 8.3 names.
+pub const GCT_SHORTCHAR: u32 = 0x2;
+/// `PathGetCharTypeW` flag for a wildcard character.
+pub const GCT_WILD: u32 = 0x4;
+/// `PathGetCharTypeW` flag for a path separator.
+pub const GCT_SEPARATOR: u32 = 0x8;
 
 const MAX_PATH_CCH: usize = 0x8000;
 const MAX_PATH: usize = 260;
@@ -305,6 +313,34 @@ pub fn path_cch_add_backslash_ex(path: &mut Vec<u16>, size: usize) -> (i32, Opti
 /// Adds a trailing backslash when missing.
 pub fn path_cch_add_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_add_backslash_ex(path, size).0
+}
+
+/// Classifies one UTF-16 code unit using Wine's `PathGetCharTypeW` rules.
+pub fn path_get_char_type(ch: u16) -> u32 {
+    if ch == 0 || ch < b' ' as u16 || matches!(ch, 0x22 | 0x2f | 0x3c | 0x3e | 0x7c) {
+        return 0;
+    }
+    if matches!(ch, 0x2a | 0x3f) {
+        return GCT_WILD;
+    }
+    if matches!(ch, 0x3a | 0x5c) {
+        return GCT_SEPARATOR;
+    }
+
+    let mut flags = 0;
+    if ch < 126 {
+        if (ch & 1 != 0 && ch != b';' as u16)
+            || matches!(ch, 0x24 | 0x26 | 0x28 | 0x2e | 0x40 | 0x5e | 0x27 | 0x60)
+            || (b'0' as u16..=b'9' as u16).contains(&ch)
+            || (b'A' as u16..=b'Z' as u16).contains(&ch)
+            || (b'a' as u16..=b'z' as u16).contains(&ch)
+        {
+            flags |= GCT_SHORTCHAR;
+        }
+    } else {
+        flags |= GCT_SHORTCHAR;
+    }
+    flags | GCT_LFNCHAR
 }
 
 /// Finds the file-name component's UTF-16 offset, matching Wine's
@@ -1308,6 +1344,29 @@ mod tests {
         let before = too_long.clone();
         assert!(!path_rename_extension(&mut too_long, &w(".x")));
         assert_eq!(too_long, before);
+    }
+
+    #[test]
+    fn get_char_type_matches_wine_classifications() {
+        for (character, expected) in [
+            (0, 0),
+            (b'\n' as u16, 0),
+            (b'<' as u16, 0),
+            (b'/' as u16, 0),
+            (b'*' as u16, GCT_WILD),
+            (b'?' as u16, GCT_WILD),
+            (b'\\' as u16, GCT_SEPARATOR),
+            (b':' as u16, GCT_SEPARATOR),
+            (b'A' as u16, GCT_SHORTCHAR | GCT_LFNCHAR),
+            (b'1' as u16, GCT_SHORTCHAR | GCT_LFNCHAR),
+            (b'!' as u16, GCT_SHORTCHAR | GCT_LFNCHAR),
+            (b' ' as u16, GCT_LFNCHAR),
+            (b';' as u16, GCT_LFNCHAR),
+            (126, GCT_SHORTCHAR | GCT_LFNCHAR),
+            (0x0100, GCT_SHORTCHAR | GCT_LFNCHAR),
+        ] {
+            assert_eq!(path_get_char_type(character), expected, "{character:#x}");
+        }
     }
 
     #[test]

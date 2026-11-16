@@ -171,6 +171,18 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::S_OK
     );
     assert_eq!(root, w("C:\\"));
+    assert_eq!(
+        mpf_kernelbase::path_get_char_type(b'\\' as u16),
+        mpf_kernelbase::GCT_SEPARATOR
+    );
+    assert_eq!(
+        mpf_kernelbase::path_get_char_type(b'?' as u16),
+        mpf_kernelbase::GCT_WILD
+    );
+    assert_eq!(
+        mpf_kernelbase::path_get_char_type(b'A' as u16),
+        mpf_kernelbase::GCT_SHORTCHAR | mpf_kernelbase::GCT_LFNCHAR
+    );
     let mut legacy_root = w("C:\\folder\\file");
     assert!(mpf_kernelbase::path_strip_to_root(&mut legacy_root));
     assert_eq!(legacy_root, w("C:\\"));
