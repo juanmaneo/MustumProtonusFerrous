@@ -56,6 +56,9 @@ fn shlwapi_path_helpers() {
 }
 
 fn kernelbase_strip_prefix() {
+    assert!(mpf_kernelbase::path_cch_is_root(&w("C:\\")));
+    assert!(!mpf_kernelbase::path_cch_is_root(&w("C:\\folder")));
+    assert!(mpf_kernelbase::path_cch_is_root(&w("\\\\server\\share")));
     assert_eq!(
         mpf_kernelbase::path_cch_skip_root(&w("C:\\folder")),
         (mpf_kernelbase::S_OK, 3)

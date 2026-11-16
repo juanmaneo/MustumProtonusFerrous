@@ -146,6 +146,39 @@ pub fn path_cch_skip_root(path: &[u16]) -> (i32, usize) {
     (S_OK, end)
 }
 
+/// Reports whether a path consists only of a drive, volume, or UNC root.
+/// Equivalent to Wine's `PathCchIsRoot` behavior.
+pub fn path_cch_is_root(path: &[u16]) -> bool {
+    let len = wlen(path);
+    if len == 0 {
+        return false;
+    }
+    let Some(end) = root_end(path) else {
+        return false;
+    };
+    let is_unc = is_prefixed_unc(path)
+        || (path[0] == b'\\' as u16
+            && char_at(path, 1) == b'\\' as u16
+            && char_at(path, 2) != b'?' as u16);
+    if is_unc {
+        let next = end + 1;
+        if next == len {
+            return true;
+        }
+        let (first_end, first_has_separator) = next_segment(path, next);
+        if first_has_separator && first_end == len {
+            return false;
+        }
+        if !first_has_separator {
+            return true;
+        }
+        let (second_end, second_has_separator) = next_segment(path, first_end);
+        !second_has_separator && second_end == len
+    } else {
+        char_at(path, end) == b'\\' as u16 && end + 1 == len
+    }
+}
+
 /// Removes a recognized `\\?\` prefix in place, matching Wine's
 /// `PathCchStripPrefix` behavior. The size is measured in UTF-16 code units
 /// and includes space for the terminator.
@@ -265,6 +298,52 @@ mod tests {
             "C\\",
         ] {
             assert_eq!(path_cch_skip_root(&w(path)), (E_INVALIDARG, 0), "{path}");
+        }
+    }
+
+    #[test]
+    fn is_root_matches_wine_vectors() {
+        for (path, expected) in [
+            ("", false),
+            ("a", false),
+            ("C:", false),
+            ("C:\\", true),
+            ("C:\\a", false),
+            ("\\\\?\\C:\\", true),
+            ("\\\\?\\C:", false),
+            ("\\\\?\\C:\\a", false),
+            ("\\", true),
+            ("\\a\\", false),
+            ("\\a\\b", false),
+            ("\\\\", true),
+            ("\\\\a", true),
+            ("\\\\a\\", false),
+            ("\\\\a\\b", true),
+            ("\\\\a\\b\\", false),
+            ("\\\\a\\b\\c", false),
+            ("\\\\?\\UNC\\", true),
+            ("\\\\?\\UNC\\a", true),
+            ("\\\\?\\UNC\\a\\", false),
+            ("\\\\?\\UNC\\a\\b", true),
+            ("\\\\?\\UNC\\a\\b\\", false),
+            ("\\\\?\\UNC\\a\\b\\c", false),
+            ("\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}", false),
+            (
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\",
+                true,
+            ),
+            (
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\a",
+                false,
+            ),
+            ("..\\a", false),
+            ("\\\\\\\\", false),
+            ("\\\\a\\\\b", false),
+            ("\\a", false),
+            ("X:", false),
+            ("\\server", false),
+        ] {
+            assert_eq!(path_cch_is_root(&w(path)), expected, "{path}");
         }
     }
 
