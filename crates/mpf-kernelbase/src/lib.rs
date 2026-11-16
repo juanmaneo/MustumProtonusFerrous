@@ -19,6 +19,28 @@ pub const GCT_SHORTCHAR: u32 = 0x2;
 pub const GCT_WILD: u32 = 0x4;
 /// `PathGetCharTypeW` flag for a path separator.
 pub const GCT_SEPARATOR: u32 = 0x8;
+/// `PathIsValidCharW` class for wildcard letters.
+pub const PATH_CHAR_CLASS_LETTER: u32 = 0x0000_0001;
+/// `PathIsValidCharW` class for the asterisk.
+pub const PATH_CHAR_CLASS_ASTERISK: u32 = 0x0000_0002;
+/// `PathIsValidCharW` class for a dot.
+pub const PATH_CHAR_CLASS_DOT: u32 = 0x0000_0004;
+/// `PathIsValidCharW` class for a backslash.
+pub const PATH_CHAR_CLASS_BACKSLASH: u32 = 0x0000_0008;
+/// `PathIsValidCharW` class for a colon.
+pub const PATH_CHAR_CLASS_COLON: u32 = 0x0000_0010;
+/// `PathIsValidCharW` class for a semicolon.
+pub const PATH_CHAR_CLASS_SEMICOLON: u32 = 0x0000_0020;
+/// `PathIsValidCharW` class for a comma.
+pub const PATH_CHAR_CLASS_COMMA: u32 = 0x0000_0040;
+/// `PathIsValidCharW` class for a space.
+pub const PATH_CHAR_CLASS_SPACE: u32 = 0x0000_0080;
+/// `PathIsValidCharW` class for other valid characters.
+pub const PATH_CHAR_CLASS_OTHER_VALID: u32 = 0x0000_0100;
+/// `PathIsValidCharW` class for a double quote.
+pub const PATH_CHAR_CLASS_DOUBLEQUOTE: u32 = 0x0000_0200;
+/// `PathIsValidCharW` mask accepting any ASCII character class.
+pub const PATH_CHAR_CLASS_ANY: u32 = u32::MAX;
 
 const MAX_PATH_CCH: usize = 0x8000;
 const MAX_PATH: usize = 260;
@@ -353,6 +375,29 @@ pub fn path_get_args(path: &[u16]) -> usize {
         }
     }
     len
+}
+
+/// Tests one UTF-16 code unit against Wine's `PathIsValidCharW` class mask.
+pub fn path_is_valid_char(ch: u16, class: u32) -> bool {
+    let character_class = if ch > 0x7e {
+        PATH_CHAR_CLASS_OTHER_VALID
+    } else {
+        match ch {
+            0x00..=0x1f | 0x2f | 0x3c | 0x3e | 0x7c => 0,
+            0x20 => PATH_CHAR_CLASS_SPACE,
+            0x22 => PATH_CHAR_CLASS_DOUBLEQUOTE,
+            0x2a => PATH_CHAR_CLASS_ASTERISK,
+            0x2c => PATH_CHAR_CLASS_COMMA,
+            0x2e => PATH_CHAR_CLASS_DOT,
+            0x3a => PATH_CHAR_CLASS_COLON,
+            0x3b => PATH_CHAR_CLASS_SEMICOLON,
+            0x3f => PATH_CHAR_CLASS_LETTER,
+            0x5c => PATH_CHAR_CLASS_BACKSLASH,
+            0x41..=0x5a | 0x61..=0x7a => PATH_CHAR_CLASS_ANY,
+            _ => PATH_CHAR_CLASS_OTHER_VALID,
+        }
+    };
+    class & character_class != 0
 }
 
 /// Classifies one UTF-16 code unit using Wine's `PathGetCharTypeW` rules.
@@ -1445,6 +1490,35 @@ mod tests {
             assert_eq!(path_get_args(&w(input)), expected, "{input:?}");
         }
         assert_eq!(path_get_args(&[]), 0);
+    }
+
+    #[test]
+    fn is_valid_char_matches_wine_class_masks() {
+        for (character, class, expected) in [
+            (b'A' as u16, PATH_CHAR_CLASS_LETTER, true),
+            (b'a' as u16, PATH_CHAR_CLASS_ANY, true),
+            (b'?' as u16, PATH_CHAR_CLASS_LETTER, true),
+            (b'?' as u16, PATH_CHAR_CLASS_OTHER_VALID, false),
+            (b'*' as u16, PATH_CHAR_CLASS_ASTERISK, true),
+            (b'.' as u16, PATH_CHAR_CLASS_DOT, true),
+            (b'\\' as u16, PATH_CHAR_CLASS_BACKSLASH, true),
+            (b':' as u16, PATH_CHAR_CLASS_COLON, true),
+            (b';' as u16, PATH_CHAR_CLASS_SEMICOLON, true),
+            (b',' as u16, PATH_CHAR_CLASS_COMMA, true),
+            (b' ' as u16, PATH_CHAR_CLASS_SPACE, true),
+            (b'"' as u16, PATH_CHAR_CLASS_DOUBLEQUOTE, true),
+            (b'/' as u16, PATH_CHAR_CLASS_ANY, false),
+            (0x7f, PATH_CHAR_CLASS_ANY, true),
+            (0xffff, PATH_CHAR_CLASS_OTHER_VALID, true),
+            (b'A' as u16, PATH_CHAR_CLASS_DOT, true),
+            (b'!' as u16, PATH_CHAR_CLASS_OTHER_VALID, true),
+        ] {
+            assert_eq!(
+                path_is_valid_char(character, class),
+                expected,
+                "{character:#x} / {class:#x}"
+            );
+        }
     }
 
     #[test]

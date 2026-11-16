@@ -183,6 +183,14 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::path_get_char_type(b'A' as u16),
         mpf_kernelbase::GCT_SHORTCHAR | mpf_kernelbase::GCT_LFNCHAR
     );
+    assert!(mpf_kernelbase::path_is_valid_char(
+        b'?' as u16,
+        mpf_kernelbase::PATH_CHAR_CLASS_LETTER
+    ));
+    assert!(!mpf_kernelbase::path_is_valid_char(
+        b'?' as u16,
+        mpf_kernelbase::PATH_CHAR_CLASS_OTHER_VALID
+    ));
     assert_eq!(
         mpf_kernelbase::path_find_next_component(&w("C:\\folder\\file.txt")),
         Some(3)
