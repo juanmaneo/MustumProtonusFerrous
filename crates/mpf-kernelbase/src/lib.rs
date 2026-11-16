@@ -126,6 +126,30 @@ fn root_end(path: &[u16]) -> Option<usize> {
     }
 }
 
+/// Returns the offset from Wine's legacy `PathSkipRootW`, or `None` when the
+/// path is empty or has no recognized drive/UNC root.
+pub fn path_skip_root(path: &[u16]) -> Option<usize> {
+    let len = wlen(path);
+    if len == 0 {
+        return None;
+    }
+    if char_at(path, 0) == b'\\' as u16 && char_at(path, 1) == b'\\' as u16 {
+        let server_separator = path[2..len]
+            .iter()
+            .position(|&unit| unit == b'\\' as u16)
+            .map(|index| index + 2)?;
+        let share_separator = path[server_separator + 1..len]
+            .iter()
+            .position(|&unit| unit == b'\\' as u16)
+            .map(|index| index + server_separator + 1)?;
+        return Some(share_separator + 1);
+    }
+    if char_at(path, 1) == b':' as u16 && char_at(path, 2) == b'\\' as u16 {
+        return Some(3);
+    }
+    None
+}
+
 /// Returns the UTF-16 offset just past the drive or UNC share root,
 /// equivalent to Wine's `PathCchSkipRoot`. Root-only paths can return an offset
 /// equal to the string length; non-roots return `E_INVALIDARG` and offset zero.
@@ -791,6 +815,27 @@ mod tests {
 
     fn w(text: &str) -> Vec<u16> {
         text.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn legacy_skip_root_matches_wine_drive_and_unc_rules() {
+        for (path, expected) in [
+            ("", None),
+            ("relative", None),
+            ("C:", None),
+            ("C:\\", Some(3)),
+            ("C:\\folder", Some(3)),
+            ("\\\\server", None),
+            ("\\\\server\\share", None),
+            ("\\\\server\\share\\file", Some(15)),
+            ("\\\\server\\", None),
+            ("\\\\server\\share\\", Some(15)),
+            ("/server/share/file", None),
+            ("\\\\server/share/file", None),
+        ] {
+            assert_eq!(path_skip_root(&w(path)), expected, "{path:?}");
+        }
+        assert_eq!(path_skip_root(&[]), None);
     }
 
     #[test]

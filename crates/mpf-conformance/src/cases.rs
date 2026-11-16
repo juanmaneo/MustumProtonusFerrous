@@ -187,6 +187,11 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::path_find_next_component(&w("C:\\folder\\file.txt")),
         Some(3)
     );
+    assert_eq!(mpf_kernelbase::path_skip_root(&w("C:\\folder")), Some(3));
+    assert_eq!(
+        mpf_kernelbase::path_skip_root(&w("\\\\server\\share\\file")),
+        Some(15)
+    );
     let mut stripped_path = w("C:\\folder\\file.txt");
     mpf_kernelbase::path_strip_path(&mut stripped_path);
     assert_eq!(stripped_path, w("file.txt"));
