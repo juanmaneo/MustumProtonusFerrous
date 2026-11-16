@@ -362,6 +362,19 @@ pub fn path_find_file_name(path: &[u16]) -> usize {
     last
 }
 
+/// Finds the next path component after the first backslash, matching
+/// `PathFindNextComponentW`. Empty strings return `None` like Wine's null result.
+pub fn path_find_next_component(path: &[u16]) -> Option<usize> {
+    let len = wlen(path);
+    if len == 0 {
+        return None;
+    }
+    match path[..len].iter().position(|&unit| unit == b'\\' as u16) {
+        Some(index) => Some(index + 1 + usize::from(char_at(path, index + 1) == b'\\' as u16)),
+        None => Some(len),
+    }
+}
+
 /// Replaces a path with its file-name component, matching `PathStripPathW`.
 pub fn path_strip_path(path: &mut Vec<u16>) {
     let filename = path_find_file_name(path);
@@ -1378,6 +1391,23 @@ mod tests {
         ] {
             assert_eq!(path_get_char_type(character), expected, "{character:#x}");
         }
+    }
+
+    #[test]
+    fn find_next_component_matches_wine_backslash_rules() {
+        for (input, expected) in [
+            ("", None),
+            ("plain", Some(5)),
+            ("\\component", Some(1)),
+            ("first\\second", Some(6)),
+            ("first\\\\second", Some(7)),
+            ("first/second", Some(12)),
+            ("first\\", Some(6)),
+            ("first\\\\", Some(7)),
+        ] {
+            assert_eq!(path_find_next_component(&w(input)), expected, "{input:?}");
+        }
+        assert_eq!(path_find_next_component(&[]), None);
     }
 
     #[test]
