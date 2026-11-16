@@ -80,6 +80,12 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::path_cch_find_extension(&w("C:\\folder\\file.txt"), 64),
         (mpf_kernelbase::S_OK, Some(14))
     );
+    let mut legacy_extension = w("C:\\folder\\file");
+    assert!(mpf_kernelbase::path_add_extension(
+        &mut legacy_extension,
+        &w(".txt")
+    ));
+    assert_eq!(legacy_extension, w("C:\\folder\\file.txt"));
     let mut extension = w("C:\\folder\\file.txt");
     assert_eq!(
         mpf_kernelbase::path_cch_remove_extension(&mut extension, 64),

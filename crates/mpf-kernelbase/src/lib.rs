@@ -341,6 +341,23 @@ pub fn path_find_extension(path: &[u16]) -> usize {
     last_dot.unwrap_or(len)
 }
 
+/// Appends an extension when the legacy extension search finds none and the
+/// result fits within MAX_PATH UTF-16 code units including the terminator.
+pub fn path_add_extension(path: &mut Vec<u16>, extension: &[u16]) -> bool {
+    let path_len = wlen(path);
+    let extension_len = wlen(extension);
+    if path_len >= MAX_PATH || extension_len == extension.len() {
+        return false;
+    }
+    if path_find_extension(path) < path_len || path_len + extension_len >= MAX_PATH {
+        return false;
+    }
+    path.truncate(path_len);
+    path.extend_from_slice(&extension[..extension_len]);
+    path.push(0);
+    true
+}
+
 /// Finds the extension's UTF-16 offset using Wine's `PathCchFindExtension`
 /// rules. An absent extension points to the terminating NUL.
 pub fn path_cch_find_extension(path: &[u16], size: usize) -> (i32, Option<usize>) {
@@ -1198,6 +1215,37 @@ mod tests {
             path_cch_find_extension(&vec![b'a' as u16; MAX_PATH_CCH], MAX_PATH_CCH),
             (E_INVALIDARG, None)
         );
+    }
+
+    #[test]
+    fn legacy_add_extension_matches_wine_rules() {
+        for (input, extension, expected, result) in [
+            ("file", ".txt", "file.txt", true),
+            ("file", "txt", "filetxt", true),
+            ("file.txt", ".new", "file.txt", false),
+            (".hidden", ".txt", ".hidden", false),
+            ("file.", ".txt", "file.", false),
+            ("file name", ".txt", "file name.txt", true),
+            ("", ".txt", ".txt", true),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_add_extension(&mut path, &w(extension)),
+                result,
+                "{input}"
+            );
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut empty_extension = w("file");
+        assert!(path_add_extension(&mut empty_extension, &w("")));
+        assert_eq!(empty_extension, w("file"));
+        assert!(!path_add_extension(&mut empty_extension, &[]));
+
+        let mut at_limit = vec![b'a' as u16; MAX_PATH - 1];
+        at_limit.push(0);
+        let before = at_limit.clone();
+        assert!(!path_add_extension(&mut at_limit, &w("x")));
+        assert_eq!(at_limit, before);
     }
 
     #[test]
