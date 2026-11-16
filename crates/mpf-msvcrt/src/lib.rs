@@ -41,6 +41,19 @@ pub fn wcschr(s: &[u16], needle: u16) -> Option<usize> {
         .position(|&unit| unit == needle)
 }
 
+/// Finds a UTF-16 substring and returns its first code-unit offset.
+///
+/// Matches Wine's `wcsstr`: an empty needle matches any non-empty haystack,
+/// while an empty haystack returns `None`.
+pub fn wcsstr(haystack: &[u16], needle: &[u16]) -> Option<usize> {
+    let haystack_len = wcslen(haystack);
+    let needle_len = wcslen(needle);
+    (0..haystack_len).find(|&start| {
+        start + needle_len <= haystack_len
+            && haystack[start..start + needle_len] == needle[..needle_len]
+    })
+}
+
 /// Last code-unit offset containing `needle`, including the terminating NUL.
 ///
 /// Returns `None` when the character is absent from the NUL-terminated string.
@@ -132,6 +145,18 @@ mod tests {
         assert_eq!(wcsnlen(&[b'a' as u16, b'b' as u16], 20), 2);
         assert_eq!(wcsnlen(&w("string"), 0), 0);
         assert_eq!(wcsnlen(&[], 4), 0);
+    }
+
+    #[test]
+    fn substring_search_matches_wine_edges_and_offsets() {
+        let text = w("the quick brown fox");
+        assert_eq!(wcsstr(&text, &w("quick")), Some(4));
+        assert_eq!(wcsstr(&text, &w("fox")), Some(16));
+        assert_eq!(wcsstr(&text, &w("missing")), None);
+        assert_eq!(wcsstr(&text, &w("")), Some(0));
+        assert_eq!(wcsstr(&w(""), &w("")), None);
+        assert_eq!(wcsstr(&w(""), &w("x")), None);
+        assert_eq!(wcsstr(&[b'a' as u16, b'b' as u16], &[b'b' as u16]), Some(1));
     }
 
     #[test]
