@@ -14,6 +14,7 @@ const SLASH: u16 = b'/' as u16;
 const COLON: u16 = b':' as u16;
 const DOT: u16 = b'.' as u16;
 const SPACE: u16 = b' ' as u16;
+const QUOTE: u16 = b'"' as u16;
 
 /// Length of the UTF-16 string before its first NUL, or the slice length.
 fn wlen(s: &[u16]) -> usize {
@@ -98,12 +99,103 @@ pub fn path_strip_path(path: &mut Vec<u16>) {
     }
 }
 
+/// `PathBuildRootW`: writes the root `X:\` for drive index `0..=25` (A-Z).
+///
+/// Writes nothing for an out-of-range drive, and requires at least 4 units.
+pub fn path_build_root(path: &mut [u16], drive: i32) {
+    if !(0..26).contains(&drive) || path.len() < 4 {
+        return;
+    }
+    path[0] = u16::from(b'A') + drive as u16;
+    path[1] = COLON;
+    path[2] = BACKSLASH;
+    path[3] = 0;
+}
+
+/// `PathGetArgsW`: index just past the first space outside double quotes, or
+/// the string length if there is none.
+pub fn path_get_args(path: &[u16]) -> usize {
+    let len = wlen(path);
+    let mut seen_quote = false;
+    for (i, &c) in path[..len].iter().enumerate() {
+        if c == SPACE && !seen_quote {
+            return i + 1;
+        }
+        if c == QUOTE {
+            seen_quote = !seen_quote;
+        }
+    }
+    len
+}
+
+/// `PathRemoveArgsW`: cuts the arguments off `path`, along with the separating
+/// space, mirroring Wine's handling of a trailing space.
+pub fn path_remove_args(path: &mut Vec<u16>) {
+    let args = path_get_args(path);
+    let has_args = path.get(args).is_some_and(|&c| c != 0);
+    if has_args || (args > 0 && path[args - 1] == SPACE) {
+        path.truncate(args - 1);
+        path.push(0);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn build_root_writes_drive_letter_root() {
+        let mut p = w("aaaaaaaaa");
+        path_build_root(&mut p, 0);
+        assert_eq!(&p[..4], &w("A:\\")[..]);
+        path_build_root(&mut p, 25);
+        assert_eq!(&p[..4], &w("Z:\\")[..]);
+    }
+
+    #[test]
+    fn build_root_ignores_invalid_drive_or_short_buffer() {
+        let mut p = w("aaaaaaaaa");
+        path_build_root(&mut p, -1);
+        path_build_root(&mut p, 26);
+        assert_eq!(p, w("aaaaaaaaa"));
+        let mut short = [b'x' as u16; 3];
+        path_build_root(&mut short, 0);
+        assert_eq!(short, [b'x' as u16; 3]);
+    }
+
+    #[test]
+    fn get_args_skips_unquoted_space_only() {
+        assert_eq!(path_get_args(&w("prog arg")), 5);
+        assert_eq!(path_get_args(&w("\"a b\" c")), 6);
+        assert_eq!(path_get_args(&w("prog")), 4);
+        assert_eq!(path_get_args(&[0]), 0);
+    }
+
+    #[test]
+    fn remove_args_truncates_at_first_unquoted_space() {
+        let mut p = w("prog arg1 arg2");
+        path_remove_args(&mut p);
+        assert_eq!(p, w("prog"));
+
+        let mut quoted = w("\"C:\\a b.exe\" x");
+        path_remove_args(&mut quoted);
+        assert_eq!(quoted, w("\"C:\\a b.exe\""));
+
+        let mut trailing = w("prog ");
+        path_remove_args(&mut trailing);
+        assert_eq!(trailing, w("prog"));
+
+        let mut plain = w("prog");
+        path_remove_args(&mut plain);
+        assert_eq!(plain, w("prog"));
+
+        let mut empty = vec![0u16];
+        path_remove_args(&mut empty);
+        assert_eq!(empty, vec![0u16]);
     }
 
     #[test]
