@@ -350,6 +350,24 @@ pub fn path_remove_extension(path: &mut Vec<u16>) {
     }
 }
 
+/// Replaces the legacy extension-search result verbatim when the result fits
+/// within MAX_PATH UTF-16 code units including the terminator.
+pub fn path_rename_extension(path: &mut Vec<u16>, extension: &[u16]) -> bool {
+    let path_len = wlen(path);
+    let extension_len = wlen(extension);
+    if path_len >= MAX_PATH || extension_len == extension.len() {
+        return false;
+    }
+    let start = path_find_extension(path);
+    if start + extension_len >= MAX_PATH {
+        return false;
+    }
+    path.truncate(start);
+    path.extend_from_slice(&extension[..extension_len]);
+    path.push(0);
+    true
+}
+
 /// Appends an extension when the legacy extension search finds none and the
 /// result fits within MAX_PATH UTF-16 code units including the terminator.
 pub fn path_add_extension(path: &mut Vec<u16>, extension: &[u16]) -> bool {
@@ -1224,6 +1242,35 @@ mod tests {
             path_cch_find_extension(&vec![b'a' as u16; MAX_PATH_CCH], MAX_PATH_CCH),
             (E_INVALIDARG, None)
         );
+    }
+
+    #[test]
+    fn legacy_rename_extension_matches_wine_rules() {
+        for (input, extension, expected, result) in [
+            ("file.old", ".new", "file.new", true),
+            ("file", ".new", "file.new", true),
+            ("dir.with.dot\\file", ".new", "dir.with.dot\\file.new", true),
+            ("file.old", "", "file", true),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_rename_extension(&mut path, &w(extension)),
+                result,
+                "{input}"
+            );
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut invalid_extension = w("file.old");
+        let before = invalid_extension.clone();
+        assert!(!path_rename_extension(&mut invalid_extension, &[]));
+        assert_eq!(invalid_extension, before);
+
+        let mut too_long = vec![b'a' as u16; MAX_PATH - 2];
+        too_long.push(b'.' as u16);
+        too_long.push(0);
+        let before = too_long.clone();
+        assert!(!path_rename_extension(&mut too_long, &w(".x")));
+        assert_eq!(too_long, before);
     }
 
     #[test]
