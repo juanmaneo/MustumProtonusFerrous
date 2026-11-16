@@ -5,6 +5,27 @@
 //! memory; these slice-based equivalents return `None` for truncated or
 //! malformed input rather than reading outside the supplied slice.
 
+/// Clones a complete terminated PIDL; malformed or truncated input returns `None`.
+pub fn il_clone(pidl: &[u8]) -> Option<Vec<u8>> {
+    let size = il_get_size(pidl)?;
+    Some(pidl[..size].to_vec())
+}
+
+/// Clones the first item and replaces its successor with a terminator.
+pub fn il_clone_first(pidl: &[u8]) -> Option<Vec<u8>> {
+    let item_size = read_item_size(pidl, 0)?;
+    if item_size == 0 {
+        return pidl.get(..2).map(<[u8]>::to_vec);
+    }
+    if item_size < 2 {
+        return None;
+    }
+    let end = item_size + 2;
+    let mut clone = pidl.get(..end)?.to_vec();
+    clone[item_size..end].fill(0);
+    Some(clone)
+}
+
 /// Returns the byte size of a terminated PIDL, including its zero terminator.
 pub fn il_get_size(pidl: &[u8]) -> Option<usize> {
     let mut offset = 0usize;
@@ -74,6 +95,25 @@ mod tests {
     use super::*;
 
     const PIDL: &[u8] = &[3, 0, 0xaa, 4, 0, 0xbb, 0xcc, 0, 0];
+
+    #[test]
+    fn clone_copies_entire_list_and_first_item() {
+        assert_eq!(il_clone(PIDL), Some(PIDL.to_vec()));
+        assert_eq!(il_clone_first(PIDL), Some(vec![3, 0, 0xaa, 0, 0]));
+        assert_eq!(il_clone_first(&[0, 0]), Some(vec![0, 0]));
+        assert_eq!(il_clone_first(&[0]), None);
+        assert_eq!(il_clone(&[0, 0]), Some(vec![0, 0]));
+    }
+
+    #[test]
+    fn clone_rejects_truncated_and_malformed_lists() {
+        assert_eq!(il_clone(&[3, 0, 0xaa]), None);
+        assert_eq!(il_clone_first(&[3, 0, 0xaa]), None);
+        assert_eq!(il_clone_first(&[4, 0, 0xaa]), None);
+        assert_eq!(il_clone_first(&[]), None);
+        assert_eq!(il_clone_first(&[1]), None);
+        assert_eq!(il_clone_first(&[1, 0, 0, 0]), None);
+    }
 
     #[test]
     fn size_includes_terminator() {
