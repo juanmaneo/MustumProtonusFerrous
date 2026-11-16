@@ -28,6 +28,32 @@ pub fn wcsnlen(s: &[u16], max_len: usize) -> usize {
         .unwrap_or(s.len().min(max_len))
 }
 
+/// First code-unit offset containing `needle`, including the terminating NUL.
+///
+/// Returns `None` when the character is absent from the NUL-terminated string.
+pub fn wcschr(s: &[u16], needle: u16) -> Option<usize> {
+    if s.is_empty() {
+        return None;
+    }
+    let end = wcslen(s);
+    s[..=end.min(s.len().saturating_sub(1))]
+        .iter()
+        .position(|&unit| unit == needle)
+}
+
+/// Last code-unit offset containing `needle`, including the terminating NUL.
+///
+/// Returns `None` when the character is absent from the NUL-terminated string.
+pub fn wcsrchr(s: &[u16], needle: u16) -> Option<usize> {
+    if s.is_empty() {
+        return None;
+    }
+    let end = wcslen(s);
+    s[..=end.min(s.len().saturating_sub(1))]
+        .iter()
+        .rposition(|&unit| unit == needle)
+}
+
 /// Length of the string before its first NUL, or the slice length.
 pub fn wcslen(s: &[u16]) -> usize {
     s.iter().position(|&c| c == 0).unwrap_or(s.len())
@@ -106,6 +132,23 @@ mod tests {
         assert_eq!(wcsnlen(&[b'a' as u16, b'b' as u16], 20), 2);
         assert_eq!(wcsnlen(&w("string"), 0), 0);
         assert_eq!(wcsnlen(&[], 4), 0);
+    }
+
+    #[test]
+    fn character_searches_find_first_last_and_terminator() {
+        let text = w("banana");
+        assert_eq!(wcschr(&text, b'a' as u16), Some(1));
+        assert_eq!(wcsrchr(&text, b'a' as u16), Some(5));
+        assert_eq!(wcschr(&text, b'z' as u16), None);
+        assert_eq!(wcsrchr(&text, b'z' as u16), None);
+        assert_eq!(wcschr(&text, 0), Some(6));
+        assert_eq!(wcsrchr(&text, 0), Some(6));
+        assert_eq!(wcschr(&[], 0), None);
+        assert_eq!(wcsrchr(&[], 0), None);
+        assert_eq!(wcschr(&[0], 0), Some(0));
+        assert_eq!(wcsrchr(&[0], 0), Some(0));
+        assert_eq!(wcschr(&[b'x' as u16], b'x' as u16), Some(0));
+        assert_eq!(wcschr(&[b'x' as u16], 0), None);
     }
 
     #[test]
