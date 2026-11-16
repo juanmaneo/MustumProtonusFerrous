@@ -181,6 +181,11 @@ pub fn path_cch_is_root(path: &[u16]) -> bool {
     }
 }
 
+/// Reports whether a path is a root, matching Wine's `PathIsRootW` wrapper.
+pub fn path_is_root(path: &[u16]) -> bool {
+    path_cch_is_root(path)
+}
+
 /// Truncates a path to its root, matching Wine's `PathCchStripToRoot`.
 /// The size is measured in UTF-16 code units and includes the terminator.
 pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
@@ -683,6 +688,22 @@ mod tests {
             ("\\server", false),
         ] {
             assert_eq!(path_cch_is_root(&w(path)), expected, "{path}");
+        }
+    }
+
+    #[test]
+    fn is_root_matches_wine_pathisrootw_wrapper() {
+        for (path, expected) in [
+            ("C:\\", true),
+            ("C:", false),
+            ("\\\\server\\share", true),
+            ("\\\\server\\share\\file", false),
+            ("\\\\?\\C:\\", true),
+            ("\\\\?\\UNC\\server\\share", true),
+            ("relative\\path", false),
+            ("", false),
+        ] {
+            assert_eq!(path_is_root(&w(path)), expected, "{path}");
         }
     }
 

@@ -85,6 +85,7 @@ fn kernelbase_strip_prefix() {
     );
     assert_eq!(with_extension, w("C:\\folder\\file.old"));
     assert!(mpf_kernelbase::path_cch_is_root(&w("C:\\")));
+    assert!(mpf_kernelbase::path_is_root(&w("C:\\")));
     assert!(!mpf_kernelbase::path_cch_is_root(&w("C:\\folder")));
     assert!(mpf_kernelbase::path_cch_is_root(&w("\\\\server\\share")));
     assert_eq!(
