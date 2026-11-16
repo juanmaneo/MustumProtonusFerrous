@@ -247,7 +247,35 @@ fn u32_at_pub(d: &[u8], o: usize) -> Result<u32, PeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mpf_pe::testing::build_test_pe64;
+    use mpf_pe::testing::{build_test_pe32, build_test_pe64, TEST_IMAGE_BASE};
+    use mpf_pe::RelocEntry;
+
+    fn put32(data: &mut [u8], off: usize, v: u32) {
+        data[off..off + 4].copy_from_slice(&v.to_le_bytes());
+    }
+
+    fn put64(data: &mut [u8], off: usize, v: u64) {
+        data[off..off + 8].copy_from_slice(&v.to_le_bytes());
+    }
+
+    fn import_at(thunk_rva: u32) -> ImportEntry {
+        ImportEntry {
+            dll: "X.dll".into(),
+            function: "F".into(),
+            ordinal: None,
+            thunk_rva,
+        }
+    }
+
+    fn reloc(page_rva: u32, entries: &[(u8, u16)]) -> RelocBlock {
+        RelocBlock {
+            page_rva,
+            entries: entries
+                .iter()
+                .map(|&(reloc_type, offset)| RelocEntry { reloc_type, offset })
+                .collect(),
+        }
+    }
 
     #[test]
     fn maps_synthetic_image() {
@@ -366,6 +394,148 @@ mod tests {
     }
 
     #[test]
+    fn image_mut_patches_the_mapped_image() {
+        let mut m = map_image(&build_test_pe64()).unwrap();
+        m.image_mut()[0x1080] = 0x90;
+        assert_eq!(m.image()[0x1080], 0x90);
+    }
+
+    #[test]
+    fn relocates_highlow_entries_of_a_pe32_image() {
+        let mut m = map_image(&build_test_pe32()).unwrap();
+        assert!(!m.is_64bit);
+        assert_eq!(m.preferred_base, 0x40_0000);
+        let applied = m.relocate(0x50_0000);
+        assert_eq!(applied, 1);
+        assert_eq!(m.image_base, 0x50_0000);
+        let v = u32::from_le_bytes(m.image()[0x1080..0x1084].try_into().unwrap());
+        assert_eq!(v, 0xC3 + 0x10_0000);
+    }
+
+    #[test]
+    fn relocation_skips_entries_it_cannot_apply() {
+        let mut m = map_image(&build_test_pe64()).unwrap();
+        let end = m.image().len() as u32;
+        m.relocations = vec![
+            // Page beyond the image.
+            reloc(end, &[(10, 0), (3, 0)]),
+            // HIGHLOW with fewer than 4 bytes left, DIR64 with fewer than 8.
+            reloc(end - 0x1000, &[(3, 0xFFE), (10, 0xFFC)]),
+            // HIGH (type 1) is not applied; ABSOLUTE is padding.
+            reloc(0x1000, &[(1, 0x100), (0, 0x100)]),
+            // One entry of each kind that does apply.
+            reloc(0x1000, &[(3, 0x200), (10, 0x300)]),
+        ];
+        assert_eq!(m.relocate(TEST_IMAGE_BASE + 0x1_0000), 2);
+        let hl = u32::from_le_bytes(m.image()[0x1200..0x1204].try_into().unwrap());
+        assert_eq!(hl, 0x1_0000);
+        let d64 = u64::from_le_bytes(m.image()[0x1300..0x1308].try_into().unwrap());
+        assert_eq!(d64, 0x1_0000);
+    }
+
+    #[test]
+    fn resolves_32_bit_thunks() {
+        let mut m = map_image(&build_test_pe32()).unwrap();
+        let mut resolver = |_: &str, _: &str, _: Option<u16>| Some(0x1_2345_6789);
+        assert_eq!(m.resolve_imports(&mut resolver), 1);
+        // Only the low 32 bits fit in a PE32 thunk; the next slot is untouched.
+        let v = u32::from_le_bytes(m.image()[0x1170..0x1174].try_into().unwrap());
+        assert_eq!(v, 0x2345_6789);
+        let next = u32::from_le_bytes(m.image()[0x1174..0x1178].try_into().unwrap());
+        assert_eq!(next, 0);
+    }
+
+    #[test]
+    fn thunks_outside_the_image_are_not_counted() {
+        let mut resolver = |_: &str, _: &str, _: Option<u16>| Some(0xABCD);
+
+        // 64-bit: past the end, and too close to the end for 8 bytes.
+        let mut m = map_image(&build_test_pe64()).unwrap();
+        let end = m.image().len() as u32;
+        m.imports = vec![import_at(end), import_at(end - 4), import_at(0x1170)];
+        assert_eq!(m.resolve_imports(&mut resolver), 1);
+
+        // 32-bit: past the end, and too close to the end for 4 bytes.
+        let mut m = map_image(&build_test_pe32()).unwrap();
+        let end = m.image().len() as u32;
+        m.imports = vec![import_at(end), import_at(end - 2), import_at(0x1170)];
+        assert_eq!(m.resolve_imports(&mut resolver), 1);
+    }
+
+    #[test]
+    fn delay_thunks_outside_the_image_are_not_counted() {
+        let mut m = map_image(&build_test_pe64()).unwrap();
+        let end = m.image().len() as u32;
+        m.delay_imports = vec![mpf_pe::DelayImport {
+            dll: "DELAY.dll".into(),
+            module_handle_rva: 0,
+            iat_rva: 0,
+            int_rva: 0,
+            entries: vec![import_at(end), import_at(0x1230)],
+        }];
+        let mut resolver = |_: &str, _: &str, _: Option<u16>| Some(0xABCD);
+        assert_eq!(m.resolve_delay_imports(&mut resolver), 1);
+    }
+
+    #[test]
+    fn maps_images_without_a_tls_directory() {
+        let mut data = build_test_pe64();
+        put32(&mut data, 0x150, 0); // TLS directory RVA
+        let m = map_image(&data).unwrap();
+        assert!(m.tls.is_none());
+        assert!(m.tls_callbacks.is_empty());
+    }
+
+    #[test]
+    fn parses_pe32_tls_callbacks() {
+        let m = map_image(&build_test_pe32()).unwrap();
+        assert_eq!(m.tls_callbacks, vec![0x1080]);
+        let tls = m.tls.unwrap();
+        assert_eq!(tls.address_of_call_backs, 0x40_1098);
+    }
+
+    #[test]
+    fn propagates_errors_from_every_loader_table() {
+        // Directory table offsets: export, import, base reloc, TLS, delay
+        // import. Each is pointed outside the image in turn.
+        for dir_offset in [0x108usize, 0x110, 0x130, 0x150, 0x170] {
+            let mut data = build_test_pe64();
+            put32(&mut data, dir_offset, 0x1fff);
+            assert!(
+                matches!(map_image(&data), Err(LoadError::Parse(PeError::BadTable))),
+                "directory at {dir_offset:#x}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_tls_callback_arrays_that_leave_the_file() {
+        // 64-bit: the array starts 4 bytes before the end of the file.
+        let mut data = build_test_pe64();
+        put64(&mut data, 0x3c8, TEST_IMAGE_BASE + 0x12fc);
+        assert!(matches!(
+            map_image(&data),
+            Err(LoadError::Parse(PeError::Truncated))
+        ));
+
+        // 32-bit: the array starts 2 bytes before the end of the file.
+        let mut data = build_test_pe32();
+        put32(&mut data, 0x3bc, 0x40_0000 + 0x12fe);
+        assert!(matches!(
+            map_image(&data),
+            Err(LoadError::Parse(PeError::Truncated))
+        ));
+
+        // The array address maps to no section.
+        let mut data = build_test_pe64();
+        put64(&mut data, 0x3c8, TEST_IMAGE_BASE + 0x1fff);
+        assert!(matches!(
+            map_image(&data),
+            Err(LoadError::Parse(PeError::BadTable))
+        ));
+    }
+
+    #[test]
     fn unresolved_imports_leave_thunk_untouched() {
         let data = build_test_pe64();
         let mut m = map_image(&data).unwrap();
@@ -373,5 +543,9 @@ mod tests {
         assert_eq!(m.resolve_imports(&mut resolver), 0);
         let v = u64::from_le_bytes(m.image()[0x1170..0x1178].try_into().unwrap());
         assert_eq!(v, 0x1190); // original ILT value still there
+
+        assert_eq!(m.resolve_delay_imports(&mut resolver), 0);
+        let v = u64::from_le_bytes(m.image()[0x1230..0x1238].try_into().unwrap());
+        assert_ne!(v, 0x1234); // delay IAT slot is not patched
     }
 }

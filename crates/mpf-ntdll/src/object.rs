@@ -66,6 +66,13 @@ mod tests {
     }
 
     #[test]
+    fn default_manager_starts_empty_at_handle_4() {
+        let mut om = ObjectManager::default();
+        assert_eq!(om.handle_count(), 0);
+        assert_eq!(om.allocate_handle(1), 4);
+    }
+
+    #[test]
     fn close_handle_semantics() {
         let mut om = ObjectManager::new();
         let h = om.allocate_handle(7);

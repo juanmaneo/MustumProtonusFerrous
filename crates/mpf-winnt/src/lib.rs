@@ -86,25 +86,26 @@ pub struct PebLdrData {
 }
 
 impl PebLdrData {
-    pub fn new() -> Self {
-        let mut ldr = PebLdrData {
+    /// Returns the loader data boxed, with each module list head pointing at
+    /// itself (an empty circular list).
+    ///
+    /// The heads are self-referential, so they are wired up only after the
+    /// value is on the heap: moving a `PebLdrData` by value would leave them
+    /// pointing at the old location. Keep it behind the `Box` (or a raw
+    /// pointer from `Box::into_raw`) and never move it out.
+    pub fn new() -> Box<Self> {
+        let mut ldr = Box::new(PebLdrData {
             length: core::mem::size_of::<PebLdrData>() as u32,
             initialized: 1,
             ss_handle: core::ptr::null_mut(),
             in_load_order_module_list: ListEntry::zeroed(),
             in_memory_order_module_list: ListEntry::zeroed(),
             in_initialization_order_module_list: ListEntry::zeroed(),
-        };
+        });
         ldr.in_load_order_module_list.init_head();
         ldr.in_memory_order_module_list.init_head();
         ldr.in_initialization_order_module_list.init_head();
         ldr
-    }
-}
-
-impl Default for PebLdrData {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -345,7 +346,7 @@ mod tests {
 
     #[test]
     fn peb_and_teb_constructors_wire_pointers() {
-        let ldr = Box::new(PebLdrData::new());
+        let ldr = PebLdrData::new();
         let ldr_ptr = Box::into_raw(ldr);
         let peb = Peb::new(
             0x1400_0000 as *mut c_void,
@@ -367,6 +368,21 @@ mod tests {
         unsafe {
             drop(Box::from_raw(ldr_ptr));
             drop(Box::from_raw(peb_ptr));
+        }
+    }
+
+    #[test]
+    fn ldr_list_heads_point_at_themselves_after_construction() {
+        let ldr = PebLdrData::new();
+        let heads = [
+            &ldr.in_load_order_module_list,
+            &ldr.in_memory_order_module_list,
+            &ldr.in_initialization_order_module_list,
+        ];
+        for head in heads {
+            let me = head as *const ListEntry as *mut ListEntry;
+            assert_eq!(head.flink, me);
+            assert_eq!(head.blink, me);
         }
     }
 

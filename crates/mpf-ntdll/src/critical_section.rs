@@ -153,6 +153,12 @@ mod tests {
     }
 
     #[test]
+    fn default_section_is_unowned() {
+        let cs = CriticalSection::default();
+        assert!(cs.try_enter().is_some());
+    }
+
+    #[test]
     fn initialize_resets_state() {
         let mut cs = CriticalSection::new();
         {

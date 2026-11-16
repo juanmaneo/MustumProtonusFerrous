@@ -79,14 +79,19 @@ pub fn init_prefix(root: &Path) -> io::Result<Prefix> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    /// A fresh path under the temp dir. The counter keeps tests running in
+    /// parallel (or back to back within one clock tick) from sharing a path.
     fn temp_root() -> PathBuf {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
         let nonce = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        std::env::temp_dir().join(format!("mpf-prefix-{nonce}"))
+        let n = NEXT.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("mpf-prefix-{nonce}-{n}"))
     }
 
     #[test]
@@ -100,6 +105,41 @@ mod tests {
         assert!(system.contains("11.22"));
         let user = fs::read_to_string(prefix.user_reg()).unwrap();
         assert!(user.starts_with(REG_HEADER));
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn fails_when_the_prefix_root_is_a_file() {
+        let root = temp_root();
+        fs::write(&root, b"not a directory").unwrap();
+        assert!(init_prefix(&root).is_err());
+        fs::remove_file(&root).unwrap();
+    }
+
+    /// A symlink to a missing directory: `exists()` is false, but writing
+    /// through it fails.
+    #[cfg(unix)]
+    fn plant_dangling_symlink(at: &Path) {
+        std::os::unix::fs::symlink("/nonexistent-mpf-dir/hive.reg", at).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reports_registry_hive_write_failures() {
+        // system.reg cannot be written.
+        let root = temp_root();
+        let prefix = init_prefix(&root).unwrap();
+        fs::remove_file(prefix.system_reg()).unwrap();
+        plant_dangling_symlink(&prefix.system_reg());
+        assert!(init_prefix(&root).is_err());
+        fs::remove_dir_all(&root).unwrap();
+
+        // user.reg cannot be written (system.reg already exists).
+        let root = temp_root();
+        let prefix = init_prefix(&root).unwrap();
+        fs::remove_file(prefix.user_reg()).unwrap();
+        plant_dangling_symlink(&prefix.user_reg());
+        assert!(init_prefix(&root).is_err());
         fs::remove_dir_all(&root).unwrap();
     }
 

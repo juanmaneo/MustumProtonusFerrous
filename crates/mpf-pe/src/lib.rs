@@ -60,7 +60,13 @@ fn u32_at(d: &[u8], o: usize) -> Result<u32, PeError> {
         .get(o..)
         .and_then(|s| s.get(..4))
         .ok_or(PeError::Truncated)?;
-    Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+    Ok(le32(b))
+}
+
+/// Reads a little-endian `u32` from the first four bytes of `b`. Callers
+/// must already have established that `b` holds at least four bytes.
+fn le32(b: &[u8]) -> u32 {
+    u32::from_le_bytes([b[0], b[1], b[2], b[3]])
 }
 
 fn u64_at(d: &[u8], o: usize) -> Result<u64, PeError> {
@@ -484,23 +490,25 @@ impl<'a> PeImage<'a> {
             .rva_to_offset(dir.virtual_address)
             .ok_or(PeError::BadTable)?;
         let end = off.saturating_add(dir.size as usize).min(self.data.len());
+        // `off <= data.len()` (rva_to_offset) and `off + 8 <= end <= data.len()`
+        // (loop condition), so the header reads below cannot go out of range.
         while off + 8 <= end {
-            let page_rva = u32_at(self.data, off)?;
-            let block_size = u32_at(self.data, off + 4)? as usize;
+            let page_rva = le32(&self.data[off..]);
+            let block_size = le32(&self.data[off + 4..]) as usize;
             if block_size < 8 || off + block_size > self.data.len() {
                 break;
             }
-            let mut entries = Vec::new();
-            for i in 0..(block_size - 8) / 2 {
-                let e = u16_at(self.data, off + 8 + i * 2)?;
-                let reloc_type = (e >> 12) as u8;
-                if reloc_type != 0 {
-                    entries.push(RelocEntry {
-                        reloc_type,
-                        offset: e & 0xFFF,
-                    });
-                }
-            }
+            let entries = self.data[off + 8..off + block_size]
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|c| u16::from_le_bytes(*c))
+                .filter(|e| e >> 12 != 0)
+                .map(|e| RelocEntry {
+                    reloc_type: (e >> 12) as u8,
+                    offset: e & 0xFFF,
+                })
+                .collect();
             out.push(RelocBlock { page_rva, entries });
             off += block_size;
         }
@@ -744,11 +752,55 @@ pub mod testing {
         p64(&mut b, 0x468, 0);
         b
     }
+
+    /// The PE32 (i386) counterpart of [`build_test_pe64`]: same exports,
+    /// imports, relocation, TLS and delay-import tables, laid out in their
+    /// 32-bit forms (4-byte thunks, 24-byte TLS directory, HIGHLOW
+    /// relocation, preferred base 0x400000).
+    ///
+    /// The 64-bit thunk arrays are already valid 32-bit arrays (value in the
+    /// low dword, zero in the next), so only the headers, directory table,
+    /// TLS directory and relocation entry differ.
+    pub fn build_test_pe32() -> Vec<u8> {
+        const BASE32: u32 = 0x40_0000;
+        let mut b = build_test_pe64();
+        p16(&mut b, 0x84, 0x014C); // i386
+        p16(&mut b, 0x94, 0xE0); // optional header size
+        p16(&mut b, 0x98, 0x10B); // PE32 magic
+        p32(&mut b, 0xB4, BASE32); // image base (opt + 28)
+        p32(&mut b, 0xF4, 16); // number of RVA and sizes (opt + 92)
+                               // 16 data directories at 0xF8 (opt + 96), rebuilt from scratch.
+        b[0xF8..0x178].fill(0);
+        for (index, rva, size) in [
+            (0usize, 0x1000u32, 0x28u32), // export
+            (1, 0x1100, 0x28),            // import
+            (5, 0x11A0, 12),              // base relocations
+            (9, 0x11B0, 24),              // TLS (PE32 layout)
+            (13, 0x11E0, 64),             // delay imports
+        ] {
+            p32(&mut b, 0xF8 + index * 8, rva);
+            p32(&mut b, 0xFC + index * 8, size);
+        }
+        // The section table follows the (smaller) optional header.
+        b.copy_within(0x188..0x1B0, 0x178);
+        // Relocation: HIGHLOW (type 3) at page offset 0x080.
+        p16(&mut b, 0x3A8, 0x3080);
+        // TLS directory, PE32 layout (24 bytes).
+        b[0x3B0..0x3D8].fill(0);
+        p32(&mut b, 0x3B0, BASE32 + 0x1000); // start of raw data
+        p32(&mut b, 0x3B4, BASE32 + 0x1080); // end of raw data
+        p32(&mut b, 0x3B8, BASE32 + 0x1090); // address of index
+        p32(&mut b, 0x3BC, BASE32 + 0x1098); // address of callbacks
+                                             // TLS callback array at RVA 0x1098: one 32-bit VA, then NULL.
+        b[0x298..0x2A8].fill(0);
+        p32(&mut b, 0x298, BASE32 + 0x1080);
+        b
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::testing::build_test_pe64;
+    use super::testing::{build_test_pe32, build_test_pe64};
     use super::*;
 
     fn p16(b: &mut [u8], off: usize, value: u16) {
@@ -895,23 +947,7 @@ mod tests {
 
     #[test]
     fn parses_pe32_and_machine_names() {
-        let mut data = build_test_pe64();
-        // PE32 has a 0xe0 optional header and a 32-bit image base.
-        p16(&mut data, 0x94, 0xe0);
-        p16(&mut data, 0x98, OPT_MAGIC_PE32);
-        p32(&mut data, 0xb4, 0x400000);
-        p32(&mut data, 0xf4, 16);
-        p32(&mut data, 0xf8, 0x1000);
-        p32(&mut data, 0xfc, 0x28);
-        p32(&mut data, 0x100, 0x1100);
-        p32(&mut data, 0x104, 0x28);
-        data.copy_within(0x188..0x1b0, 0x178);
-        p16(&mut data, 0x84, MACHINE_I386);
-        // Convert thunk entries to PE32 DWORD entries.
-        p32(&mut data, 0x360, 0x1190);
-        p32(&mut data, 0x364, 0);
-        p32(&mut data, 0x370, 0x1190);
-        p32(&mut data, 0x374, 0);
+        let data = build_test_pe32();
         let pe = PeImage::parse(&data).unwrap();
         assert!(!pe.is_64bit());
         assert_eq!(pe.image_base(), 0x400000);
@@ -921,7 +957,134 @@ mod tests {
         assert_eq!(machine_name(MACHINE_AMD64), "x86_64");
         assert_eq!(machine_name(MACHINE_ARM64), "aarch64");
         assert_eq!(machine_name(MACHINE_UNKNOWN), "unknown");
+        assert_eq!(pe.machine(), MACHINE_I386);
         assert_eq!(pe.imports().unwrap()[0].function, "BaseFunc");
+    }
+
+    #[test]
+    fn reads_pe32_tables() {
+        let data = build_test_pe32();
+        let pe = PeImage::parse(&data).unwrap();
+
+        let exports = pe.exports().unwrap();
+        assert_eq!(exports[0].name, "TestFunc");
+
+        let blocks = pe.relocations().unwrap();
+        assert_eq!(blocks.len(), 1);
+        assert_eq!(
+            blocks[0].entries,
+            vec![RelocEntry {
+                reloc_type: 3,
+                offset: 0x080
+            }]
+        );
+
+        let tls = pe.tls_directory().unwrap().unwrap();
+        assert_eq!(tls.start_address_of_raw_data, 0x40_1000);
+        assert_eq!(tls.end_address_of_raw_data, 0x40_1080);
+        assert_eq!(tls.address_of_index, 0x40_1090);
+        assert_eq!(tls.address_of_call_backs, 0x40_1098);
+        assert_eq!(tls.size_of_zero_fill, 0);
+        assert_eq!(tls.characteristics, 0);
+
+        let delay = pe.delay_imports().unwrap();
+        assert_eq!(delay.len(), 1);
+        assert_eq!(delay[0].dll, "DELAY.dll");
+        assert_eq!(delay[0].entries[0].function, "DelayFunc");
+        assert_eq!(delay[0].entries[0].thunk_rva, 0x1230);
+    }
+
+    #[test]
+    fn reads_delay_import_ordinals_and_falls_back_to_the_iat() {
+        // 64-bit by-ordinal delay import.
+        let mut data = build_test_pe64();
+        p64(&mut data, 0x460, (1u64 << 63) | 5);
+        let delay = PeImage::parse(&data).unwrap().delay_imports().unwrap();
+        assert_eq!(delay[0].entries[0].ordinal, Some(5));
+        assert!(delay[0].entries[0].function.is_empty());
+
+        // 32-bit by-ordinal delay import.
+        let mut data = build_test_pe32();
+        p32(&mut data, 0x460, (1u32 << 31) | 6);
+        let delay = PeImage::parse(&data).unwrap().delay_imports().unwrap();
+        assert_eq!(delay[0].entries[0].ordinal, Some(6));
+
+        // A zero pINT makes the loader read names from the IAT instead.
+        let mut data = build_test_pe64();
+        p32(&mut data, 0x3f0, 0);
+        let delay = PeImage::parse(&data).unwrap().delay_imports().unwrap();
+        assert_eq!(delay[0].int_rva, 0);
+        assert_eq!(delay[0].entries[0].function, "DelayFunc");
+    }
+
+    #[test]
+    fn relocation_blocks_stop_at_malformed_sizes_and_skip_padding() {
+        // A block smaller than its own header ends the table.
+        let mut data = build_test_pe64();
+        p32(&mut data, 0x3a4, 4);
+        assert!(PeImage::parse(&data)
+            .unwrap()
+            .relocations()
+            .unwrap()
+            .is_empty());
+
+        // A block running past the end of the file ends the table.
+        let mut data = build_test_pe64();
+        p32(&mut data, 0x3a4, 0x1000);
+        assert!(PeImage::parse(&data)
+            .unwrap()
+            .relocations()
+            .unwrap()
+            .is_empty());
+
+        // Type 0 (ABSOLUTE) entries are padding: the block stays, empty.
+        let mut data = build_test_pe64();
+        p16(&mut data, 0x3a8, 0x0000);
+        let blocks = PeImage::parse(&data).unwrap().relocations().unwrap();
+        assert_eq!(blocks.len(), 1);
+        assert!(blocks[0].entries.is_empty());
+    }
+
+    #[test]
+    fn rejects_unmapped_loader_table_directories() {
+        // Relocation, TLS and delay-import directories whose RVA maps nowhere.
+        for dir_offset in [0x130usize, 0x150, 0x170] {
+            let mut data = build_test_pe64();
+            p32(&mut data, dir_offset, 0x1fff);
+            let pe = PeImage::parse(&data).unwrap();
+            match dir_offset {
+                0x130 => assert_eq!(pe.relocations().unwrap_err(), PeError::BadTable),
+                0x150 => assert_eq!(pe.tls_directory().unwrap_err(), PeError::BadTable),
+                _ => assert_eq!(pe.delay_imports().unwrap_err(), PeError::BadTable),
+            }
+        }
+    }
+
+    #[test]
+    fn rejects_bad_delay_import_tables() {
+        // Descriptor name outside the image.
+        let mut data = build_test_pe64();
+        p32(&mut data, 0x3e4, 0x1fff);
+        let pe = PeImage::parse(&data).unwrap();
+        assert_eq!(pe.delay_imports().unwrap_err(), PeError::BadTable);
+
+        // Import name table outside the image.
+        let mut data = build_test_pe64();
+        p32(&mut data, 0x3f0, 0x1fff);
+        let pe = PeImage::parse(&data).unwrap();
+        assert_eq!(pe.delay_imports().unwrap_err(), PeError::BadTable);
+
+        // Hint/name entry outside the image.
+        let mut data = build_test_pe64();
+        p64(&mut data, 0x460, 0x1fff);
+        let pe = PeImage::parse(&data).unwrap();
+        assert_eq!(pe.delay_imports().unwrap_err(), PeError::BadTable);
+
+        // Hint/name entry whose name starts at the very end of the file.
+        let mut data = build_test_pe64();
+        p64(&mut data, 0x460, 0x12fe);
+        let pe = PeImage::parse(&data).unwrap();
+        assert_eq!(pe.delay_imports().unwrap_err(), PeError::BadTable);
     }
 
     #[test]
@@ -973,38 +1136,41 @@ mod tests {
         assert_eq!(pe.rva_to_offset(0x1048), None);
     }
 
+    /// Runs every table parser (all of them, no short-circuit) and reports
+    /// whether the image and all tables parsed.
+    fn parses_every_table(data: &[u8]) -> bool {
+        let Ok(pe) = PeImage::parse(data) else {
+            return false;
+        };
+        pe.exports().is_ok()
+            & pe.imports().is_ok()
+            & pe.relocations().is_ok()
+            & pe.tls_directory().is_ok()
+            & pe.delay_imports().is_ok()
+    }
+
     #[test]
-    fn rejects_every_truncation_point_without_panicking() {
-        let full64 = build_test_pe64();
-        for len in 0..full64.len() {
-            let truncated = &full64[..len];
-            if let Ok(pe) = PeImage::parse(truncated) {
-                let _ = pe.exports();
-                let _ = pe.imports();
+    fn every_table_survives_truncation_at_every_length() {
+        for full in [build_test_pe64(), build_test_pe32()] {
+            assert!(parses_every_table(&full));
+            // Truncation may fail a table, but it must never panic.
+            for len in 0..full.len() {
+                parses_every_table(&full[..len]);
             }
         }
+    }
 
-        let mut full32 = build_test_pe64();
-        p16(&mut full32, 0x94, 0xe0);
-        p16(&mut full32, 0x98, OPT_MAGIC_PE32);
-        p32(&mut full32, 0xb4, 0x400000);
-        p32(&mut full32, 0xf4, 16);
-        p32(&mut full32, 0xf8, 0x1000);
-        p32(&mut full32, 0xfc, 0x28);
-        p32(&mut full32, 0x100, 0x1100);
-        p32(&mut full32, 0x104, 0x28);
-        full32.copy_within(0x188..0x1b0, 0x178);
-        p16(&mut full32, 0x84, MACHINE_I386);
-        p32(&mut full32, 0x360, 0x1190);
-        p32(&mut full32, 0x364, 0);
-        p32(&mut full32, 0x370, 0x1190);
-        p32(&mut full32, 0x374, 0);
-        for len in 0..full32.len() {
-            let truncated = &full32[..len];
-            if let Ok(pe) = PeImage::parse(truncated) {
-                let _ = pe.exports();
-                let _ = pe.imports();
+    #[test]
+    fn truncated_tls_directory_is_rejected_field_by_field() {
+        // The 64-bit directory is 40 bytes at file offset 0x3b0, the 32-bit
+        // one 24 bytes; any shorter file must fail with Truncated.
+        for (full, end) in [(build_test_pe64(), 0x3d8), (build_test_pe32(), 0x3c8)] {
+            for len in 0x3b0..end {
+                let pe = PeImage::parse(&full[..len]).unwrap();
+                assert_eq!(pe.tls_directory().unwrap_err(), PeError::Truncated);
             }
+            let pe = PeImage::parse(&full[..end]).unwrap();
+            assert!(pe.tls_directory().unwrap().is_some());
         }
     }
 
@@ -1043,17 +1209,7 @@ mod tests {
         ));
 
         // 32-bit thunk read straddles EOF (file offset 0x4fe).
-        let mut data = build_test_pe64();
-        p16(&mut data, 0x94, 0xe0);
-        p16(&mut data, 0x98, OPT_MAGIC_PE32);
-        p32(&mut data, 0xb4, 0x400000);
-        p32(&mut data, 0xf4, 16);
-        p32(&mut data, 0xf8, 0x1000);
-        p32(&mut data, 0xfc, 0x28);
-        p32(&mut data, 0x100, 0x1100);
-        p32(&mut data, 0x104, 0x28);
-        data.copy_within(0x188..0x1b0, 0x178);
-        p16(&mut data, 0x84, MACHINE_I386);
+        let mut data = build_test_pe32();
         p32(&mut data, 0x300, 0x12fe);
         assert!(matches!(
             PeImage::parse(&data).unwrap().imports(),
@@ -1133,6 +1289,9 @@ mod tests {
         assert!(pe.directory(0).is_none());
         assert!(pe.exports().unwrap().is_empty());
         assert!(pe.imports().unwrap().is_empty());
+        assert!(pe.relocations().unwrap().is_empty());
+        assert!(pe.tls_directory().unwrap().is_none());
+        assert!(pe.delay_imports().unwrap().is_empty());
 
         let mut data = build_test_pe64();
         p32(&mut data, 0x108, 0); // empty export directory

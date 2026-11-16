@@ -92,8 +92,10 @@ fn cmd_info(path: &str) -> u8 {
         }
         Err(e) => eprintln!("reloc parse error: {e}"),
     }
-    if let Ok(Some(tls)) = pe.tls_directory() {
-        println!("tls callbacks:{:#x}", tls.address_of_call_backs);
+    match pe.tls_directory() {
+        Ok(Some(tls)) => println!("tls callbacks:{:#x}", tls.address_of_call_backs),
+        Ok(None) => {}
+        Err(e) => eprintln!("tls parse error: {e}"),
     }
     match pe.delay_imports() {
         Ok(delay) => println!("delay imports:{}", delay.len()),
@@ -125,16 +127,21 @@ fn native_resolver(dll: &str, function: &str, _ordinal: Option<u16>) -> Option<u
 }
 
 /// Picks a random 64K-aligned base (wine-11.22 ships ASLR; see ANNOUNCE).
+/// The entropy comes from std's per-process randomly keyed `RandomState`, so
+/// it works on every platform and cannot fail.
 fn aslr_base(preferred: u64) -> u64 {
-    use std::io::Read;
-    let mut b = [0u8; 8];
-    if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
-        let _ = f.read_exact(&mut b);
-    }
-    let rand = u64::from_le_bytes(b);
+    use std::hash::{BuildHasher, Hasher};
+    let rand = std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish();
+    aslr_base_from(rand, preferred)
+}
+
+/// Maps `rand` into the 64K-aligned ASLR window, never returning `preferred`.
+fn aslr_base_from(rand: u64, preferred: u64) -> u64 {
     let base = 0x0000_6000_0000_0000u64 + (rand & 0x0000_3FFF_FFFF_0000);
     if base == preferred {
-        base.wrapping_add(0x1_0000)
+        base + 0x1_0000
     } else {
         base
     }
@@ -205,7 +212,7 @@ fn cmd_run(args: &[String]) -> u8 {
     use mpf_winnt::{
         LdrDataTableEntry, Peb, PebLdrData, RtlUserProcessParameters, Teb, UnicodeString,
     };
-    let mut ldr = Box::new(PebLdrData::new());
+    let mut ldr = PebLdrData::new();
     let mut entry = Box::new(LdrDataTableEntry {
         in_load_order_links: mpf_winnt::ListEntry::zeroed(),
         in_memory_order_links: mpf_winnt::ListEntry::zeroed(),
@@ -302,16 +309,19 @@ fn cmd_run(args: &[String]) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{aslr_base, native_resolver, run};
-    use mpf_pe::testing::build_test_pe64;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use super::{aslr_base, aslr_base_from, native_resolver, run};
+    use mpf_pe::testing::{build_test_pe32, build_test_pe64};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    /// A process-unique path under the temp dir; tests run in parallel.
+    fn unique_path(stem: &str, ext: &str) -> std::path::PathBuf {
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("{stem}-{}-{n}{ext}", std::process::id()))
+    }
 
     fn temp_file(contents: &[u8]) -> String {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("mpf-cli-{nonce}.dll"));
+        let path = unique_path("mpf-cli", ".dll");
         std::fs::write(&path, contents).unwrap();
         path.to_string_lossy().into_owned()
     }
@@ -348,11 +358,8 @@ mod tests {
 
     #[test]
     fn reports_pe32_details() {
-        let mut data = build_test_pe64();
-        // Switch to PE32 so the CLI prints "bits: 32".
-        data[0x94..0x96].copy_from_slice(&0xe0u16.to_le_bytes());
-        data[0x98..0x9a].copy_from_slice(&0x10Bu16.to_le_bytes());
-        let path = temp_file(&data);
+        // PE32 so the CLI prints "bits: 32".
+        let path = temp_file(&build_test_pe32());
         assert_eq!(run(["info".into(), path.clone()]), 0);
         std::fs::remove_file(path).unwrap();
     }
@@ -368,9 +375,24 @@ mod tests {
         assert_eq!(run(["info".into(), path.clone()]), 0);
         std::fs::remove_file(path).unwrap();
 
-        // Broken import directory: the import listing fails.
+        // A directory whose RVA lies outside the file makes its listing fail
+        // without aborting the rest of the report. Directory `n` has its RVA
+        // at 0x108 + 8 * n: 1 = import, 5 = base reloc, 9 = TLS, 13 = delay
+        // import.
+        for dir in [1usize, 5, 9, 13] {
+            let mut data = build_test_pe64();
+            let at = 0x108 + 8 * dir;
+            data[at..at + 4].copy_from_slice(&0x1fffu32.to_le_bytes());
+            let path = temp_file(&data);
+            assert_eq!(run(["info".into(), path.clone()]), 0);
+            std::fs::remove_file(path).unwrap();
+        }
+    }
+
+    #[test]
+    fn reports_images_without_tls() {
         let mut data = build_test_pe64();
-        data[0x110..0x114].copy_from_slice(&0x1fffu32.to_le_bytes());
+        data[0x150..0x154].copy_from_slice(&0u32.to_le_bytes());
         let path = temp_file(&data);
         assert_eq!(run(["info".into(), path.clone()]), 0);
         std::fs::remove_file(path).unwrap();
@@ -393,11 +415,7 @@ mod tests {
 
     #[test]
     fn run_pipeline_with_prefix_and_aslr() {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        let prefix = std::env::temp_dir().join(format!("mpf-run-prefix-{nonce}"));
+        let prefix = unique_path("mpf-run-prefix", "");
         let path = temp_file(&build_test_pe64());
         assert_eq!(
             run([
@@ -414,6 +432,26 @@ mod tests {
     }
 
     #[test]
+    fn run_reports_prefix_init_failure() {
+        // A regular file cannot be used as a prefix directory.
+        let not_a_dir = temp_file(b"occupied");
+        let path = temp_file(&build_test_pe64());
+        assert_eq!(
+            run([
+                "run".into(),
+                path.clone(),
+                "--base".into(),
+                "0x50000000".into(),
+                "--prefix".into(),
+                not_a_dir.clone()
+            ]),
+            1
+        );
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(not_a_dir).unwrap();
+    }
+
+    #[test]
     fn run_rejects_bad_base() {
         let path = temp_file(&build_test_pe64());
         assert_eq!(
@@ -427,6 +465,9 @@ mod tests {
     fn native_resolver_knows_builtin_exports() {
         assert!(native_resolver("KERNEL32.dll", "lstrlenW", None).is_some());
         assert!(native_resolver("ntdll.dll", "RtlProcessHeap", None).is_some());
+        assert!(native_resolver("ntdll.dll", "RtlAllocateHeap", None).is_some());
+        assert!(native_resolver("ntdll.dll", "RtlFreeHeap", None).is_some());
+        assert!(native_resolver("ntdll.dll", "NoSuchFunc", None).is_none());
         assert!(native_resolver("KERNEL32.dll", "NoSuchFunc", None).is_none());
         assert!(native_resolver("UNKNOWN.dll", "lstrlenW", None).is_none());
         assert!(native_resolver("KERNEL32.dll", "", Some(3)).is_none());
@@ -437,6 +478,20 @@ mod tests {
         let b = aslr_base(mpf_pe::testing::TEST_IMAGE_BASE);
         assert_eq!(b % 0x1_0000, 0);
         assert_ne!(b, mpf_pe::testing::TEST_IMAGE_BASE);
+    }
+
+    #[test]
+    fn aslr_base_from_maps_into_window_and_avoids_preferred() {
+        let low = 0x0000_6000_0000_0000u64;
+        assert_eq!(aslr_base_from(0, 0x1000), low);
+        assert_eq!(
+            aslr_base_from(u64::MAX, 0x1000),
+            low + 0x0000_3FFF_FFFF_0000
+        );
+        // Low bits are dropped to keep 64K alignment.
+        assert_eq!(aslr_base_from(0xFFFF, 0x1000), low);
+        // Landing exactly on the preferred base moves up by one allocation unit.
+        assert_eq!(aslr_base_from(0, low), low + 0x1_0000);
     }
 
     #[test]

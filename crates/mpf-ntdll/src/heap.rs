@@ -22,13 +22,15 @@ impl Heap {
         }
     }
 
-    /// Allocates `size` bytes; returns null on failure or size 0, like
-    /// RtlAllocateHeap with a NULL result on failure.
+    /// Allocates `size` bytes; returns null on failure, size 0, or a size
+    /// no allocation can satisfy, like RtlAllocateHeap with a NULL result.
     pub fn allocate(&self, size: usize, zero_memory: bool) -> *mut u8 {
         if size == 0 {
             return core::ptr::null_mut();
         }
-        let layout = Layout::from_size_align(size, HEAP_ALIGN).unwrap();
+        let Ok(layout) = Layout::from_size_align(size, HEAP_ALIGN) else {
+            return core::ptr::null_mut();
+        };
         let ptr = unsafe { alloc(layout) };
         if ptr.is_null() {
             return core::ptr::null_mut();
@@ -119,6 +121,22 @@ mod tests {
         unsafe { p.write_bytes(0xAA, 8) };
         assert_eq!(unsafe { *p }, 0xAA);
         assert!(heap.free(p));
+    }
+
+    #[test]
+    fn impossible_sizes_return_null_instead_of_panicking() {
+        let heap = Heap::new();
+        // Rejected by Layout: rounded up to the alignment it exceeds isize::MAX.
+        assert!(heap.allocate(usize::MAX, false).is_null());
+        // A valid layout that no allocator can satisfy.
+        let largest_layout = isize::MAX as usize - (HEAP_ALIGN - 1);
+        assert!(heap.allocate(largest_layout, true).is_null());
+    }
+
+    #[test]
+    fn default_heap_is_empty() {
+        let heap = Heap::default();
+        assert_eq!(heap.size_of(0x1000 as *const u8), None);
     }
 
     #[test]
