@@ -59,6 +59,18 @@ fn kernelbase_strip_prefix() {
     assert!(mpf_kernelbase::path_cch_is_root(&w("C:\\")));
     assert!(!mpf_kernelbase::path_cch_is_root(&w("C:\\folder")));
     assert!(mpf_kernelbase::path_cch_is_root(&w("\\\\server\\share")));
+    assert_eq!(
+        mpf_kernelbase::path_is_unc_ex(&w("\\\\server\\share")),
+        (true, Some(2))
+    );
+    assert_eq!(
+        mpf_kernelbase::path_is_unc_ex(&w("\\\\?\\UNC\\server")),
+        (true, Some(8))
+    );
+    assert_eq!(
+        mpf_kernelbase::path_is_unc_ex(&w("C:\\path")),
+        (false, None)
+    );
     let mut root = w("C:\\folder\\file");
     assert_eq!(
         mpf_kernelbase::path_cch_strip_to_root(&mut root, 64),

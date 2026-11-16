@@ -213,6 +213,22 @@ pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
     S_OK
 }
 
+/// Identifies UNC paths and returns the UTF-16 offset of the server name.
+/// The returned offset is `Some(8)` for extended UNC paths and `Some(2)` for
+/// conventional UNC paths; other paths return `None`.
+pub fn path_is_unc_ex(path: &[u16]) -> (bool, Option<usize>) {
+    if is_prefixed_unc(path) {
+        (true, Some(8))
+    } else if char_at(path, 0) == b'\\' as u16
+        && char_at(path, 1) == b'\\' as u16
+        && char_at(path, 2) != b'?' as u16
+    {
+        (true, Some(2))
+    } else {
+        (false, None)
+    }
+}
+
 /// Removes the final file-spec component while preserving a drive or UNC root.
 /// The size is measured in UTF-16 code units and includes the terminator.
 pub fn path_cch_remove_file_spec(path: &mut Vec<u16>, size: usize) -> i32 {
@@ -585,6 +601,35 @@ mod tests {
         assert_eq!(path, w("C:\\a"));
         assert_eq!(path_cch_remove_file_spec(&mut path, 4), S_OK);
         assert_eq!(path, w("C:\\"));
+    }
+
+    #[test]
+    fn is_unc_ex_matches_wine_vectors() {
+        for (path, expected) in [
+            ("\\\\", Some(2)),
+            ("\\\\a\\", Some(2)),
+            ("\\\\.\\", Some(2)),
+            ("\\\\?\\UNC\\", Some(8)),
+            ("\\\\?\\UNC\\a", Some(8)),
+            ("\\\\?\\unc\\", Some(8)),
+            ("\\\\?\\unc\\a", Some(8)),
+            ("", None),
+            ("\\", None),
+            ("C:\\", None),
+            ("\\??\\", None),
+            ("\\\\?\\", None),
+            ("\\\\?\\UNC", None),
+            ("\\\\?\\C:", None),
+            ("\\\\?\\C:\\", None),
+            ("\\\\?\\C:\\a", None),
+            (
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\",
+                None,
+            ),
+        ] {
+            let result = path_is_unc_ex(&w(path));
+            assert_eq!(result, (expected.is_some(), expected), "{path}");
+        }
     }
 
     #[test]
