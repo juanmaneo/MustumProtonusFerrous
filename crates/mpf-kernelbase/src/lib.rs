@@ -341,6 +341,26 @@ pub fn path_find_extension(path: &[u16]) -> usize {
     last_dot.unwrap_or(len)
 }
 
+/// Removes leading and trailing ASCII spaces in place, matching Wine's
+/// `PathRemoveBlanksW` behavior.
+pub fn path_remove_blanks(path: &mut Vec<u16>) {
+    let len = wlen(path);
+    if len == 0 {
+        return;
+    }
+    let first = path[..len]
+        .iter()
+        .position(|&unit| unit != b' ' as u16)
+        .unwrap_or(len);
+    let mut end = len;
+    while end > first && path[end - 1] == b' ' as u16 {
+        end -= 1;
+    }
+    let mut trimmed = path[first..end].to_vec();
+    trimmed.push(0);
+    *path = trimmed;
+}
+
 /// Removes one matching pair of surrounding quotes, matching Wine's
 /// `PathUnquoteSpacesW` behavior.
 pub fn path_unquote_spaces(path: &mut Vec<u16>) {
@@ -1288,6 +1308,29 @@ mod tests {
         let before = too_long.clone();
         assert!(!path_rename_extension(&mut too_long, &w(".x")));
         assert_eq!(too_long, before);
+    }
+
+    #[test]
+    fn remove_blanks_matches_wine_vectors() {
+        for (input, expected) in [
+            ("", ""),
+            (" ", ""),
+            ("test", "test"),
+            (" test", "test"),
+            ("  test", "test"),
+            ("test ", "test"),
+            ("test  ", "test"),
+            (" test  ", "test"),
+            ("  test ", "test"),
+            ("\t test \t", "\t test \t"),
+        ] {
+            let mut path = w(input);
+            path_remove_blanks(&mut path);
+            assert_eq!(path, w(expected), "{input:?}");
+        }
+        let mut unterminated = " test ".encode_utf16().collect::<Vec<_>>();
+        path_remove_blanks(&mut unterminated);
+        assert_eq!(unterminated, w("test"));
     }
 
     #[test]
