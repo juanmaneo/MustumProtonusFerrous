@@ -207,6 +207,48 @@ pub fn strspn(s: &[u8], accept: &[u8]) -> usize {
         .unwrap_or(length)
 }
 
+/// Finds the first occurrence of `needle`, including the NUL terminator.
+///
+/// `needle` is narrowed to one byte, matching Wine's C `char` comparison.
+pub fn strchr(s: &[u8], needle: i32) -> Option<usize> {
+    if s.is_empty() {
+        return None;
+    }
+    let end = strnlen(s, s.len());
+    s[..=end.min(s.len().saturating_sub(1))]
+        .iter()
+        .position(|&byte| byte == needle as u8)
+}
+
+/// Finds the last occurrence of `needle`, including the NUL terminator.
+///
+/// `needle` is narrowed to one byte, matching Wine's C `char` comparison.
+pub fn strrchr(s: &[u8], needle: i32) -> Option<usize> {
+    if s.is_empty() {
+        return None;
+    }
+    let end = strnlen(s, s.len());
+    s[..=end.min(s.len().saturating_sub(1))]
+        .iter()
+        .rposition(|&byte| byte == needle as u8)
+}
+
+/// Finds a byte substring and returns its first offset.
+///
+/// Like Wine's `strstr`, an empty needle matches at offset zero, even for an
+/// empty haystack.
+pub fn strstr(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    let haystack_len = strnlen(haystack, haystack.len());
+    let needle_len = strnlen(needle, needle.len());
+    if needle_len == 0 {
+        return Some(0);
+    }
+    (0..haystack_len).find(|&start| {
+        start + needle_len <= haystack_len
+            && haystack[start..start + needle_len] == needle[..needle_len]
+    })
+}
+
 /// Finds the first byte in `s` that is also in `accept`.
 ///
 /// Returns the byte offset, analogous to Wine's pointer-returning `strpbrk`.
@@ -360,6 +402,33 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn byte_character_and_substring_searches_match_wine_boundaries() {
+        let text = b"banana\0ignored";
+        assert_eq!(strchr(text, b'a' as i32), Some(1));
+        assert_eq!(strrchr(text, b'a' as i32), Some(5));
+        assert_eq!(strchr(text, b'z' as i32), None);
+        assert_eq!(strrchr(text, b'z' as i32), None);
+        assert_eq!(strchr(text, 0), Some(6));
+        assert_eq!(strrchr(text, 0), Some(6));
+        assert_eq!(strchr(text, 0x161), Some(1));
+        assert_eq!(strchr(b"", 0), None);
+        assert_eq!(strrchr(b"", 0), None);
+        assert_eq!(strchr(&[0], 0), Some(0));
+        assert_eq!(strrchr(&[0], 0), Some(0));
+        assert_eq!(strchr(b"x", b'x' as i32), Some(0));
+        assert_eq!(strchr(b"x", 0), None);
+
+        assert_eq!(strstr(b"the quick brown fox", b"quick"), Some(4));
+        assert_eq!(strstr(b"the quick brown fox", b"fox"), Some(16));
+        assert_eq!(strstr(b"the quick", b"missing"), None);
+        assert_eq!(strstr(b"text", b""), Some(0));
+        assert_eq!(strstr(b"", b""), Some(0));
+        assert_eq!(strstr(b"", b"x"), None);
+        assert_eq!(strstr(b"abababc", b"ababc"), Some(2));
+        assert_eq!(strstr(b"ab", b"b"), Some(1));
     }
 
     #[test]
