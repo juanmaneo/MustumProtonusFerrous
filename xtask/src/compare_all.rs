@@ -612,16 +612,20 @@ mod tests {
         let refs = f.refs.clone();
         let handle = thread::spawn(move || run(&root, &refs, Some(0), "diff"));
         let report = f.root.join("target/compare/report.txt");
-        // The watch loop writes the report on its first pass.
+        // Wait for the complete report, not merely file creation: fs::write
+        // makes the path visible before all report bytes have been written.
         let deadline = std::time::Instant::now() + Duration::from_secs(5);
-        while !report.is_file() {
+        let text = loop {
+            let text = fs::read_to_string(&report).unwrap_or_default();
+            if text.contains("dlls/a") {
+                break text;
+            }
             assert!(
                 std::time::Instant::now() < deadline,
-                "the watch loop never wrote the report"
+                "the watch loop never wrote a complete report; last contents: {text:?}"
             );
             thread::sleep(Duration::from_millis(10));
-        }
-        let text = fs::read_to_string(&report).unwrap();
+        };
         assert!(text.contains("dlls/a"), "{text}");
         // Dropping the fixture breaks the mapping read, so the loop stops.
         drop(f);
