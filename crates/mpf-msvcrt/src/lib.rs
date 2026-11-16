@@ -6,6 +6,17 @@
 //! variants lower-case with ASCII rules only; locale-aware `_towlower_l`
 //! and the `MSVCRT_CHECK_PMT` invalid-parameter path are not ported here.
 
+/// Length of a byte string before its first NUL, bounded by `max_len`.
+///
+/// This slice-based equivalent of Wine's `strnlen` cannot read past the
+/// supplied slice, so an unterminated slice ends at its available length.
+pub fn strnlen(s: &[u8], max_len: usize) -> usize {
+    s.iter()
+        .take(max_len)
+        .position(|&byte| byte == 0)
+        .unwrap_or(s.len().min(max_len))
+}
+
 /// Length of the string before its first NUL, or the slice length.
 pub fn wcslen(s: &[u16]) -> usize {
     s.iter().position(|&c| c == 0).unwrap_or(s.len())
@@ -66,6 +77,15 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn strnlen_stops_at_nul_or_limit() {
+        assert_eq!(strnlen(b"string\0ignored", 20), 6);
+        assert_eq!(strnlen(b"string\0", 3), 3);
+        assert_eq!(strnlen(b"string", 20), 6);
+        assert_eq!(strnlen(b"string\0", 0), 0);
+        assert_eq!(strnlen(b"", 4), 0);
     }
 
     #[test]
