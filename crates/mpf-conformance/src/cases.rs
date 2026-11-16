@@ -69,6 +69,10 @@ fn kernelbase_strip_prefix() {
     );
     assert_eq!(with_backslash, w("C:\\folder\\"));
     assert_eq!(
+        mpf_kernelbase::path_find_file_name(&w("C:\\folder\\file.txt")),
+        10
+    );
+    assert_eq!(
         mpf_kernelbase::path_find_extension(&w("C:\\folder\\file.txt")),
         14
     );

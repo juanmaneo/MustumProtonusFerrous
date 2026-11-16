@@ -307,6 +307,25 @@ pub fn path_cch_add_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_add_backslash_ex(path, size).0
 }
 
+/// Finds the file-name component's UTF-16 offset, matching Wine's
+/// `PathFindFileNameW` separator and drive-colon rules.
+pub fn path_find_file_name(path: &[u16]) -> usize {
+    let len = wlen(path);
+    let mut last = 0;
+    for index in 0..len {
+        let unit = path[index];
+        let next = char_at(path, index + 1);
+        if (unit == b'\\' as u16 || unit == b'/' as u16 || unit == b':' as u16)
+            && next != 0
+            && next != b'\\' as u16
+            && next != b'/' as u16
+        {
+            last = index + 1;
+        }
+    }
+    last
+}
+
 /// Finds the extension's UTF-16 offset using Wine's legacy `PathFindExtensionW`
 /// rules. An absent extension points to the terminating NUL.
 pub fn path_find_extension(path: &[u16]) -> usize {
@@ -1179,6 +1198,26 @@ mod tests {
             path_cch_find_extension(&vec![b'a' as u16; MAX_PATH_CCH], MAX_PATH_CCH),
             (E_INVALIDARG, None)
         );
+    }
+
+    #[test]
+    fn find_file_name_matches_wine_rules() {
+        for (path, expected) in [
+            ("", 0),
+            ("file.txt", 0),
+            ("dir\\file.txt", 4),
+            ("dir/file.txt", 4),
+            ("C:file.txt", 2),
+            ("C:\\file.txt", 3),
+            ("\\\\server\\share", 9),
+            ("dir\\\\file", 5),
+            ("dir\\", 0),
+            ("dir//file", 5),
+            ("dir\\/file", 5),
+        ] {
+            assert_eq!(path_find_file_name(&w(path)), expected, "{path}");
+        }
+        assert_eq!(path_find_file_name(&[]), 0);
     }
 
     #[test]
