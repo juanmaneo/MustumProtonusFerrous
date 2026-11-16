@@ -758,6 +758,51 @@ pub fn path_is_unc(path: &[u16]) -> bool {
     char_at(path, 0) == b'\\' as u16 && char_at(path, 1) == b'\\' as u16
 }
 
+/// Returns Wine's case-insensitive, separator-aware common-prefix length.
+pub fn path_common_prefix(file1: &[u16], file2: &[u16]) -> usize {
+    let (mut first, mut second) = (0, 0);
+    if path_is_unc(file1) {
+        if !path_is_unc(file2) {
+            return 0;
+        }
+        first = 2;
+        second = 2;
+    } else if path_is_unc(file2) {
+        return 0;
+    }
+
+    let mut common = 0;
+    loop {
+        let left = char_at(file1, first);
+        let right = char_at(file2, second);
+        if (left == 0 || left == b'\\' as u16) && (right == 0 || right == b'\\' as u16) {
+            common = first;
+        }
+        if left == 0 || ascii_lower(left) != ascii_lower(right) {
+            break;
+        }
+        first += 1;
+        second += 1;
+    }
+    if common == 2 {
+        common += 1;
+    }
+    common
+}
+
+/// Checks whether `prefix` matches a Wine-recognized prefix of `path`.
+pub fn path_is_prefix(prefix: &[u16], path: &[u16]) -> bool {
+    path_common_prefix(path, prefix) == wlen(prefix)
+}
+
+/// Compares roots using Wine's `PathSkipRootW` and common-prefix semantics.
+pub fn path_is_same_root(path1: &[u16], path2: &[u16]) -> bool {
+    let Some(root_end) = path_skip_root(path1) else {
+        return false;
+    };
+    path_common_prefix(path1, path2) + 1 >= root_end
+}
+
 /// Reports whether a UNC path contains exactly one separator after its server
 /// name, matching Wine's `PathIsUNCServerShareW` behavior.
 pub fn path_is_unc_server_share(path: &[u16]) -> bool {
@@ -2097,6 +2142,60 @@ mod tests {
             STRSAFE_E_INSUFFICIENT_BUFFER
         );
         assert_eq!(too_long, w("C:\\1"));
+    }
+
+    #[test]
+    fn common_prefix_matches_wine_case_separator_and_unc_rules() {
+        for (first, second, expected) in [
+            ("C:\\one\\a", "c:\\one\\b", 6),
+            ("one\\.two", "one\\.three", 3),
+            ("same", "same", 4),
+            ("same", "same\\child", 4),
+            ("same\\child", "same", 4),
+            ("\\\\server", "C:\\server", 0),
+            ("C:\\server", "\\\\server", 0),
+            ("\\\\one", "\\\\two", 0),
+            ("\\\\server\\share", "\\\\SERVER\\other", 8),
+            ("", "anything", 0),
+        ] {
+            assert_eq!(
+                path_common_prefix(&w(first), &w(second)),
+                expected,
+                "{first} / {second}"
+            );
+        }
+        assert_eq!(path_common_prefix(&[], &[]), 0);
+    }
+
+    #[test]
+    fn prefix_matches_wine_wrapper_including_empty_and_unc_cases() {
+        assert!(path_is_prefix(&w("C:\\"), &w("C:\\folder")));
+        assert!(!path_is_prefix(&w("C:\\folder"), &w("C:\\foo")));
+        assert!(path_is_prefix(&w(""), &w("anything")));
+        assert!(path_is_prefix(&w("\\\\server"), &w("\\\\SERVER\\share")));
+        assert!(!path_is_prefix(&w("\\\\server"), &w("C:\\server")));
+        assert!(path_is_prefix(&[], &[]));
+    }
+
+    #[test]
+    fn same_root_matches_wine_skip_root_and_prefix_rules() {
+        for (first, second, expected) in [
+            ("C:\\one", "C:\\two", true),
+            ("C:\\one", "c:\\two", true),
+            ("C:\\one", "D:\\two", false),
+            ("\\\\server\\share\\one", "\\\\server\\share\\two", true),
+            ("\\\\server\\share\\one", "\\\\server\\other\\two", false),
+            ("relative\\one", "relative\\two", false),
+            ("", "C:\\two", false),
+            ("C:\\one", "", false),
+        ] {
+            assert_eq!(
+                path_is_same_root(&w(first), &w(second)),
+                expected,
+                "{first} / {second}"
+            );
+        }
+        assert!(!path_is_same_root(&[], &w("C:\\two")));
     }
 
     #[test]

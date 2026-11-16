@@ -139,6 +139,15 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::path_get_drive_number(&w("\\\\?\\C:\\file.txt")),
         2
     );
+    assert_eq!(
+        mpf_kernelbase::path_common_prefix(&w("C:\\one\\a"), &w("c:\\one\\b")),
+        6
+    );
+    assert!(mpf_kernelbase::path_is_prefix(&w("C:\\"), &w("C:\\folder")));
+    assert!(mpf_kernelbase::path_is_same_root(
+        &w("C:\\one"),
+        &w("C:\\two")
+    ));
     assert!(!mpf_kernelbase::path_is_relative(&w("C:\\file.txt")));
     assert!(!mpf_kernelbase::path_is_relative(&w("\\rooted")));
     assert!(mpf_kernelbase::path_is_unc(&w("\\\\server\\share")));
