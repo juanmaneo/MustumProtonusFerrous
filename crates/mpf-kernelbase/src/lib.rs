@@ -9,6 +9,8 @@ pub const S_OK: i32 = 0;
 pub const S_FALSE: i32 = 1;
 /// Invalid argument HRESULT.
 pub const E_INVALIDARG: i32 = 0x8007_0057u32 as i32;
+/// Insufficient buffer HRESULT used by Wine's path extension helpers.
+pub const STRSAFE_E_INSUFFICIENT_BUFFER: i32 = 0x8007_007au32 as i32;
 
 const MAX_PATH_CCH: usize = 0x8000;
 
@@ -252,7 +254,7 @@ pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
 /// Finds the extension's UTF-16 offset using Wine's `PathCchFindExtension`
 /// rules. An absent extension points to the terminating NUL.
 pub fn path_cch_find_extension(path: &[u16], size: usize) -> (i32, Option<usize>) {
-    if size == 0 || size > MAX_PATH_CCH {
+    if size == 0 || size > MAX_PATH_CCH || wlen(path) == path.len() {
         return (E_INVALIDARG, None);
     }
     let mut last_dot = None;
@@ -284,6 +286,57 @@ pub fn path_cch_remove_extension(path: &mut Vec<u16>, size: usize) -> i32 {
     path.push(0);
     if extension == len {
         S_FALSE
+    } else {
+        S_OK
+    }
+}
+
+/// Adds an extension when no extension already exists, matching Wine's
+/// `PathCchAddExtension` checks and buffer sizing.
+pub fn path_cch_add_extension(path: &mut Vec<u16>, size: usize, extension: &[u16]) -> i32 {
+    if size == 0 || size > MAX_PATH_CCH || wlen(extension) == extension.len() {
+        return E_INVALIDARG;
+    }
+    let ext_len = wlen(extension);
+    for (index, &unit) in extension[..ext_len].iter().enumerate() {
+        if (unit == b'.' as u16 && index > 0) || unit == b' ' as u16 || unit == b'\\' as u16 {
+            return E_INVALIDARG;
+        }
+    }
+    let has_dot = char_at(extension, 0) == b'.' as u16;
+    let (find_status, existing) = path_cch_find_extension(path, size);
+    if find_status != S_OK {
+        return find_status;
+    }
+    if char_at(path, existing.unwrap_or(0)) != 0 {
+        return S_FALSE;
+    }
+    let path_len = wlen(path);
+    let dot_len = usize::from(!has_dot);
+    if path_len + dot_len + ext_len + 1 > size {
+        return STRSAFE_E_INSUFFICIENT_BUFFER;
+    }
+    if ext_len == 0 || (has_dot && ext_len == 1) {
+        return S_OK;
+    }
+    path.truncate(path_len);
+    if !has_dot {
+        path.push(b'.' as u16);
+    }
+    path.extend_from_slice(&extension[..ext_len]);
+    path.push(0);
+    S_OK
+}
+
+/// Renames a path extension using Wine's remove-then-add behavior.
+pub fn path_cch_rename_extension(path: &mut Vec<u16>, size: usize, extension: &[u16]) -> i32 {
+    let remove_status = path_cch_remove_extension(path, size);
+    if remove_status < 0 {
+        return remove_status;
+    }
+    let add_status = path_cch_add_extension(path, size, extension);
+    if add_status < 0 {
+        add_status
     } else {
         S_OK
     }
@@ -873,6 +926,10 @@ mod tests {
             (E_INVALIDARG, None)
         );
         assert_eq!(path_cch_find_extension(&w("file"), 4), (E_INVALIDARG, None));
+        assert_eq!(
+            path_cch_find_extension(&[b'x' as u16; 8], 8),
+            (E_INVALIDARG, None)
+        );
         assert_eq!(path_cch_find_extension(&w("file"), 5), (S_OK, Some(4)));
         assert_eq!(
             path_cch_find_extension(&vec![b'a' as u16; MAX_PATH_CCH], MAX_PATH_CCH),
@@ -943,6 +1000,141 @@ mod tests {
         assert_eq!(path, original);
         assert_eq!(path_cch_remove_extension(&mut path, 9), S_OK);
         assert_eq!(path, w("C:\\1"));
+    }
+
+    #[test]
+    fn add_extension_matches_wine_vectors() {
+        for (input, extension, expected, status) in [
+            ("", ".exe", ".exe", S_OK),
+            ("C:\\", "", "C:\\", S_OK),
+            ("C:", ".exe", "C:.exe", S_OK),
+            ("C:\\", ".exe", "C:\\.exe", S_OK),
+            ("\\", ".exe", "\\.exe", S_OK),
+            ("\\\\", ".exe", "\\\\.exe", S_OK),
+            ("\\\\?\\C:", ".exe", "\\\\?\\C:.exe", S_OK),
+            ("\\\\?\\C:\\", ".exe", "\\\\?\\C:\\.exe", S_OK),
+            ("\\\\?\\UNC\\", ".exe", "\\\\?\\UNC\\.exe", S_OK),
+            (
+                "\\\\?\\UNC\\192.168.1.1\\",
+                ".exe",
+                "\\\\?\\UNC\\192.168.1.1\\.exe",
+                S_OK,
+            ),
+            (
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\",
+                ".exe",
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\.exe",
+                S_OK,
+            ),
+            ("C:\\", "exe", "C:\\.exe", S_OK),
+            ("C:\\", ".", "C:\\", S_OK),
+            ("C:\\1.exe", ".txt", "C:\\1.exe", S_FALSE),
+            ("C:\\", "./", "C:\\./", S_OK),
+            ("C:\\", ".?", "C:\\.?", S_OK),
+            ("C:\\", ".%", "C:\\.%", S_OK),
+            ("C:\\", ".*", "C:\\.*", S_OK),
+            ("C:\\", ".:", "C:\\.:", S_OK),
+            ("C:\\", ".|", "C:\\.|", S_OK),
+            ("C:\\", ".\"", "C:\\.\"", S_OK),
+            ("C:\\", ".<", "C:\\.<", S_OK),
+            ("C:\\", ".>", "C:\\.>", S_OK),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_cch_add_extension(&mut path, MAX_PATH_CCH, &w(extension)),
+                status,
+                "{input} {extension}"
+            );
+            assert_eq!(path, w(expected), "{input} {extension}");
+        }
+        for extension in [
+            " exe", ". exe", " ", "\\", "..", ". ", ".\\", ".a.", ".a ", ".a\\",
+        ] {
+            let mut path = w("C:\\");
+            assert_eq!(
+                path_cch_add_extension(&mut path, MAX_PATH_CCH, &w(extension)),
+                E_INVALIDARG,
+                "{extension}"
+            );
+        }
+        let mut path = w("C:\\");
+        assert_eq!(
+            path_cch_add_extension(&mut path, 0, &w(".exe")),
+            E_INVALIDARG
+        );
+        assert_eq!(
+            path_cch_add_extension(&mut path, MAX_PATH_CCH + 1, &w(".exe")),
+            E_INVALIDARG
+        );
+        assert_eq!(
+            path_cch_add_extension(&mut path, 7, &w(".exe")),
+            STRSAFE_E_INSUFFICIENT_BUFFER
+        );
+        assert_eq!(path, w("C:\\"));
+        assert_eq!(path_cch_add_extension(&mut path, 8, &w(".exe")), S_OK);
+        assert_eq!(path, w("C:\\.exe"));
+        assert_eq!(
+            path_cch_add_extension(&mut path, 4, &w(".exe")),
+            E_INVALIDARG
+        );
+        let mut unterminated = vec![b'C' as u16, b':' as u16];
+        assert_eq!(
+            path_cch_add_extension(&mut unterminated, 8, &w(".exe")),
+            E_INVALIDARG
+        );
+    }
+
+    #[test]
+    fn rename_extension_matches_wine_vectors() {
+        for (input, extension, expected) in [
+            ("1.exe", ".txt", "1.txt"),
+            ("C:1.exe", ".txt", "C:1.txt"),
+            ("C:\\1.exe", ".txt", "C:\\1.txt"),
+            ("\\1.exe", ".txt", "\\1.txt"),
+            ("\\\\1.exe", ".txt", "\\\\1.txt"),
+            ("\\\\?\\C:1.exe", ".txt", "\\\\?\\C:1.txt"),
+            ("\\\\?\\C:\\1.exe", ".txt", "\\\\?\\C:\\1.txt"),
+            ("\\\\?\\UNC\\1.exe", ".txt", "\\\\?\\UNC\\1.txt"),
+            (
+                "\\\\?\\UNC\\192.168.1.1\\1.exe",
+                ".txt",
+                "\\\\?\\UNC\\192.168.1.1\\1.txt",
+            ),
+            (
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\1.exe",
+                ".txt",
+                "\\\\?\\Volume{e51a1864-6f2d-4019-b73d-f4e60e600c26}\\1.txt",
+            ),
+            ("C:\\1.exe", "", "C:\\1"),
+            ("C:\\1.exe", "txt", "C:\\1.txt"),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_cch_rename_extension(&mut path, MAX_PATH_CCH, &w(extension)),
+                S_OK,
+                "{input}"
+            );
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut path = w("C:\\1.exe");
+        assert_eq!(
+            path_cch_rename_extension(&mut path, 0, &w(".txt")),
+            E_INVALIDARG
+        );
+        assert_eq!(
+            path_cch_rename_extension(&mut path, MAX_PATH_CCH + 1, &w(".txt")),
+            E_INVALIDARG
+        );
+        assert_eq!(
+            path_cch_rename_extension(&mut path, 64, &w(". bad")),
+            E_INVALIDARG
+        );
+        let mut too_long = w("C:\\1.exe");
+        assert_eq!(
+            path_cch_rename_extension(&mut too_long, 9, &w(".longer")),
+            STRSAFE_E_INSUFFICIENT_BUFFER
+        );
+        assert_eq!(too_long, w("C:\\1"));
     }
 
     #[test]

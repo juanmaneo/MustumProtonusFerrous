@@ -66,6 +66,18 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::S_OK
     );
     assert_eq!(extension, w("C:\\folder\\file"));
+    let mut renamed = w("C:\\folder\\file.old");
+    assert_eq!(
+        mpf_kernelbase::path_cch_rename_extension(&mut renamed, 64, &w("new")),
+        mpf_kernelbase::S_OK
+    );
+    assert_eq!(renamed, w("C:\\folder\\file.new"));
+    let mut with_extension = w("C:\\folder\\file.old");
+    assert_eq!(
+        mpf_kernelbase::path_cch_add_extension(&mut with_extension, 64, &w(".new")),
+        mpf_kernelbase::S_FALSE
+    );
+    assert_eq!(with_extension, w("C:\\folder\\file.old"));
     assert!(mpf_kernelbase::path_cch_is_root(&w("C:\\")));
     assert!(!mpf_kernelbase::path_cch_is_root(&w("C:\\folder")));
     assert!(mpf_kernelbase::path_cch_is_root(&w("\\\\server\\share")));
