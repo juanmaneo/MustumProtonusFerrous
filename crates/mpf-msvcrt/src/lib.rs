@@ -774,6 +774,15 @@ pub fn strspn(s: &[u8], accept: &[u8]) -> usize {
         .unwrap_or(length)
 }
 
+/// Returns the offset after the accepted prefix, or `None` if that reaches NUL.
+///
+/// This is the bounded-slice equivalent of Wine's CRTDLL `_strspnp`, which
+/// returns a pointer to the first non-accepted byte or a null pointer at NUL.
+pub fn strspnp(s: &[u8], accept: &[u8]) -> Option<usize> {
+    let offset = strspn(s, accept);
+    (offset < strnlen(s, s.len())).then_some(offset)
+}
+
 /// Fills the first `count` destination bytes with `byte`.
 ///
 /// Returns `None` without mutation if the destination is too short.
@@ -1789,6 +1798,10 @@ mod tests {
         assert_eq!(strspn(b"", b"abc"), 0);
         assert_eq!(strspn(&[0x80, 0xff, 0], &[0x80, 0xff, 0]), 2);
         assert_eq!(strspn(b"abc", b"a\0bc"), 1);
+        assert_eq!(strspnp(b"abc", b"ab"), Some(2));
+        assert_eq!(strspnp(b"abc", b"abc"), None);
+        assert_eq!(strspnp(b"abc", b""), Some(0));
+        assert_eq!(strspnp(b"", b"abc"), None);
 
         assert_eq!(strpbrk(text, b"xd"), Some(3));
         assert_eq!(strpbrk(text, b""), None);
