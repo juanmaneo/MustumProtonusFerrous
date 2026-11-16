@@ -1,0 +1,15 @@
+[package]
+name = "mpf-proton"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Rust equivalent of Proton's `proton` script: prefix setup, env, graphics selection, run-in-prefix"
+
+[dependencies]
+mpf-advapi32 = { path = "../mpf-advapi32" }
+mpf-graphics = { path = "../mpf-graphics" }
+mpf-kernel32 = { path = "../mpf-kernel32" }
+mpf-loader = { path = "../mpf-loader" }
+mpf-ntdll = { path = "../mpf-ntdll" }
+mpf-pe = { path = "../mpf-pe" }
+mpf-wineboot = { path = "../mpf-wineboot" }

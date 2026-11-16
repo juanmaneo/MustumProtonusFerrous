@@ -67,6 +67,27 @@ name = "mpf-pe"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-proton"
+version = "0.1.0"
+dependencies = [
+ "mpf-advapi32",
+ "mpf-graphics",
+ "mpf-kernel32",
+ "mpf-loader",
+ "mpf-ntdll",
+ "mpf-pe",
+ "mpf-wineboot",
+]
+
+[[package]]
+name = "mpf-umu"
+version = "0.1.0"
+dependencies = [
+ "mpf-pe",
+ "mpf-proton",
+]
+
+[[package]]
 name = "mpf-user32"
 version = "0.1.0"
 dependencies = [

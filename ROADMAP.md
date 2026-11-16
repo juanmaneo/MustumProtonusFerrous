@@ -52,10 +52,14 @@ in the dev container for direct comparison.
 
 ## Phase 4 — Proton flavour & umu (current)
 
-- [ ] Rust equivalent of Proton's `proton` script (prefix setup, env vars,
-      DXVK/VKD3D selection, run-in-prefix)
-- [ ] Rust port of umu-launcher (currently Python): UMU_ID, protonfixes,
-      runtime bootstrap
+- [x] `mpf-proton`: Rust equivalent of Proton's `proton` script — prefix
+      setup, env vars (WINE*/PROTON_*/DXVK_*), DXVK/VKD3D companion
+      selection, ASLR base, run-in-prefix (`mpf-proton run` → loader report)
+- [x] `mpf-umu`: Rust port of umu-launcher — UMU_ID/GAMEID (umu-<id> →
+      STEAM_COMPAT_APP_ID), `$HOME/Games/umu/<id>` prefix with `pfx`
+      self-symlink, Steam Runtime bootstrap (sniper/soldier/steamrt4, no
+      downloads), protonfixes (winetricks with WINEPREFIX/GAMEID), then
+      run-in-prefix via `mpf-proton`
 
 ## Phase 5 — coverage
 

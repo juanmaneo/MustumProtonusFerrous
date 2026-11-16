@@ -13,8 +13,9 @@
 | `dlls/winex11.drv`                  | dxvk submodule             | `mpf-graphics` dxvk module (detect + dxvk.conf + DXVK_* env); native dxvk initially |
 | —                                   | vkd3d-proton submodule     | `mpf-graphics` vkd3d module (detect + version); native companion initially |
 | `programs/wineboot`                 | `default_pfx.py`           | `mpf-wineboot` (prefix init + hives) |
+| process startup / run-in-prefix     | `proton` script            | `mpf-proton` (prefix, env, DXVK/VKD3D selection, `run` via `mpf-loader`) |
 | `dlls/*/tests`                      | —                          | `mpf-conformance` (seeded conformance cases) |
-| —                                   | umu-launcher (Python)      | `mpf-umu` (planned, not yet created) |
+| —                                   | umu-launcher (Python)      | `mpf-umu` (UMU_ID/GAMEID, prefix + `pfx` symlink, runtime bootstrap, protonfixes, run via `mpf-proton`) |
 | `include/winnt.h` etc.              | —                          | `mpf-pe` + `mpf-winnt` (PEB/TEB/LDR/critical-section/exception ABI structs) |
 | process startup (`loader/main.c`, `LdrInitializeThunk`) | — | `mpf-cli run` (map → ASLR relocate → resolve imports → PEB/TEB/LDR) |
 
