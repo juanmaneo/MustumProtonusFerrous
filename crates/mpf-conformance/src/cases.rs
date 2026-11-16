@@ -56,6 +56,12 @@ fn shlwapi_path_helpers() {
 }
 
 fn kernelbase_strip_prefix() {
+    let mut legacy_backslash = w("C:\\folder");
+    assert_eq!(
+        mpf_kernelbase::path_add_backslash(&mut legacy_backslash),
+        Some(10)
+    );
+    assert_eq!(legacy_backslash, w("C:\\folder\\"));
     let mut with_backslash = w("C:\\folder");
     assert_eq!(
         mpf_kernelbase::path_cch_add_backslash(&mut with_backslash, 64),

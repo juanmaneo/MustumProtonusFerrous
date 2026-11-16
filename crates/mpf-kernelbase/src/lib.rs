@@ -13,6 +13,7 @@ pub const E_INVALIDARG: i32 = 0x8007_0057u32 as i32;
 pub const STRSAFE_E_INSUFFICIENT_BUFFER: i32 = 0x8007_007au32 as i32;
 
 const MAX_PATH_CCH: usize = 0x8000;
+const MAX_PATH: usize = 260;
 
 fn ascii_lower(unit: u16) -> u16 {
     if (b'A' as u16..=b'Z' as u16).contains(&unit) {
@@ -259,6 +260,23 @@ pub fn path_cch_remove_backslash_ex(
 /// `size` is the available buffer capacity in UTF-16 code units.
 pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     path_cch_remove_backslash_ex(path, size).0
+}
+
+/// Adds a trailing backslash to a legacy MAX_PATH buffer, matching
+/// Wine's `PathAddBackslashW`. Returns the end offset or `None` for oversized paths.
+pub fn path_add_backslash(path: &mut Vec<u16>) -> Option<usize> {
+    let length = wlen(path);
+    if length >= MAX_PATH {
+        return None;
+    }
+    if length != 0 && char_at(path, length - 1) != b'\\' as u16 {
+        path.truncate(length);
+        path.push(b'\\' as u16);
+        path.push(0);
+        Some(length + 1)
+    } else {
+        Some(length)
+    }
 }
 
 /// Adds a trailing backslash when missing, returning `(HRESULT, end_offset,
@@ -1039,6 +1057,26 @@ mod tests {
             path_cch_remove_backslash_ex(&mut truncated, 4),
             (E_INVALIDARG, None, 0)
         );
+    }
+
+    #[test]
+    fn legacy_add_backslash_matches_wine_rules() {
+        for (input, expected, offset) in [
+            ("", "", 0),
+            ("one\\two", "one\\two\\", 8),
+            ("one\\..\\two", "one\\..\\two\\", 11),
+            (" ", " \\", 2),
+            ("C:\\one\\", "C:\\one\\", 7),
+        ] {
+            let mut path = w(input);
+            assert_eq!(path_add_backslash(&mut path), Some(offset), "{input}");
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut too_long = vec![b'a' as u16; MAX_PATH];
+        too_long.push(0);
+        let before = too_long.clone();
+        assert_eq!(path_add_backslash(&mut too_long), None);
+        assert_eq!(too_long, before);
     }
 
     #[test]
