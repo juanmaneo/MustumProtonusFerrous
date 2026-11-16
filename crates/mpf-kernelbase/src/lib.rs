@@ -341,6 +341,15 @@ pub fn path_find_extension(path: &[u16]) -> usize {
     last_dot.unwrap_or(len)
 }
 
+/// Removes the legacy `PathFindExtensionW` result in place, if present.
+pub fn path_remove_extension(path: &mut Vec<u16>) {
+    let extension = path_find_extension(path);
+    if char_at(path, extension) != 0 {
+        path.truncate(extension);
+        path.push(0);
+    }
+}
+
 /// Appends an extension when the legacy extension search finds none and the
 /// result fits within MAX_PATH UTF-16 code units including the terminator.
 pub fn path_add_extension(path: &mut Vec<u16>, extension: &[u16]) -> bool {
@@ -1215,6 +1224,25 @@ mod tests {
             path_cch_find_extension(&vec![b'a' as u16; MAX_PATH_CCH], MAX_PATH_CCH),
             (E_INVALIDARG, None)
         );
+    }
+
+    #[test]
+    fn legacy_remove_extension_matches_wine_rules() {
+        for (input, expected) in [
+            ("file.txt", "file"),
+            ("file.tar.gz", "file.tar"),
+            ("dir.with.dot\\file.txt", "dir.with.dot\\file"),
+            ("file.txt more", "file.txt more"),
+            ("file", "file"),
+            ("", ""),
+        ] {
+            let mut path = w(input);
+            path_remove_extension(&mut path);
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut unterminated = "file.txt".encode_utf16().collect::<Vec<_>>();
+        path_remove_extension(&mut unterminated);
+        assert_eq!(unterminated, w("file"));
     }
 
     #[test]
