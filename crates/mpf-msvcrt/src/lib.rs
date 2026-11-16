@@ -2,9 +2,10 @@
 //! `dlls/msvcrt/string.c` and `dlls/msvcrt/wcs.c`.
 //!
 //! The subset includes byte-string comparison, length, search, copy,
-//! concatenation, and mutation routines alongside UTF-16 equivalents. Slice-based APIs treat
-//! the first NUL as the string end (or the slice end if no NUL is present) and
-//! avoid pointer-style out-of-bounds reads. Case-insensitive comparison uses
+//! concatenation, and mutation routines alongside UTF-16 equivalents.
+//! Slice-based APIs treat the first NUL as the string end (or the slice end if
+//! no NUL is present) and avoid pointer-style out-of-bounds reads.
+//! Case-insensitive comparison uses
 //! ASCII-only folding; locale-aware behavior and `MSVCRT_CHECK_PMT`
 //! invalid-parameter handling are not ported.
 
@@ -106,6 +107,22 @@ pub fn wcsdup(source: Option<&[u16]>) -> Option<Vec<u16>> {
         duplicate.push(0);
         duplicate
     })
+}
+
+/// Swaps adjacent bytes from `source` into `destination` for the first
+/// `count` bytes, ignoring any odd trailing byte.
+///
+/// Returns the number of bytes written, or `None` if either slice is too short.
+/// Unlike C `_swab`, the safe-slice API does not allow overlapping buffers.
+pub fn swab(source: &[u8], destination: &mut [u8], count: usize) -> Option<usize> {
+    let written = count & !1;
+    let source = source.get(..written)?;
+    let destination = destination.get_mut(..written)?;
+    for index in (0..written).step_by(2) {
+        destination[index] = source[index + 1];
+        destination[index + 1] = source[index];
+    }
+    Some(written)
 }
 
 /// Duplicates an optional NUL-terminated byte string.
@@ -729,6 +746,22 @@ mod tests {
         assert_eq!(wcsdup(Some(&w("wine"))), Some(w("wine")));
         assert_eq!(wcsdup(Some(&[b'a' as u16, b'b' as u16])), Some(w("ab")));
         assert_eq!(wcsdup(Some(&[])), Some(vec![0]));
+    }
+
+    #[test]
+    fn swab_swaps_complete_pairs_and_ignores_odd_tail() {
+        let source = *b"abcdef";
+        let mut destination = [b'$'; 7];
+        assert_eq!(swab(&source, &mut destination, 6), Some(6));
+        assert_eq!(&destination, b"badcfe$");
+
+        let mut odd_destination = [b'$'; 6];
+        assert_eq!(swab(b"abcde", &mut odd_destination, 5), Some(4));
+        assert_eq!(&odd_destination, b"badc$$");
+        assert_eq!(swab(b"a", &mut odd_destination, 1), Some(0));
+        assert_eq!(swab(b"", &mut [], 0), Some(0));
+        assert_eq!(swab(b"a", &mut [], 2), None);
+        assert_eq!(swab(b"ab", &mut [0; 1], 2), None);
     }
 
     #[test]
