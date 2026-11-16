@@ -238,6 +238,30 @@ pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
     }
 }
 
+/// Reports whether a path begins with two backslashes, matching
+/// Wine's `PathIsUNCW` behavior.
+pub fn path_is_unc(path: &[u16]) -> bool {
+    char_at(path, 0) == b'\\' as u16 && char_at(path, 1) == b'\\' as u16
+}
+
+/// Reports whether a UNC path contains exactly one separator after its server
+/// name, matching Wine's `PathIsUNCServerShareW` behavior.
+pub fn path_is_unc_server_share(path: &[u16]) -> bool {
+    if !path_is_unc(path) {
+        return false;
+    }
+    let mut seen_separator = false;
+    for &unit in &path[2..wlen(path)] {
+        if unit == b'\\' as u16 {
+            if seen_separator {
+                return false;
+            }
+            seen_separator = true;
+        }
+    }
+    seen_separator
+}
+
 /// Reports whether a path is relative, matching Wine's `PathIsRelativeW`.
 pub fn path_is_relative(path: &[u16]) -> bool {
     let len = wlen(path);
@@ -701,6 +725,25 @@ mod tests {
         let mut path = w("C:\\a");
         assert_eq!(path_cch_remove_backslash(&mut path, 4), E_INVALIDARG);
         assert_eq!(path, w("C:\\a"));
+    }
+
+    #[test]
+    fn is_unc_and_server_share_match_wine_implementation() {
+        for (path, expected_unc, expected_share) in [
+            ("", false, false),
+            ("\\", false, false),
+            ("\\\\", true, false),
+            ("\\\\server", true, false),
+            ("\\\\server\\", true, true),
+            ("\\\\server\\share", true, true),
+            ("\\\\server\\share\\file", true, false),
+            ("\\\\server\\\\share", true, false),
+            ("C:\\path", false, false),
+        ] {
+            let path = w(path);
+            assert_eq!(path_is_unc(&path), expected_unc);
+            assert_eq!(path_is_unc_server_share(&path), expected_share);
+        }
     }
 
     #[test]
