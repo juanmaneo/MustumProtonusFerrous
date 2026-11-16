@@ -88,6 +88,9 @@ fn kernelbase_strip_prefix() {
     assert_eq!(legacy_extension, w("C:\\folder\\file.txt"));
     mpf_kernelbase::path_remove_extension(&mut legacy_extension);
     assert_eq!(legacy_extension, w("C:\\folder\\file"));
+    let mut quoted_path = w("\"C:\\folder\\file.txt\"");
+    mpf_kernelbase::path_unquote_spaces(&mut quoted_path);
+    assert_eq!(quoted_path, w("C:\\folder\\file.txt"));
     let mut legacy_renamed = w("C:\\folder\\file.old");
     assert!(mpf_kernelbase::path_rename_extension(
         &mut legacy_renamed,

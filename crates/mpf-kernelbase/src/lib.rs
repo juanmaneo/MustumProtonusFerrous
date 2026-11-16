@@ -341,6 +341,23 @@ pub fn path_find_extension(path: &[u16]) -> usize {
     last_dot.unwrap_or(len)
 }
 
+/// Removes one matching pair of surrounding quotes, matching Wine's
+/// `PathUnquoteSpacesW` behavior.
+pub fn path_unquote_spaces(path: &mut Vec<u16>) {
+    let len = wlen(path);
+    if len == 0 || char_at(path, 0) != b'"' as u16 || char_at(path, len - 1) != b'"' as u16 {
+        return;
+    }
+    if len == 1 {
+        path.clear();
+        path.push(0);
+        return;
+    }
+    let mut unquoted = path[1..len - 1].to_vec();
+    unquoted.push(0);
+    *path = unquoted;
+}
+
 /// Removes the legacy `PathFindExtensionW` result in place, if present.
 pub fn path_remove_extension(path: &mut Vec<u16>) {
     let extension = path_find_extension(path);
@@ -1271,6 +1288,31 @@ mod tests {
         let before = too_long.clone();
         assert!(!path_rename_extension(&mut too_long, &w(".x")));
         assert_eq!(too_long, before);
+    }
+
+    #[test]
+    fn unquote_spaces_matches_wine_vectors() {
+        for (input, expected) in [
+            ("abcdef", "abcdef"),
+            ("\"abcdef\"", "abcdef"),
+            ("\"abcdef", "\"abcdef"),
+            ("abcdef\"", "abcdef\""),
+            ("\"\"abcdef\"\"", "\"abcdef\""),
+            ("abc\"def", "abc\"def"),
+            ("\"abc\"def", "\"abc\"def"),
+            ("\"abc\"def\"", "abc\"def"),
+            ("'abcdef'", "'abcdef'"),
+            ("\"\"", ""),
+            ("\"", ""),
+            ("", ""),
+        ] {
+            let mut path = w(input);
+            path_unquote_spaces(&mut path);
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut unterminated = "\"quoted\"".encode_utf16().collect::<Vec<_>>();
+        path_unquote_spaces(&mut unterminated);
+        assert_eq!(unterminated, w("quoted"));
     }
 
     #[test]
