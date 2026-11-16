@@ -426,6 +426,16 @@ pub fn format_i64(value: i64, radix: u32) -> Option<Vec<u8>> {
     Some(formatted)
 }
 
+/// Formats an unsigned integer as UTF-16 using lowercase digits in radix 2–36.
+pub fn format_u64_wide(value: u64, radix: u32) -> Option<Vec<u16>> {
+    format_u64(value, radix).map(|digits| digits.into_iter().map(u16::from).collect())
+}
+
+/// Formats a signed integer as UTF-16 using Wine's `_i64tow` sign rules.
+pub fn format_i64_wide(value: i64, radix: u32) -> Option<Vec<u16>> {
+    format_i64(value, radix).map(|digits| digits.into_iter().map(u16::from).collect())
+}
+
 /// Caller-owned UTF-16 tokenizer state, preserving the source's original end
 /// after separators are replaced with NUL units.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1424,6 +1434,18 @@ mod tests {
         assert_eq!(format_i64(255, 16), Some(b"ff".to_vec()));
         assert_eq!(format_i64(-1, 2), Some(vec![b'1'; 64]));
         assert_eq!(format_i64(1, 1), None);
+        assert_eq!(format_u64_wide(1234, 10), Some(w("1234")[..4].to_vec()));
+        assert_eq!(
+            format_u64_wide(u64::MAX, 36),
+            Some(w("3w5e11264sgsf")[..13].to_vec())
+        );
+        assert_eq!(format_u64_wide(1, 1), None);
+        assert_eq!(format_i64_wide(-1234, 10), Some(w("-1234")[..5].to_vec()));
+        assert_eq!(
+            format_i64_wide(-255, 16),
+            Some(w("ffffffffffffff01")[..16].to_vec())
+        );
+        assert_eq!(format_i64_wide(1, 1), None);
     }
 
     #[test]
