@@ -131,6 +131,9 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::S_OK
     );
     assert_eq!(root, w("C:\\"));
+    let mut legacy_root = w("C:\\folder\\file");
+    assert!(mpf_kernelbase::path_strip_to_root(&mut legacy_root));
+    assert_eq!(legacy_root, w("C:\\"));
     let mut file_spec = w("C:\\folder\\file.txt");
     assert_eq!(
         mpf_kernelbase::path_cch_remove_file_spec(&mut file_spec, 64),

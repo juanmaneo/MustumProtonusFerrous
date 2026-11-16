@@ -220,6 +220,11 @@ pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
     S_OK
 }
 
+/// Truncates a path to its root, matching Wine's `PathStripToRootW` wrapper.
+pub fn path_strip_to_root(path: &mut Vec<u16>) -> bool {
+    path_cch_strip_to_root(path, MAX_PATH_CCH) >= 0
+}
+
 /// Removes one trailing backslash and returns the path-end offset and free size.
 /// Offsets and capacity are measured in UTF-16 code units.
 pub fn path_cch_remove_backslash_ex(
@@ -747,6 +752,22 @@ mod tests {
                 status,
                 "{input}"
             );
+            assert_eq!(path, w(expected), "{input}");
+        }
+    }
+
+    #[test]
+    fn strip_to_root_matches_wine_pathstriptorootw_wrapper() {
+        for (input, expected, result) in [
+            ("C:\\a\\b", "C:\\", true),
+            ("C:\\", "C:\\", true),
+            ("\\\\server\\share\\file", "\\\\server\\share", true),
+            ("\\\\server\\share", "\\\\server\\share", true),
+            ("relative", "", false),
+            ("", "", false),
+        ] {
+            let mut path = w(input);
+            assert_eq!(path_strip_to_root(&mut path), result, "{input}");
             assert_eq!(path, w(expected), "{input}");
         }
     }
