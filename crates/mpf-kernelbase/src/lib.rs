@@ -369,6 +369,42 @@ pub fn path_quote_spaces(path: &mut Vec<u16>) {
     }
 }
 
+/// Parses and removes the optional icon index, then unquotes and trims the
+/// path, matching Wine's `PathParseIconLocationW`.
+pub fn path_parse_icon_location(path: &mut Vec<u16>) -> i32 {
+    let len = wlen(path);
+    let mut icon_index = 0;
+    if let Some(comma) = path[..len].iter().position(|&unit| unit == b',' as u16) {
+        let index = &path[comma + 1..len];
+        if index
+            .first()
+            .is_some_and(|&unit| unit == b'-' as u16 || (b'0' as u16..=b'9' as u16).contains(&unit))
+        {
+            let negative = index.first() == Some(&(b'-' as u16));
+            let digits = if negative { &index[1..] } else { index };
+            let mut value = 0_i64;
+            for &unit in digits
+                .iter()
+                .take_while(|&&unit| (b'0' as u16..=b'9' as u16).contains(&unit))
+            {
+                value = value
+                    .wrapping_mul(10)
+                    .wrapping_add(i64::from(unit - b'0' as u16));
+            }
+            icon_index = (if negative {
+                value.wrapping_neg()
+            } else {
+                value
+            }) as i32;
+        }
+        path.truncate(comma);
+        path.push(0);
+    }
+    path_unquote_spaces(path);
+    path_remove_blanks(path);
+    icon_index
+}
+
 /// Removes a trailing backslash unless the path is a root, matching
 /// `PathRemoveBackslashW`. Returns the offset corresponding to Wine's pointer.
 pub fn path_remove_backslash(path: &mut Vec<u16>) -> usize {
@@ -1603,6 +1639,33 @@ mod tests {
         let mut unterminated = "C:\\folder\\file".encode_utf16().collect::<Vec<_>>();
         path_strip_path(&mut unterminated);
         assert_eq!(unterminated, w("file"));
+    }
+
+    #[test]
+    fn parse_icon_location_matches_wine_mutation_and_index_rules() {
+        for (input, expected_path, expected_index) in [
+            ("path", "path", 0),
+            (" path ", "path", 0),
+            ("\" path with spaces \",7", "path with spaces", 7),
+            ("file.exe,-12suffix", "file.exe", -12),
+            ("file.exe,12suffix", "file.exe", 12),
+            ("file.exe,+12", "file.exe", 0),
+            ("file.exe, 12", "file.exe", 0),
+            ("file.exe,-", "file.exe", 0),
+            ("file.exe,not-a-number", "file.exe", 0),
+            ("file.exe,3,4", "file.exe", 3),
+        ] {
+            let mut path = w(input);
+            assert_eq!(
+                path_parse_icon_location(&mut path),
+                expected_index,
+                "{input:?}"
+            );
+            assert_eq!(path, w(expected_path), "{input:?}");
+        }
+        let mut unterminated = " path ,5".encode_utf16().collect::<Vec<_>>();
+        assert_eq!(path_parse_icon_location(&mut unterminated), 5);
+        assert_eq!(unterminated, w("path"));
     }
 
     #[test]

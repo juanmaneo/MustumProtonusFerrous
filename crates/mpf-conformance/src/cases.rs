@@ -192,6 +192,9 @@ fn kernelbase_strip_prefix() {
     let mut quoted_path = w("C:\\Program Files\\app.exe");
     mpf_kernelbase::path_quote_spaces(&mut quoted_path);
     assert_eq!(quoted_path, w("\"C:\\Program Files\\app.exe\""));
+    let mut icon_path = w("\" C:\\Program Files\\app.exe \",5");
+    assert_eq!(mpf_kernelbase::path_parse_icon_location(&mut icon_path), 5);
+    assert_eq!(icon_path, w("C:\\Program Files\\app.exe"));
     assert!(mpf_kernelbase::path_is_valid_char(
         b'?' as u16,
         mpf_kernelbase::PATH_CHAR_CLASS_LETTER
