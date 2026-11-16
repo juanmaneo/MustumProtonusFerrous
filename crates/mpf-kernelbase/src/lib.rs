@@ -394,6 +394,66 @@ pub fn path_is_unc_server_share(path: &[u16]) -> bool {
     seen_separator
 }
 
+/// Removes the final file component with Wine's `PathRemoveFileSpecW` rules.
+pub fn path_remove_file_spec(path: &mut Vec<u16>) -> bool {
+    let len = wlen(path);
+    if len == 0 {
+        return false;
+    }
+    let mut root = if is_prefixed_volume(path) {
+        Some(48)
+    } else if is_prefixed_disk(path) {
+        Some(6)
+    } else if matches!(char_at(path, 0), 65..=90 | 97..=122) && char_at(path, 1) == b':' as u16 {
+        Some(2)
+    } else {
+        None
+    };
+    if root.is_none() {
+        let mut index = 0;
+        if char_at(path, index) == b'\\' as u16 {
+            index += 1;
+        }
+        if char_at(path, index + 1) != b'?' as u16 {
+            if char_at(path, index) == b'\\' as u16 {
+                index += 1;
+            }
+            if index > 1
+                && matches!(char_at(path, index), 65..=90 | 97..=122)
+                && char_at(path, index + 1) == b':' as u16
+            {
+                index += 2;
+            }
+            if char_at(path, index) == b'\\' as u16
+                && char_at(path, index + 1) != 0
+                && char_at(path, index + 1) != b'\\' as u16
+            {
+                index += 1;
+            }
+        }
+        root = Some(index);
+    } else if char_at(path, root.unwrap()) == b'\\' as u16 {
+        root = root.map(|index| index + 1);
+    }
+    let root = root.unwrap();
+    if let Some(mut separator) = (root..len).rev().find(|&index| path[index] == b'\\' as u16) {
+        if separator != root {
+            if separator > 0 && char_at(path, separator - 1) == b'\\' as u16 {
+                separator -= 1;
+            }
+            path.truncate(separator);
+            path.push(0);
+            return true;
+        }
+    }
+    if char_at(path, root) == 0 {
+        return false;
+    }
+    path.truncate(root);
+    path.push(0);
+    true
+}
+
 /// Reports whether a path is relative, matching Wine's `PathIsRelativeW`.
 pub fn path_is_relative(path: &[u16]) -> bool {
     let len = wlen(path);
@@ -1211,6 +1271,43 @@ mod tests {
             let path = w(path);
             assert_eq!(path_is_unc(&path), expected_unc);
             assert_eq!(path_is_unc_server_share(&path), expected_share);
+        }
+    }
+
+    #[test]
+    fn path_remove_file_spec_matches_wine_vectors() {
+        for (input, expected, result) in [
+            ("Q:\\", "Q:\\", false),
+            ("Q:\\\\", "Q:\\", true),
+            ("Q:\\test1\\test2", "Q:\\test1", true),
+            ("Q:relative\\file", "Q:relative", true),
+            ("Q:\\test1\\test2\\", "Q:\\test1\\test2", true),
+            ("Q:\\test1\\test2\\\\", "Q:\\test1\\test2", true),
+            ("\\\\Q:\\", "\\\\Q:", true),
+            ("\\\\Q:\\aaa", "\\\\Q:\\", true),
+            ("\\\\o\\Q:\\aaa", "\\\\o\\Q:", true),
+            ("\\Q:\\", "\\Q:", true),
+            ("test", "", true),
+            ("\\\\?\\Q:\\", "\\\\?\\Q:\\", false),
+            ("\\\\?\\Q:\\a", "\\\\?\\Q:\\", true),
+            ("\\\\.\\Q:\\", "\\\\.\\Q:", true),
+            ("\\\\?\\", "\\\\?", true),
+            ("\\\\?\\UNC\\a\\b\\c", "\\\\?\\UNC\\a\\b", true),
+            (
+                "\\\\?\\Volume{aaaaaaaa-bbbb-cccc-dddd-ffffffffffff}\\a",
+                "\\\\?\\Volume{aaaaaaaa-bbbb-cccc-dddd-ffffffffffff}\\",
+                true,
+            ),
+            ("\\\\a\\b\\c", "\\\\a\\b", true),
+            ("\\\\a\\b", "\\\\a", true),
+            ("\\\\a", "\\\\", true),
+            ("\\a\\b", "\\a", true),
+            ("\\a", "\\", true),
+            ("", "", false),
+        ] {
+            let mut path = w(input);
+            assert_eq!(path_remove_file_spec(&mut path), result, "{input}");
+            assert_eq!(path, w(expected), "{input}");
         }
     }
 
