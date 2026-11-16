@@ -426,6 +426,51 @@ pub fn format_i64(value: i64, radix: u32) -> Option<Vec<u8>> {
     Some(formatted)
 }
 
+/// Caller-owned UTF-16 tokenizer state, preserving the source's original end
+/// after separators are replaced with NUL units.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WcstokCursor {
+    next: usize,
+    end: usize,
+}
+
+impl WcstokCursor {
+    /// Starts tokenization at the beginning of the bounded UTF-16 string.
+    pub fn new(source: &[u16]) -> Self {
+        Self {
+            next: 0,
+            end: wcslen(source),
+        }
+    }
+
+    /// Returns the next token range, replacing its separator with NUL.
+    pub fn next_token(
+        &mut self,
+        source: &mut [u16],
+        delimiters: &[u16],
+    ) -> Option<std::ops::Range<usize>> {
+        let delimiter_end = wcslen(delimiters);
+        let delimiter_set = &delimiters[..delimiter_end];
+        let mut start = self.next.min(self.end);
+        while start < self.end && delimiter_set.contains(&source[start]) {
+            start += 1;
+        }
+        if start == self.end {
+            self.next = self.end;
+            return None;
+        }
+        let mut end = start;
+        while end < self.end && !delimiter_set.contains(&source[end]) {
+            end += 1;
+        }
+        self.next = if end < self.end { end + 1 } else { self.end };
+        if end < source.len() {
+            source[end] = 0;
+        }
+        Some(start..end)
+    }
+}
+
 /// Caller-owned tokenizer state, preserving the source's original end after
 /// delimiters are replaced with NUL bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1367,6 +1412,28 @@ mod tests {
         assert_eq!(format_i64(255, 16), Some(b"ff".to_vec()));
         assert_eq!(format_i64(-1, 2), Some(vec![b'1'; 64]));
         assert_eq!(format_i64(1, 1), None);
+    }
+
+    #[test]
+    fn wcstok_s_skips_delimiters_mutates_separators_and_advances_context() {
+        let mut source = w(",,one,,two,three");
+        let mut cursor = WcstokCursor::new(&source);
+        assert_eq!(cursor.next_token(&mut source, &w(",")), Some(2..5));
+        assert_eq!(&source[2..6], &[b'o' as u16, b'n' as u16, b'e' as u16, 0]);
+        assert_eq!(cursor.next_token(&mut source, &w(",")), Some(7..10));
+        assert_eq!(&source[7..11], &[b't' as u16, b'w' as u16, b'o' as u16, 0]);
+        assert_eq!(cursor.next_token(&mut source, &w(",")), Some(11..16));
+        assert_eq!(cursor.next_token(&mut source, &w(",")), None);
+
+        let mut empty = w(",,,");
+        let mut cursor = WcstokCursor::new(&empty);
+        assert_eq!(cursor.next_token(&mut empty, &w(",")), None);
+
+        let mut no_nul = [b'a' as u16, b'b' as u16];
+        let mut cursor = WcstokCursor::new(&no_nul);
+        assert_eq!(cursor.next_token(&mut no_nul, &w(",")), Some(0..2));
+        assert_eq!(no_nul, [b'a' as u16, b'b' as u16]);
+        assert_eq!(cursor.next_token(&mut no_nul, &w(",")), None);
     }
 
     #[test]
