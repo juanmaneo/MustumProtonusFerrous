@@ -41,6 +41,20 @@ pub fn wcschr(s: &[u16], needle: u16) -> Option<usize> {
         .position(|&unit| unit == needle)
 }
 
+/// Appends at most `count` UTF-16 units and NUL-terminates the destination.
+///
+/// Returns `None` without modifying the destination when it is unterminated or
+/// lacks capacity for the appended text and terminator.
+pub fn wcsncat(destination: &mut [u16], source: &[u16], count: usize) -> Option<()> {
+    let end = destination.iter().position(|&unit| unit == 0)?;
+    let append_len = wcsnlen(source, count);
+    let required = end + append_len + 1;
+    let destination = destination.get_mut(end..required)?;
+    destination[..append_len].copy_from_slice(&source[..append_len]);
+    destination[append_len] = 0;
+    Some(())
+}
+
 /// Copies at most `count` UTF-16 units and NUL-pads the remaining destination.
 ///
 /// Returns `None` without modifying the destination if it has fewer than
@@ -164,6 +178,26 @@ mod tests {
         assert_eq!(wcsnlen(&[b'a' as u16, b'b' as u16], 20), 2);
         assert_eq!(wcsnlen(&w("string"), 0), 0);
         assert_eq!(wcsnlen(&[], 4), 0);
+    }
+
+    #[test]
+    fn wcsncat_appends_with_a_terminator_and_checks_capacity() {
+        let mut destination = [0xffff; 12];
+        destination[..5].copy_from_slice(&w("base"));
+        assert_eq!(wcsncat(&mut destination, &w("tail"), 2), Some(()));
+        assert_eq!(&destination[..7], &w("baseta"));
+
+        assert_eq!(wcsncat(&mut destination, &w("il"), 8), Some(()));
+        assert_eq!(&destination[..9], &w("basetail"));
+
+        let mut exact = w("x");
+        assert_eq!(wcsncat(&mut exact, &w(""), 0), Some(()));
+        assert_eq!(exact, w("x"));
+        assert_eq!(wcsncat(&mut [], &w("x"), 1), None);
+        assert_eq!(wcsncat(&mut [b'x' as u16], &w("y"), 1), None);
+        let mut too_small = [b'x' as u16, 0];
+        assert_eq!(wcsncat(&mut too_small, &w("y"), 1), None);
+        assert_eq!(too_small, [b'x' as u16, 0]);
     }
 
     #[test]
