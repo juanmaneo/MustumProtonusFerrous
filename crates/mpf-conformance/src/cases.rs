@@ -97,6 +97,15 @@ fn ole32_thread_com_state() {
     assert!(mpf_ole32::is_equal_guid(None, Some(&[0; 16])));
 }
 
+fn shell32_pidl_layout() {
+    // mirrors dlls/shell32/pidl.c ILGetSize/ILGetNext/ILFindLastID
+    let pidl = [3, 0, 0xaa, 4, 0, 0xbb, 0xcc, 0, 0];
+    assert_eq!(mpf_shell32::il_get_size(&pidl), Some(9));
+    assert_eq!(mpf_shell32::il_get_next(&pidl, 0), Some(3));
+    assert_eq!(mpf_shell32::il_find_last_id(&pidl), Some(3));
+    assert_eq!(mpf_shell32::il_get_size(&[0, 0]), Some(2));
+}
+
 fn kernel32_lstrlen_semantics() {
     // mirrors dlls/kernel32/tests/string.c lstrlenW expectations
     assert_eq!(
@@ -364,6 +373,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "ole32!CoGetState/CoSetState thread-local state",
             run: ole32_thread_com_state,
+        },
+        Case {
+            name: "shell32!ILGetSize/ILGetNext/ILFindLastID PIDL layout",
+            run: shell32_pidl_layout,
         },
         Case {
             name: "kernel32!lstrlenW semantics",
