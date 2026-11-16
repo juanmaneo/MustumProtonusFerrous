@@ -1,6 +1,6 @@
 //! UUID string conversions from Wine's `dlls/rpcrt4/rpcrt4_main.c`.
 //!
-//! This is a string-only subset. It mirrors Wine's lowercase-only hex parser
+//! This is a string-only subset. It mirrors Wine's case-insensitive hex parser
 //! and 8-4-4-4-12 formatting. `None` models the C API's null string, which
 //! parses as the nil UUID. Allocation and RPC_STATUS constants are not ABI
 //! compatible; errors are represented by `UuidError`.
@@ -67,6 +67,7 @@ fn hex(byte: u8) -> Option<u8> {
     match byte {
         b'0'..=b'9' => Some(byte - b'0'),
         b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
         _ => None,
     }
 }
@@ -129,6 +130,10 @@ mod tests {
         assert_eq!(uuid.data4, [0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]);
         assert_eq!(to_string(Some(&uuid)), SAMPLE);
         assert_eq!(from_string(Some(&to_string(Some(&uuid)))).unwrap(), uuid);
+        assert_eq!(
+            from_string(Some("00112233-4455-6677-8899-AABBCCDDEEFF")),
+            Ok(uuid)
+        );
     }
 
     #[test]
@@ -157,7 +162,7 @@ mod tests {
             );
         }
         assert_eq!(
-            from_string(Some("00112233-4455-6677-8899-AABBCCDDEEFF")),
+            from_string(Some("00112233-4455-6677-8899-GABBCCDDEEFF")),
             Err(UuidError)
         );
     }
