@@ -109,6 +109,67 @@ pub fn wcschr(s: &[u16], needle: u16) -> Option<usize> {
         .position(|&unit| unit == needle)
 }
 
+/// Copies a byte string, including its terminator, into the destination.
+///
+/// Returns `None` without modifying the destination if it is too small. An
+/// unterminated source slice is copied in full and explicitly terminated.
+pub fn strcpy(destination: &mut [u8], source: &[u8]) -> Option<()> {
+    let length = strnlen(source, source.len());
+    let required = length + 1;
+    let destination = destination.get_mut(..required)?;
+    destination[..length].copy_from_slice(&source[..length]);
+    destination[length] = 0;
+    Some(())
+}
+
+/// Appends a byte string, including its terminator, to the destination.
+///
+/// Returns `None` without modifying the destination if it lacks a terminator or
+/// capacity. An unterminated source slice is copied in full.
+pub fn strcat(destination: &mut [u8], source: &[u8]) -> Option<()> {
+    let end = destination.iter().position(|&byte| byte == 0)?;
+    let source_len = strnlen(source, source.len());
+    let terminator = end + source_len;
+    let required = terminator + 1;
+    let destination = destination.get_mut(end..required)?;
+    destination[..source_len].copy_from_slice(&source[..source_len]);
+    destination[source_len] = 0;
+    Some(())
+}
+
+/// Appends at most `count` bytes and NUL-terminates the destination.
+///
+/// Returns `None` without modifying the destination when it is unterminated or
+/// lacks capacity for the appended bytes and terminator.
+pub fn strncat(destination: &mut [u8], source: &[u8], count: usize) -> Option<()> {
+    let end = destination.iter().position(|&byte| byte == 0)?;
+    let append_len = strnlen(source, count);
+    let required = end + append_len + 1;
+    let destination = destination.get_mut(end..required)?;
+    destination[..append_len].copy_from_slice(&source[..append_len]);
+    destination[append_len] = 0;
+    Some(())
+}
+
+/// Copies at most `count` bytes and NUL-pads the remaining destination.
+///
+/// Returns `None` without modifying the destination if it has fewer than
+/// `count` bytes. Like Wine's `strncpy`, exactly `count` bytes are written.
+pub fn strncpy(destination: &mut [u8], source: &[u8], count: usize) -> Option<()> {
+    let destination = destination.get_mut(..count)?;
+    let mut copied = 0;
+    while copied < count {
+        let byte = source.get(copied).copied().unwrap_or(0);
+        destination[copied] = byte;
+        copied += 1;
+        if byte == 0 {
+            break;
+        }
+    }
+    destination[copied..].fill(0);
+    Some(())
+}
+
 /// Copies a UTF-16 string, including its terminator, into the destination.
 ///
 /// Returns `None` without modifying the destination if it is too small. An
@@ -562,6 +623,64 @@ mod tests {
         assert_eq!(wcsnlen(&[b'a' as u16, b'b' as u16], 20), 2);
         assert_eq!(wcsnlen(&w("string"), 0), 0);
         assert_eq!(wcsnlen(&[], 4), 0);
+    }
+
+    #[test]
+    fn byte_copy_and_concat_match_bounded_c_string_semantics() {
+        let mut copied = [0xff; 6];
+        assert_eq!(strcpy(&mut copied, b"wine\0ignored"), Some(()));
+        assert_eq!(&copied, &[b'w', b'i', b'n', b'e', 0, 0xff]);
+        let mut exact = [0xff; 2];
+        assert_eq!(strcpy(&mut exact, b"x"), Some(()));
+        assert_eq!(&exact, b"x\0");
+        let mut too_small = [0xff; 1];
+        assert_eq!(strcpy(&mut too_small, b"x"), None);
+        assert_eq!(too_small, [0xff]);
+        assert_eq!(strcpy(&mut [], b""), None);
+
+        let mut destination = [0xff; 8];
+        destination[..3].copy_from_slice(b"ab\0");
+        assert_eq!(strcat(&mut destination, b"cd\0ignored"), Some(()));
+        assert_eq!(&destination[..5], b"abcd\0");
+        assert_eq!(strcat(&mut destination, b""), Some(()));
+        assert_eq!(&destination[..5], b"abcd\0");
+        assert_eq!(strcat(&mut [], b"x"), None);
+        let mut unterminated = *b"ab";
+        assert_eq!(strcat(&mut unterminated, b"c"), None);
+        assert_eq!(unterminated, *b"ab");
+        let mut no_space = *b"a\0";
+        assert_eq!(strcat(&mut no_space, b"b"), None);
+        assert_eq!(no_space, *b"a\0");
+
+        let mut appended = [0xff; 8];
+        appended[..3].copy_from_slice(b"ab\0");
+        assert_eq!(strncat(&mut appended, b"cdef", 2), Some(()));
+        assert_eq!(&appended[..5], b"abcd\0");
+        assert_eq!(strncat(&mut appended, b"ef", 8), Some(()));
+        assert_eq!(&appended[..7], b"abcdef\0");
+        let mut exact_append = *b"x\0";
+        assert_eq!(strncat(&mut exact_append, b"", 0), Some(()));
+        assert_eq!(exact_append, *b"x\0");
+        assert_eq!(strncat(&mut [], b"x", 1), None);
+        let mut unterminated_destination = *b"x";
+        assert_eq!(strncat(&mut unterminated_destination, b"y", 1), None);
+        let mut too_small = *b"x\0";
+        assert_eq!(strncat(&mut too_small, b"y", 1), None);
+        assert_eq!(too_small, *b"x\0");
+
+        let mut buffer = [0xff; 6];
+        assert_eq!(strncpy(&mut buffer, b"1234567", 6), Some(()));
+        assert_eq!(&buffer, b"123456");
+        let mut padded = [0xff; 6];
+        assert_eq!(strncpy(&mut padded, b"abc", 6), Some(()));
+        assert_eq!(&padded, b"abc\0\0\0");
+        let mut unchanged = [0xff; 2];
+        assert_eq!(strncpy(&mut unchanged, b"x", 3), None);
+        assert_eq!(unchanged, [0xff; 2]);
+        assert_eq!(strncpy(&mut unchanged, b"x", 0), Some(()));
+        assert_eq!(strncpy(&mut unchanged, b"x", 2), Some(()));
+        assert_eq!(&unchanged, b"x\0");
+        assert_eq!(strncpy(&mut [0xff; 3], b"x\0y", 3), Some(()));
     }
 
     #[test]
