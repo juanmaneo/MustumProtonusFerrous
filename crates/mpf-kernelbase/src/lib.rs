@@ -356,6 +356,19 @@ pub fn path_cch_add_backslash_ex(path: &mut Vec<u16>, size: usize) -> (i32, Opti
     (S_OK, Some(length + 1), size - length - 1)
 }
 
+/// Wraps a path containing spaces in quotes when Wine's MAX_PATH bound permits.
+pub fn path_quote_spaces(path: &mut Vec<u16>) {
+    let len = wlen(path);
+    if path[..len].contains(&(b' ' as u16)) && len + 3 < MAX_PATH {
+        let mut quoted = Vec::with_capacity(len + 3);
+        quoted.push(b'"' as u16);
+        quoted.extend_from_slice(&path[..len]);
+        quoted.push(b'"' as u16);
+        quoted.push(0);
+        *path = quoted;
+    }
+}
+
 /// Removes a trailing backslash unless the path is a root, matching
 /// `PathRemoveBackslashW`. Returns the offset corresponding to Wine's pointer.
 pub fn path_remove_backslash(path: &mut Vec<u16>) -> usize {
@@ -1590,6 +1603,29 @@ mod tests {
         let mut unterminated = "C:\\folder\\file".encode_utf16().collect::<Vec<_>>();
         path_strip_path(&mut unterminated);
         assert_eq!(unterminated, w("file"));
+    }
+
+    #[test]
+    fn quote_spaces_matches_wine_bounds_and_mutation_rules() {
+        for (input, expected) in [
+            ("", ""),
+            ("plain", "plain"),
+            ("has space", "\"has space\""),
+            ("  leading and trailing  ", "\"  leading and trailing  \""),
+        ] {
+            let mut path = w(input);
+            path_quote_spaces(&mut path);
+            assert_eq!(path, w(expected), "{input:?}");
+        }
+        let mut too_long = vec![b'a' as u16; MAX_PATH - 3];
+        too_long[1] = b' ' as u16;
+        too_long.push(0);
+        let original = too_long.clone();
+        path_quote_spaces(&mut too_long);
+        assert_eq!(too_long, original);
+        let mut unterminated = "has space".encode_utf16().collect::<Vec<_>>();
+        path_quote_spaces(&mut unterminated);
+        assert_eq!(unterminated, w("\"has space\""));
     }
 
     #[test]

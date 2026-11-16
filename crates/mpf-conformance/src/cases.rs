@@ -189,6 +189,9 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::path_get_char_type(b'A' as u16),
         mpf_kernelbase::GCT_SHORTCHAR | mpf_kernelbase::GCT_LFNCHAR
     );
+    let mut quoted_path = w("C:\\Program Files\\app.exe");
+    mpf_kernelbase::path_quote_spaces(&mut quoted_path);
+    assert_eq!(quoted_path, w("\"C:\\Program Files\\app.exe\""));
     assert!(mpf_kernelbase::path_is_valid_char(
         b'?' as u16,
         mpf_kernelbase::PATH_CHAR_CLASS_LETTER
