@@ -211,6 +211,67 @@ pub fn strtoi64(source: &[u8], base: u32) -> Option<ParseI64> {
     })
 }
 
+/// Result of parsing a signed 32-bit integer from a bounded byte string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseI32 {
+    /// Parsed value, saturated to the signed 32-bit range on overflow.
+    pub value: i32,
+    /// Byte offset where parsing stopped; equals zero if no digits were read.
+    pub end: usize,
+    /// Whether the parsed value exceeded the signed 32-bit range.
+    pub overflow: bool,
+}
+
+/// Parses a Wine-compatible 32-bit signed integer.
+///
+/// This models Windows `long` width and the value/end-pointer behavior of
+/// Wine's `strtol`; `errno` is intentionally not modeled in this safe API.
+pub fn strtol(source: &[u8], base: u32) -> Option<ParseI32> {
+    let parsed = strtoi64(source, base)?;
+    let overflow =
+        parsed.overflow || parsed.value < i64::from(i32::MIN) || parsed.value > i64::from(i32::MAX);
+    Some(ParseI32 {
+        value: parsed.value.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32,
+        end: parsed.end,
+        overflow,
+    })
+}
+
+/// Result of parsing an unsigned 32-bit integer from a bounded byte string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseU32 {
+    /// Parsed value following Wine's `strtoul` saturation and sign behavior.
+    pub value: u32,
+    /// Byte offset where parsing stopped; equals zero if no digits were read.
+    pub end: usize,
+    /// Whether the parsed value exceeded the unsigned 32-bit range.
+    pub overflow: bool,
+}
+
+/// Parses a Wine-compatible 32-bit unsigned integer.
+///
+/// Negative values within the unsigned range wrap modulo 2^32. Values below
+/// Wine's negative bound saturate to one; positive overflow saturates to
+/// `u32::MAX`. `errno` is intentionally not modeled in this safe API.
+pub fn strtoul(source: &[u8], base: u32) -> Option<ParseU32> {
+    let parsed = strtoi64(source, base)?;
+    let upper = i64::from(u32::MAX);
+    let lower = -upper;
+    let overflow = parsed.overflow || parsed.value > upper || parsed.value < lower;
+    let value = if parsed.value > upper {
+        u32::MAX
+    } else if parsed.value < lower {
+        1
+    } else {
+        parsed.value as u32
+    };
+    Some(ParseU32 {
+        value,
+        end: parsed.end,
+        overflow,
+    })
+}
+
 /// Result of parsing an unsigned 64-bit integer from a bounded byte string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParseU64 {
@@ -1154,6 +1215,52 @@ mod tests {
         );
         assert_eq!(strtoui64(b"12", 1), None);
         assert_eq!(strtoui64(b"12", 37), None);
+
+        assert_eq!(strtol(b"-1234", 0).unwrap().value, -1234);
+        assert_eq!(strtol(b"2147483647L", 0).unwrap().value, i32::MAX);
+        assert_eq!(strtol(b"-2147483648L", 0).unwrap().value, i32::MIN);
+        assert_eq!(
+            strtol(b"9223372036854775807L", 0).unwrap(),
+            ParseI32 {
+                value: i32::MAX,
+                end: 19,
+                overflow: true
+            }
+        );
+        assert_eq!(
+            strtol(b"-9223372036854775808L", 0).unwrap(),
+            ParseI32 {
+                value: i32::MIN,
+                end: 20,
+                overflow: true
+            }
+        );
+        assert_eq!(strtol(b"-0x", 0).unwrap().end, 0);
+        assert_eq!(strtol(b"12", 1), None);
+
+        assert_eq!(strtoul(b"1234", 0).unwrap().value, 1234);
+        assert_eq!(strtoul(b"4294967295UL", 0).unwrap().value, u32::MAX);
+        assert_eq!(
+            strtoul(b"9223372036854775807L", 0).unwrap(),
+            ParseU32 {
+                value: u32::MAX,
+                end: 19,
+                overflow: true
+            }
+        );
+        assert_eq!(strtoul(b"-2", 0).unwrap().value, u32::MAX - 1);
+        assert_eq!(strtoul(b"-4294967294", 0).unwrap().value, 2);
+        assert_eq!(strtoul(b"-4294967295", 0).unwrap().value, 1);
+        assert_eq!(
+            strtoul(b"-4294967296", 0).unwrap(),
+            ParseU32 {
+                value: 1,
+                end: 11,
+                overflow: true
+            }
+        );
+        assert_eq!(strtoul(b"-0x", 0).unwrap().end, 0);
+        assert_eq!(strtoul(b"12", 37), None);
     }
 
     #[test]
