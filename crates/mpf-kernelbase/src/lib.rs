@@ -213,29 +213,40 @@ pub fn path_cch_strip_to_root(path: &mut Vec<u16>, size: usize) -> i32 {
     S_OK
 }
 
-/// Removes one trailing backslash unless it is the path's root separator.
-/// `size` is the available buffer capacity in UTF-16 code units.
-pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
+/// Removes one trailing backslash and returns the path-end offset and free size.
+/// Offsets and capacity are measured in UTF-16 code units.
+pub fn path_cch_remove_backslash_ex(
+    path: &mut Vec<u16>,
+    size: usize,
+) -> (i32, Option<usize>, usize) {
     if size == 0 {
-        return E_INVALIDARG;
+        return (E_INVALIDARG, None, 0);
     }
     let len = wlen(path);
     let path_len = len.min(size);
     if path_len == size && char_at(path, path_len) == 0 {
-        return E_INVALIDARG;
+        return (E_INVALIDARG, None, 0);
     }
     let root = root_end(path);
     if path_len > 0 && char_at(path, path_len - 1) == b'\\' as u16 {
-        let last = path_len - 1;
-        if root.is_none_or(|root_end| last > root_end) {
-            path.truncate(last);
+        let end = path_len - 1;
+        let free = size - path_len + 1;
+        if root.is_none_or(|root_end| end > root_end) {
+            path.truncate(end);
             path.push(0);
-            return S_OK;
+            (S_OK, Some(end), free)
+        } else {
+            (S_FALSE, Some(end), free)
         }
-        S_FALSE
     } else {
-        S_FALSE
+        (S_FALSE, Some(path_len), size - path_len)
     }
+}
+
+/// Removes one trailing backslash unless it is the path's root separator.
+/// `size` is the available buffer capacity in UTF-16 code units.
+pub fn path_cch_remove_backslash(path: &mut Vec<u16>, size: usize) -> i32 {
+    path_cch_remove_backslash_ex(path, size).0
 }
 
 /// Reports whether a path begins with two backslashes, matching
@@ -725,6 +736,55 @@ mod tests {
         let mut path = w("C:\\a");
         assert_eq!(path_cch_remove_backslash(&mut path, 4), E_INVALIDARG);
         assert_eq!(path, w("C:\\a"));
+    }
+
+    #[test]
+    fn remove_backslash_ex_matches_wine_offsets_and_free_sizes() {
+        for (input, expected, offset, free, status) in [
+            ("", "", 0, 1, S_FALSE),
+            ("C", "C", 1, 1, S_FALSE),
+            ("C\\", "C", 1, 2, S_OK),
+            ("C:", "C:", 2, 1, S_FALSE),
+            ("C:\\", "C:\\", 2, 2, S_FALSE),
+            ("C:\\\\", "C:\\", 3, 2, S_OK),
+            ("C:\\a\\", "C:\\a", 4, 2, S_OK),
+            ("C:\\a\\\\", "C:\\a\\", 5, 2, S_OK),
+            ("\\", "\\", 0, 2, S_FALSE),
+            ("\\\\", "\\\\", 1, 2, S_FALSE),
+            ("\\?\\", "\\?", 2, 2, S_OK),
+            ("\\?\\\\", "\\?\\", 3, 2, S_OK),
+            ("\\a\\", "\\a", 2, 2, S_OK),
+            ("\\a\\\\", "\\a\\", 3, 2, S_OK),
+            ("\\\\a\\", "\\\\a", 3, 2, S_OK),
+            ("\\\\a\\b\\", "\\\\a\\b", 5, 2, S_OK),
+            ("\\\\a\\\\", "\\\\a\\", 4, 2, S_OK),
+            ("\\\\?\\", "\\\\?", 3, 2, S_OK),
+            ("\\\\?\\\\", "\\\\?\\", 4, 2, S_OK),
+            ("\\\\?\\C:", "\\\\?\\C:", 6, 1, S_FALSE),
+            ("\\\\?\\C:\\", "\\\\?\\C:\\", 6, 2, S_FALSE),
+            ("\\?\\UNC\\", "\\?\\UNC", 6, 2, S_OK),
+            ("\\\\?\\UNC", "\\\\?\\UNC", 7, 1, S_FALSE),
+            ("\\\\?\\UNC\\", "\\\\?\\UNC\\", 7, 2, S_FALSE),
+            ("\\\\?\\UNC\\a", "\\\\?\\UNC\\a", 9, 1, S_FALSE),
+            ("\\\\?\\UNC\\a\\", "\\\\?\\UNC\\a", 9, 2, S_OK),
+            ("\\\\?\\UNC\\a\\b\\", "\\\\?\\UNC\\a\\b", 11, 2, S_OK),
+        ] {
+            let mut path = w(input);
+            let size = path.len();
+            let result = path_cch_remove_backslash_ex(&mut path, size);
+            assert_eq!(result, (status, Some(offset), free), "{input}");
+            assert_eq!(path, w(expected), "{input}");
+        }
+        let mut invalid = w("C:\\a");
+        assert_eq!(
+            path_cch_remove_backslash_ex(&mut invalid, 0),
+            (E_INVALIDARG, None, 0)
+        );
+        let mut truncated = w("C:\\a");
+        assert_eq!(
+            path_cch_remove_backslash_ex(&mut truncated, 4),
+            (E_INVALIDARG, None, 0)
+        );
     }
 
     #[test]

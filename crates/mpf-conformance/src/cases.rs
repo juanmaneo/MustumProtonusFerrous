@@ -87,6 +87,12 @@ fn kernelbase_strip_prefix() {
         mpf_kernelbase::S_OK
     );
     assert_eq!(trailing, w("C:\\folder"));
+    let mut trailing_ex = w("C:\\folder\\");
+    assert_eq!(
+        mpf_kernelbase::path_cch_remove_backslash_ex(&mut trailing_ex, 64),
+        (mpf_kernelbase::S_OK, Some(9), 55)
+    );
+    assert_eq!(trailing_ex, w("C:\\folder"));
     let mut root = w("C:\\folder\\file");
     assert_eq!(
         mpf_kernelbase::path_cch_strip_to_root(&mut root, 64),
