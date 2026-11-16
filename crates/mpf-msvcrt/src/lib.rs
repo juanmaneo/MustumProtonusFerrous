@@ -254,20 +254,27 @@ pub struct ParseU32 {
 /// Wine's negative bound saturate to one; positive overflow saturates to
 /// `u32::MAX`. `errno` is intentionally not modeled in this safe API.
 pub fn strtoul(source: &[u8], base: u32) -> Option<ParseU32> {
-    let parsed = strtoi64(source, base)?;
+    let signed = strtoi64(source, base)?;
     let upper = i64::from(u32::MAX);
     let lower = -upper;
-    let overflow = parsed.overflow || parsed.value > upper || parsed.value < lower;
-    let value = if parsed.value > upper {
+    let above_unsigned_range = signed.value > upper;
+    let below_unsigned_range = signed.value < lower;
+    let overflow = signed.overflow | above_unsigned_range | below_unsigned_range;
+    let value = if signed.value > upper {
         u32::MAX
-    } else if parsed.value < lower {
+    } else if signed.value < lower {
         1
+    } else if signed.value < 0 {
+        // Wine's strtoul computes the magnitude as a signed value, then casts
+        // to unsigned; avoid a false 64-bit underflow for `-2` while retaining
+        // the Windows unsigned-long (32-bit) result.
+        signed.value as u32
     } else {
-        parsed.value as u32
+        signed.value as u32
     };
     Some(ParseU32 {
         value,
-        end: parsed.end,
+        end: signed.end,
         overflow,
     })
 }
@@ -370,6 +377,53 @@ fn digit_value(byte: u8) -> Option<u32> {
         b'A'..=b'Z' => Some(u32::from(byte - b'A') + 10),
         _ => None,
     }
+}
+
+/// Formats an unsigned integer in radix 2 through 36 using lowercase digits.
+pub fn format_u64(value: u64, radix: u32) -> Option<Vec<u8>> {
+    if !(2..=36).contains(&radix) {
+        return None;
+    }
+    Some(format_u64_radix(value, radix))
+}
+
+fn format_u64_radix(mut value: u64, radix: u32) -> Vec<u8> {
+    let mut digits = Vec::new();
+    loop {
+        let digit = (value % u64::from(radix)) as u8;
+        digits.push(if digit < 10 {
+            b'0' + digit
+        } else {
+            b'a' + digit - 10
+        });
+        value /= u64::from(radix);
+        if value == 0 {
+            break;
+        }
+    }
+    digits.reverse();
+    digits
+}
+
+/// Formats a signed integer using a leading minus only for radix 10.
+///
+/// In other radices, negative values are formatted as their two's-complement
+/// unsigned representation, matching Wine's `_i64toa` behavior.
+pub fn format_i64(value: i64, radix: u32) -> Option<Vec<u8>> {
+    if !(2..=36).contains(&radix) {
+        return None;
+    }
+    let negative = value < 0 && radix == 10;
+    let magnitude = if negative {
+        value.unsigned_abs()
+    } else {
+        value as u64
+    };
+    let mut formatted = format_u64_radix(magnitude, radix);
+    if negative {
+        formatted.insert(0, b'-');
+    }
+    Some(formatted)
 }
 
 /// Caller-owned tokenizer state, preserving the source's original end after
@@ -1217,8 +1271,13 @@ mod tests {
         assert_eq!(strtoui64(b"12", 37), None);
 
         assert_eq!(strtol(b"-1234", 0).unwrap().value, -1234);
+        assert_eq!(strtol(b"abc", 10).unwrap().value, 0);
         assert_eq!(strtol(b"2147483647L", 0).unwrap().value, i32::MAX);
         assert_eq!(strtol(b"-2147483648L", 0).unwrap().value, i32::MIN);
+        assert_eq!(strtol(b"2147483648", 10).unwrap().value, i32::MAX);
+        assert_eq!(strtol(b"-2147483649", 10).unwrap().value, i32::MIN);
+        assert_eq!(strtol(b"9223372036854775808", 10).unwrap().value, i32::MAX);
+        assert_eq!(strtol(b"-9223372036854775809", 10).unwrap().value, i32::MIN);
         assert_eq!(
             strtol(b"9223372036854775807L", 0).unwrap(),
             ParseI32 {
@@ -1239,7 +1298,32 @@ mod tests {
         assert_eq!(strtol(b"12", 1), None);
 
         assert_eq!(strtoul(b"1234", 0).unwrap().value, 1234);
+        assert_eq!(strtoul(b"-9223372036854775808", 10).unwrap().value, 1);
         assert_eq!(strtoul(b"4294967295UL", 0).unwrap().value, u32::MAX);
+        assert_eq!(
+            strtoul(b"4294967296", 10).unwrap(),
+            ParseU32 {
+                value: u32::MAX,
+                end: 10,
+                overflow: true
+            }
+        );
+        assert_eq!(
+            strtoul(b"9223372036854775808", 10).unwrap(),
+            ParseU32 {
+                value: u32::MAX,
+                end: 19,
+                overflow: true
+            }
+        );
+        assert_eq!(
+            strtoul(b"-9223372036854775809", 10).unwrap(),
+            ParseU32 {
+                value: 1,
+                end: 20,
+                overflow: true
+            }
+        );
         assert_eq!(
             strtoul(b"9223372036854775807L", 0).unwrap(),
             ParseU32 {
@@ -1260,7 +1344,29 @@ mod tests {
             }
         );
         assert_eq!(strtoul(b"-0x", 0).unwrap().end, 0);
+        assert_eq!(strtoul(b"12", 1), None);
         assert_eq!(strtoul(b"12", 37), None);
+    }
+
+    #[test]
+    fn integer_formatting_matches_wine_radix_and_sign_rules() {
+        assert_eq!(format_u64(0, 10), Some(b"0".to_vec()));
+        assert_eq!(format_u64(1234, 10), Some(b"1234".to_vec()));
+        assert_eq!(format_u64(u64::MAX, 36), Some(b"3w5e11264sgsf".to_vec()));
+        assert_eq!(format_u64(255, 16), Some(b"ff".to_vec()));
+        assert_eq!(format_u64(1, 2), Some(b"1".to_vec()));
+        assert_eq!(format_u64(1, 1), None);
+        assert_eq!(format_u64(1, 37), None);
+        assert_eq!(format_i64(-1234, 10), Some(b"-1234".to_vec()));
+        assert_eq!(format_i64(1234, 10), Some(b"1234".to_vec()));
+        assert_eq!(
+            format_i64(i64::MIN, 10),
+            Some(b"-9223372036854775808".to_vec())
+        );
+        assert_eq!(format_i64(-255, 16), Some(b"ffffffffffffff01".to_vec()));
+        assert_eq!(format_i64(255, 16), Some(b"ff".to_vec()));
+        assert_eq!(format_i64(-1, 2), Some(vec![b'1'; 64]));
+        assert_eq!(format_i64(1, 1), None);
     }
 
     #[test]
