@@ -803,6 +803,26 @@ pub fn memcpy(destination: &mut [u8], source: &[u8], count: usize) -> Option<()>
     Some(())
 }
 
+/// Moves `count` bytes within one buffer, preserving correctness for overlap.
+///
+/// Returns `None` without mutation if either range is outside the buffer.
+/// This single-buffer slice API models Wine's `memmove` without exposing raw
+/// pointers or permitting aliased Rust references.
+pub fn memmove(
+    buffer: &mut [u8],
+    source_start: usize,
+    destination_start: usize,
+    count: usize,
+) -> Option<()> {
+    let source_end = source_start.checked_add(count)?;
+    let destination_end = destination_start.checked_add(count)?;
+    if source_end > buffer.len() || destination_end > buffer.len() {
+        return None;
+    }
+    buffer.copy_within(source_start..source_end, destination_start);
+    Some(())
+}
+
 /// Copies up to `count` bytes until `byte` is copied, returning the offset just
 /// past the match. Returns `None` if no match is copied or either slice is short.
 pub fn memccpy(destination: &mut [u8], source: &[u8], byte: i32, count: usize) -> Option<usize> {
@@ -1070,6 +1090,17 @@ mod tests {
         assert_eq!(memcpy(&mut copied, b"x", 2), None);
         assert_eq!(memcpy(&mut [0; 1], b"xx", 2), None);
         assert_eq!(memcpy(&mut copied, b"", 0), Some(()));
+
+        let mut moved = *b"abcdef";
+        assert_eq!(memmove(&mut moved, 0, 2, 4), Some(()));
+        assert_eq!(&moved, b"ababcd");
+        assert_eq!(memmove(&mut moved, 2, 0, 4), Some(()));
+        assert_eq!(&moved, b"abcdcd");
+        assert_eq!(memmove(&mut moved, 1, 3, 0), Some(()));
+        assert_eq!(memmove(&mut moved, usize::MAX, 0, 2), None);
+        assert_eq!(memmove(&mut moved, 0, usize::MAX, 2), None);
+        assert_eq!(memmove(&mut moved, 0, 5, 2), None);
+        assert_eq!(&moved, b"abcdcd");
 
         let mut through_match = [0xff; 5];
         assert_eq!(memccpy(&mut through_match, b"ab\0cd", 0, 5), Some(3));
