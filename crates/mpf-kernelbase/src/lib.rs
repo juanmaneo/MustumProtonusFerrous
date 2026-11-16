@@ -362,6 +362,17 @@ pub fn path_find_file_name(path: &[u16]) -> usize {
     last
 }
 
+/// Replaces a path with its file-name component, matching `PathStripPathW`.
+pub fn path_strip_path(path: &mut Vec<u16>) {
+    let filename = path_find_file_name(path);
+    if filename != 0 {
+        let len = wlen(path);
+        let mut stripped = path[filename..len].to_vec();
+        stripped.push(0);
+        *path = stripped;
+    }
+}
+
 /// Finds the extension's UTF-16 offset using Wine's legacy `PathFindExtensionW`
 /// rules. An absent extension points to the terminating NUL.
 pub fn path_find_extension(path: &[u16]) -> usize {
@@ -1367,6 +1378,25 @@ mod tests {
         ] {
             assert_eq!(path_get_char_type(character), expected, "{character:#x}");
         }
+    }
+
+    #[test]
+    fn strip_path_matches_wine_filename_offset() {
+        for (input, expected) in [
+            ("", ""),
+            ("filename.txt", "filename.txt"),
+            ("C:\\folder\\filename.txt", "filename.txt"),
+            ("C:/folder\\filename.txt", "filename.txt"),
+            ("\\\\server\\share", "share"),
+            ("\\\\server\\\\share", "share"),
+        ] {
+            let mut path = w(input);
+            path_strip_path(&mut path);
+            assert_eq!(path, w(expected), "{input:?}");
+        }
+        let mut unterminated = "C:\\folder\\file".encode_utf16().collect::<Vec<_>>();
+        path_strip_path(&mut unterminated);
+        assert_eq!(unterminated, w("file"));
     }
 
     #[test]
