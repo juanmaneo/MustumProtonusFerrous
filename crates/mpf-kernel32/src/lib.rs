@@ -8,6 +8,34 @@ pub mod module;
 pub mod process;
 pub mod thread;
 
+/// `MulDiv`: `multiplicand * multiplier / divisor`, rounded half away from
+/// zero. Returns `-1` for a zero divisor or a result outside `-i32::MAX..=i32::MAX`.
+/// A negative divisor negates the multiplicand, which wraps for `i32::MIN`, as
+/// in Wine.
+pub fn mul_div(multiplicand: i32, multiplier: i32, divisor: i32) -> i32 {
+    if divisor == 0 {
+        return -1;
+    }
+    let (multiplicand, divisor) = if divisor < 0 {
+        (multiplicand.wrapping_neg(), divisor.wrapping_neg())
+    } else {
+        (multiplicand, divisor)
+    };
+    let product = i64::from(multiplicand) * i64::from(multiplier);
+    let half = i64::from(divisor / 2);
+    let rounded = if (multiplicand < 0) == (multiplier < 0) {
+        product + half
+    } else {
+        product - half
+    };
+    let result = rounded / i64::from(divisor);
+    if (-i64::from(i32::MAX)..=i64::from(i32::MAX)).contains(&result) {
+        result as i32
+    } else {
+        -1
+    }
+}
+
 /// Mirrors `lstrlenW` on a slice: counts UTF-16 code units up to (not
 /// including) the first NUL.
 pub fn lstrlen_w(s: &[u16]) -> usize {
@@ -75,6 +103,26 @@ mod tests {
         let mut v: Vec<u16> = s.encode_utf16().collect();
         v.push(0);
         v
+    }
+
+    #[test]
+    fn mul_div_rounds_half_away_from_zero() {
+        assert_eq!(mul_div(3, 4, 2), 6);
+        assert_eq!(mul_div(1, 1, 2), 1);
+        assert_eq!(mul_div(7, 1, 2), 4);
+        assert_eq!(mul_div(-1, 1, 2), -1);
+        assert_eq!(mul_div(-3, -4, 2), 6);
+        assert_eq!(mul_div(100, 3, 4), 75);
+        assert_eq!(mul_div(5, 1, -2), -3);
+    }
+
+    #[test]
+    fn mul_div_reports_zero_divisor_and_out_of_range_as_minus_one() {
+        assert_eq!(mul_div(1, 1, 0), -1);
+        assert_eq!(mul_div(i32::MAX, 2, 1), -1);
+        assert_eq!(mul_div(i32::MIN, 1, 1), -1);
+        assert_eq!(mul_div(i32::MAX, 1, 1), i32::MAX);
+        assert_eq!(mul_div(-i32::MAX, 1, 1), -i32::MAX);
     }
 
     #[test]
