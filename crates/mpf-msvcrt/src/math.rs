@@ -44,6 +44,21 @@ pub fn rotr64(num: u64, shift: i32) -> u64 {
     num.rotate_right((shift & 63) as u32)
 }
 
+/// `div`: returns `(quotient, remainder)`.
+///
+/// Returns `None` where Windows raises an arithmetic exception: a zero
+/// divisor, or `i32::MIN / -1`, whose quotient does not fit in `int`.
+pub fn div(numerator: i32, denominator: i32) -> Option<(i32, i32)> {
+    numerator
+        .checked_div(denominator)
+        .zip(numerator.checked_rem(denominator))
+}
+
+/// `ldiv`: `long` is 32 bits on Windows, so this is identical to [`div`].
+pub fn ldiv(numerator: i32, denominator: i32) -> Option<(i32, i32)> {
+    div(numerator, denominator)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -86,5 +101,22 @@ mod tests {
         assert_eq!(rotl64(1, 64), 1);
         assert_eq!(rotr64(1, 1), 1 << 63);
         assert_eq!(rotr64(1, -1), 2);
+    }
+
+    #[test]
+    fn div_returns_quotient_and_remainder_truncated_toward_zero() {
+        assert_eq!(div(7, 2), Some((3, 1)));
+        assert_eq!(div(-7, 2), Some((-3, -1)));
+        assert_eq!(div(7, -2), Some((-3, 1)));
+        assert_eq!(div(0, 5), Some((0, 0)));
+        assert_eq!(div(i32::MIN, 2), Some((i32::MIN / 2, 0)));
+        assert_eq!(ldiv(-9, 4), Some((-2, -1)));
+    }
+
+    #[test]
+    fn div_rejects_zero_divisor_and_minimum_over_minus_one() {
+        assert_eq!(div(1, 0), None);
+        assert_eq!(ldiv(i32::MIN, -1), None);
+        assert_eq!(div(i32::MIN, -1), None);
     }
 }

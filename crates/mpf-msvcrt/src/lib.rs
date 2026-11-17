@@ -241,6 +241,51 @@ pub fn strtol(source: &[u8], base: u32) -> Option<ParseI32> {
     })
 }
 
+/// Parses a decimal `int` as the msvcrt.dll `atoi` does.
+///
+/// Leading C-locale whitespace and one optional sign are skipped, then decimal
+/// digits are accumulated until the first non-digit. Accumulation wraps modulo
+/// 2^32 instead of saturating, so `"4294967296"` yields `0`, matching Wine's
+/// `test_atoi`. The newer UCRT `atoi` clamps and sets `ERANGE`; that variant is
+/// not modeled here.
+pub fn atoi(source: &[u8]) -> i32 {
+    let source_end = strnlen(source, source.len());
+    let mut index = 0;
+    while index < source_end && ctype::isspace(i32::from(source[index])) {
+        index += 1;
+    }
+    let negative = index < source_end && source[index] == b'-';
+    if index < source_end && matches!(source[index], b'+' | b'-') {
+        index += 1;
+    }
+    let mut value = 0_i32;
+    while index < source_end && source[index].is_ascii_digit() {
+        value = value
+            .wrapping_mul(10)
+            .wrapping_add(i32::from(source[index] - b'0'));
+        index += 1;
+    }
+    if negative {
+        value.wrapping_neg()
+    } else {
+        value
+    }
+}
+
+/// Parses a decimal `long` as `atol` does.
+///
+/// `long` is 32 bits on Windows, so this is identical to [`atoi`].
+pub fn atol(source: &[u8]) -> i32 {
+    atoi(source)
+}
+
+/// Parses a decimal 64-bit integer as `_atoi64` does.
+///
+/// Overflow saturates to the signed 64-bit range, as [`strtoi64`] does.
+pub fn atoi64(source: &[u8]) -> i64 {
+    strtoi64(source, 10).map_or(0, |parsed| parsed.value)
+}
+
 /// Result of parsing an unsigned 32-bit integer from a bounded byte string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ParseU32 {
@@ -1478,6 +1523,37 @@ mod tests {
         assert_eq!(strtoul(b"-0x", 0).unwrap().end, 0);
         assert_eq!(strtoul(b"12", 1), None);
         assert_eq!(strtoul(b"12", 37), None);
+    }
+
+    #[test]
+    fn atoi_family_matches_msvcrt_wrapping_and_saturating_rules() {
+        assert_eq!(atoi(b"0"), 0);
+        assert_eq!(atoi(b"-1"), -1);
+        assert_eq!(atoi(b"1"), 1);
+        assert_eq!(atoi(b"4294967296"), 0);
+        assert_eq!(atoi(b"  \t\x0b-42abc"), -42);
+        assert_eq!(atoi(b"+17"), 17);
+        assert_eq!(atoi(b""), 0);
+        assert_eq!(atoi(b"-"), 0);
+        assert_eq!(atoi(b"0x10"), 0);
+        assert_eq!(atoi(b"12 34"), 12);
+        assert_eq!(atoi(b"12\0 34"), 12);
+        assert_eq!(atoi(b"2147483647"), i32::MAX);
+        assert_eq!(atoi(b"-2147483648"), i32::MIN);
+        assert_eq!(atoi(b"2147483648"), i32::MIN);
+
+        assert_eq!(atol(b"-1"), -1);
+        assert_eq!(atol(b"  7"), 7);
+        assert_eq!(atol(b"4294967296"), 0);
+
+        assert_eq!(atoi64(b"9223372036854775807"), i64::MAX);
+        assert_eq!(atoi64(b"-9223372036854775808"), i64::MIN);
+        assert_eq!(atoi64(b"9223372036854775808"), i64::MAX);
+        assert_eq!(atoi64(b"-9223372036854775809"), i64::MIN);
+        assert_eq!(atoi64(b"  -5 apples"), -5);
+        assert_eq!(atoi64(b"4294967296"), 4_294_967_296);
+        assert_eq!(atoi64(b"0x1f"), 0);
+        assert_eq!(atoi64(b""), 0);
     }
 
     #[test]
