@@ -21,6 +21,7 @@ const QUESTION: u16 = b'?' as u16;
 const STAR: u16 = b'*' as u16;
 const SEMI: u16 = b';' as u16;
 const ALL_FILES: [u16; 3] = [STAR, DOT, STAR];
+const ELLIPSES: [u16; 3] = [DOT, DOT, DOT];
 const AMPERSAND: u16 = b'&' as u16;
 const PATHCCH_MAX_CCH: usize = 0x8000;
 const FILE_ATTRIBUTE_READONLY: u32 = 0x1;
@@ -623,6 +624,68 @@ pub fn path_remove_args(path: &mut Vec<u16>) {
         path.truncate(args - 1);
         path.push(0);
     }
+}
+
+/// `PathCompactPathExW`: shortens `path` to fit a buffer of `max` UTF-16 units,
+/// terminator included, and returns the units that Wine would leave in that
+/// buffer. Returns None where Wine returns FALSE, which is a null `path`.
+///
+/// Paths that fit come back unchanged. Otherwise the file name is kept and the
+/// root is cut down with `...`, or if there is no root, the start of the name is
+/// cut. Buffers of four units or fewer get only dots. A `max` of 0 yields an
+/// empty vector because Wine's write of the terminator would overrun such a buffer.
+pub fn path_compact_path_ex(path: Option<&[u16]>, max: usize) -> Option<Vec<u16>> {
+    let path = path?;
+    if max < 2 {
+        return Some(if max == 0 { Vec::new() } else { vec![0] });
+    }
+    let s = &path[..wlen(path)];
+    let len = s.len();
+    if len + 1 < max {
+        let mut out = s.to_vec();
+        out.push(0);
+        return Some(out);
+    }
+    let file = path_find_file_name(path);
+    if file == 0 {
+        if max <= 4 {
+            return Some(dots_to_fit(max));
+        }
+        let mut out = s[..max - 4].to_vec();
+        out.extend_from_slice(&ELLIPSES);
+        out.push(0);
+        return Some(out);
+    }
+    let sep = file - 1;
+    let tail_len = len + 2 - file;
+    if tail_len + 3 > max {
+        if max <= 4 {
+            return Some(dots_to_fit(max));
+        }
+        let mut out = ELLIPSES.to_vec();
+        out.push(path[sep]);
+        if max <= 8 {
+            out.extend(dots_to_fit(max - 4));
+        } else {
+            out.extend_from_slice(&s[file..file + max - 8]);
+            out.extend_from_slice(&ELLIPSES);
+            out.push(0);
+        }
+        return Some(out);
+    }
+    let root = max - tail_len - 3;
+    let mut out = s[..root].to_vec();
+    out.extend_from_slice(&ELLIPSES);
+    out.extend_from_slice(&s[sep..]);
+    out.push(0);
+    Some(out)
+}
+
+/// `max - 1` dots followed by the terminator, which fills a buffer of `max` units.
+fn dots_to_fit(max: usize) -> Vec<u16> {
+    let mut out = vec![DOT; max - 1];
+    out.push(0);
+    out
 }
 
 /// `PathIsNetworkPathW`: true for a UNC path, or for a drive that `is_net_drive`
@@ -1619,6 +1682,34 @@ mod tests {
         assert_eq!(color_adjust_luma(0x808080, 10), 0x7F7F7F);
         assert_eq!(color_adjust_luma(0xFF0000, -30), 0xFF0000);
         assert_eq!(color_adjust_luma(0xFF00_0000, 0), 0xFF00_0000);
+    }
+
+    #[test]
+    fn path_compact_path_ex_cuts_root_or_name_to_fit() {
+        assert_eq!(path_compact_path_ex(None, 5), None);
+        assert_eq!(path_compact_path_ex(Some(&w("abc")), 0), Some(Vec::new()));
+        assert_eq!(path_compact_path_ex(Some(&w("abc")), 1), Some(vec![0]));
+        assert_eq!(path_compact_path_ex(Some(&w("abc")), 9), Some(w("abc")));
+        let name = w("abcdefghijklmnop");
+        assert_eq!(path_compact_path_ex(Some(&name), 10), Some(w("abcdef...")));
+        assert_eq!(path_compact_path_ex(Some(&name), 4), Some(w("...")));
+        assert_eq!(path_compact_path_ex(Some(&name), 2), Some(w(".")));
+        let file = w("C:\\dir\\file.txt");
+        for (max, want) in [
+            (16, "C:\\...\\file.txt"),
+            (12, "...\\file..."),
+            (9, "...\\f..."),
+            (8, "...\\..."),
+            (6, "...\\."),
+            (5, "...\\"),
+            (4, "..."),
+        ] {
+            assert_eq!(
+                path_compact_path_ex(Some(&file), max),
+                Some(w(want)),
+                "max {max}"
+            );
+        }
     }
 
     #[test]
