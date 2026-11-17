@@ -1148,6 +1148,32 @@ pub fn str_str_iw(s: Option<&[u16]>, search: Option<&[u16]>) -> Option<usize> {
     })
 }
 
+/// `StrRStrIW`: index of the last occurrence of `search` in `s` that starts before
+/// `end`, with ASCII-only case folding. An occurrence may run past `end` by up to
+/// `search.len() - 1` units, as Wine's `end += min(len - 1, strlen(end))` allows.
+/// `end` is an index into `s` and is clamped to the terminator. Without it the whole
+/// string is searched. A null argument or an empty `search` gives None.
+pub fn str_rstr_iw(s: Option<&[u16]>, end: Option<usize>, search: Option<&[u16]>) -> Option<usize> {
+    let (s, search) = (s?, search?);
+    let len = wlen(search);
+    if len == 0 {
+        return None;
+    }
+    let search = &search[..len];
+    let s_len = wlen(s);
+    let limit = match end {
+        None => s_len,
+        Some(end) => {
+            let end = end.min(s_len);
+            end + (len - 1).min(s_len - end)
+        }
+    };
+    let last_start = limit.checked_sub(len)?;
+    (0..=last_start)
+        .rev()
+        .find(|&start| compare_units(counted(&s[start..], len), search, true) == 0)
+}
+
 /// `StrRChrW`: index of the last `ch` before `end`, or before the terminator when
 /// `end` is `None`. `end` is an exclusive bound and is clamped to the slice.
 pub fn str_rchr(s: &[u16], end: Option<usize>, ch: u16) -> Option<usize> {
@@ -1345,6 +1371,32 @@ mod tests {
         assert_eq!(str_str_iw(Some(&w("abc")), Some(&w(""))), None);
         assert_eq!(str_str_iw(None, Some(&w("a"))), None);
         assert_eq!(str_str_iw(Some(&w("a")), None), None);
+    }
+
+    #[test]
+    fn rstr_finds_last_match_and_honours_end() {
+        assert_eq!(
+            str_rstr_iw(Some(&w("abcABC")), None, Some(&w("bc"))),
+            Some(4)
+        );
+        assert_eq!(
+            str_rstr_iw(Some(&w("abcABC")), Some(2), Some(&w("bc"))),
+            Some(1)
+        );
+        assert_eq!(
+            str_rstr_iw(Some(&w("abcABC")), Some(1), Some(&w("bc"))),
+            None
+        );
+        assert_eq!(
+            str_rstr_iw(Some(&w("abab")), Some(3), Some(&w("ab"))),
+            Some(2)
+        );
+        assert_eq!(str_rstr_iw(Some(&w("ab")), Some(9), Some(&w("b"))), Some(1));
+        assert_eq!(str_rstr_iw(Some(&w("cabc")), None, Some(&w("CA"))), Some(0));
+        assert_eq!(str_rstr_iw(Some(&w("abc")), None, Some(&w("ABCD"))), None);
+        assert_eq!(str_rstr_iw(Some(&w("abc")), None, Some(&w(""))), None);
+        assert_eq!(str_rstr_iw(None, None, Some(&w("a"))), None);
+        assert_eq!(str_rstr_iw(Some(&w("a")), None, None), None);
     }
 
     #[test]
