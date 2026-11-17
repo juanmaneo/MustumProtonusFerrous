@@ -44,6 +44,7 @@ pub const PATH_CHAR_CLASS_ANY: u32 = u32::MAX;
 
 const MAX_PATH_CCH: usize = 0x8000;
 const MAX_PATH: usize = 260;
+const FILE_ATTRIBUTE_DIRECTORY: u32 = 0x10;
 
 fn ascii_lower(unit: u16) -> u16 {
     if (b'A' as u16..=b'Z' as u16).contains(&unit) {
@@ -1276,6 +1277,66 @@ pub fn path_match_spec_ex(path: &[u16], mask: &[u16]) -> i32 {
         }
     }
     S_FALSE
+}
+
+/// Builds the path from `from` to `to`, matching Wine's `PathRelativePathToW`.
+/// Returns `None` where Wine returns FALSE. Wine does not bound the `..\`
+/// accumulation, so neither does this port.
+pub fn path_relative_path_to(
+    from: Option<&[u16]>,
+    from_attributes: u32,
+    to: Option<&[u16]>,
+    to_attributes: u32,
+) -> Option<Vec<u16>> {
+    let (from, to) = (from?, to?);
+    let mut from_w = copy_legacy_path(from);
+    let mut to_w = copy_legacy_path(to);
+    if from_attributes & FILE_ATTRIBUTE_DIRECTORY == 0 {
+        path_remove_file_spec(&mut from_w);
+    }
+    if to_attributes & FILE_ATTRIBUTE_DIRECTORY == 0 {
+        path_remove_file_spec(&mut to_w);
+    }
+
+    let len = path_common_prefix(&from_w, &to_w);
+    if len == 0 {
+        return None;
+    }
+
+    let mut path = Vec::new();
+    let mut from_at = len;
+    if char_at(&from_w, from_at) == 0 {
+        path.push(b'.' as u16);
+    }
+    if char_at(&from_w, from_at) == b'\\' as u16 {
+        from_at += 1;
+    }
+    while char_at(&from_w, from_at) != 0 {
+        from_at += path_find_next_component(&from_w[from_at..]).unwrap_or(0);
+        path.extend(
+            if char_at(&from_w, from_at) != 0 {
+                "..\\"
+            } else {
+                ".."
+            }
+            .encode_utf16(),
+        );
+    }
+
+    let mut tail_at = len;
+    if char_at(to, tail_at) != 0 && char_at(to, tail_at - 1) != 0 {
+        if char_at(to, tail_at) != b'\\' as u16 {
+            tail_at -= 1;
+        }
+        let tail = &to[tail_at..];
+        let tail = &tail[..wlen(tail)];
+        if path.len() + tail.len() >= MAX_PATH {
+            return None;
+        }
+        path.extend_from_slice(tail);
+    }
+    path.push(0);
+    Some(path)
 }
 
 #[cfg(test)]
@@ -2715,6 +2776,58 @@ mod tests {
                 "{path:?} vs {mask:?}"
             );
         }
+    }
+
+    // Wine has no upstream PathRelativePathTo tests. These vectors are traced
+    // by hand from the C in dlls/kernelbase/path.c, not copied from upstream.
+    #[test]
+    fn relative_path_to_traced_from_wine_c() {
+        const DIR: u32 = FILE_ATTRIBUTE_DIRECTORY;
+        for (from, from_attr, to, to_attr, expected) in [
+            ("C:\\a\\b", 0, "C:\\a\\c", 0, Some(".\\c")),
+            ("C:\\a\\b", DIR, "C:\\a\\c", DIR, Some("..\\c")),
+            ("C:\\a\\b\\c", DIR, "C:\\a", DIR, Some("..\\..")),
+            ("C:\\a\\b", 0, "C:\\a", DIR, Some(".")),
+            ("C:\\a", DIR, "C:\\ab", DIR, Some("..\\ab")),
+            ("C:\\A\\b", 0, "c:\\a\\x", 0, Some(".\\x")),
+            ("C:\\a\\b", DIR, "C:\\a\\bc", DIR, Some("..\\bc")),
+            (
+                "\\\\server\\share\\a",
+                DIR,
+                "\\\\server\\share\\b",
+                DIR,
+                Some("..\\b"),
+            ),
+            ("C:\\a", DIR, "D:\\a", DIR, None),
+            ("\\\\server\\a", DIR, "C:\\a", DIR, None),
+            ("C:\\a", DIR, "\\\\server\\a", DIR, None),
+            ("C:\\a", DIR, "", DIR, None),
+            ("", DIR, "C:\\", DIR, None),
+        ] {
+            assert_eq!(
+                path_relative_path_to(Some(&w(from)), from_attr, Some(&w(to)), to_attr),
+                expected.map(w),
+                "{from:?} -> {to:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn relative_path_to_enforces_max_path_and_missing_arguments() {
+        const DIR: u32 = FILE_ATTRIBUTE_DIRECTORY;
+        let from = w("C:\\a");
+        let fits = format!("C:\\a\\{}", "x".repeat(257));
+        let overflows = format!("C:\\a\\{}", "x".repeat(258));
+        assert_eq!(
+            path_relative_path_to(Some(&from), DIR, Some(&w(&fits)), DIR),
+            Some(w(&format!(".\\{}", "x".repeat(257))))
+        );
+        assert_eq!(
+            path_relative_path_to(Some(&from), DIR, Some(&w(&overflows)), DIR),
+            None
+        );
+        assert_eq!(path_relative_path_to(None, DIR, Some(&from), DIR), None);
+        assert_eq!(path_relative_path_to(Some(&from), DIR, None, DIR), None);
     }
 
     #[test]
