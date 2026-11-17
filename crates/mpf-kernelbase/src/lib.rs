@@ -1,4 +1,4 @@
-//! Safe Rust subset of Wine's `dlls/kernelbase/path.c` path APIs.
+//! Safe Rust subset of Wine's `dlls/kernelbase/path.c` and `string.c` APIs.
 //!
 //! Implemented functions use NUL-terminated UTF-16 buffers and Wine HRESULT
 //! values. No raw pointers or platform APIs are needed for this subset.
@@ -1797,6 +1797,69 @@ pub fn path_alloc_combine(
         combined.push(0);
     }
     path_alloc_canonicalize(&combined, flags)
+}
+
+/// `lstrcmpW`: compares two NUL-terminated strings code unit by code unit.
+/// A NULL argument sorts before any string, and two NULL arguments compare equal.
+pub fn lstrcmp_w(str1: Option<&[u16]>, str2: Option<&[u16]>) -> i32 {
+    lstr_cmp(str1, str2, |unit| unit)
+}
+
+/// `lstrcmpiW`: as [`lstrcmp_w`], but ASCII letters are folded to lower case first.
+pub fn lstrcmpi_w(str1: Option<&[u16]>, str2: Option<&[u16]>) -> i32 {
+    lstr_cmp(str1, str2, ascii_lower)
+}
+
+fn lstr_cmp(str1: Option<&[u16]>, str2: Option<&[u16]>, fold: fn(u16) -> u16) -> i32 {
+    match (str1, str2) {
+        (None, None) => 0,
+        (None, Some(_)) => -1,
+        (Some(_), None) => 1,
+        (Some(str1), Some(str2)) => {
+            let str1 = &str1[..wlen(str1)];
+            let str2 = &str2[..wlen(str2)];
+            str1.iter()
+                .map(|&unit| fold(unit))
+                .cmp(str2.iter().map(|&unit| fold(unit))) as i32
+        }
+    }
+}
+
+/// `lstrcpynW`: copies `src` into `dst`, writing at most `n` code units and always
+/// terminating the copy with NUL unless `n` is zero. `n` is unsigned in Wine, so a
+/// negative value copies as much as fits. Writes are bounded by `dst.len()`, so the
+/// out-of-bounds writes possible in C are not reproduced.
+pub fn lstrcpyn_w(dst: &mut [u16], src: &[u16], n: i32) {
+    let src = &src[..wlen(src)];
+    let mut count = (n as u32 as usize).min(dst.len());
+    let mut copied = 0;
+    while count > 1 && copied < src.len() {
+        dst[copied] = src[copied];
+        copied += 1;
+        count -= 1;
+    }
+    if count != 0 {
+        dst[copied] = 0;
+    }
+}
+
+/// `CharNextW`: index of the unit after `at`. A NUL (or an index past the end)
+/// does not advance.
+pub fn char_next_w(text: &[u16], at: usize) -> usize {
+    if text.get(at).is_some_and(|&unit| unit != 0) {
+        at + 1
+    } else {
+        at
+    }
+}
+
+/// `CharPrevW`: index of the unit before `at`, never moving before `start`.
+pub fn char_prev_w(start: usize, at: usize) -> usize {
+    if at > start {
+        at - 1
+    } else {
+        at
+    }
 }
 
 #[cfg(test)]
@@ -3729,5 +3792,106 @@ mod tests {
                 "flags={flags:#x} path1={path1:?} path2={path2:?}"
             );
         }
+    }
+
+    /// Renders a buffer for comparison with the oracle: NUL as `~`, other units as bytes.
+    fn render(buffer: &[u16]) -> String {
+        buffer
+            .iter()
+            .map(|&unit| {
+                if unit == 0 {
+                    '~'
+                } else {
+                    char::from(unit as u8)
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn lstrcmp_family_matches_wine_oracle() {
+        let cases: [(bool, Option<&str>, Option<&str>, i32); 27] = [
+            (false, Some("a"), Some("b"), -1),
+            (false, None, Some("a"), -1),
+            (false, Some("a"), None, 1),
+            (false, None, None, 0),
+            (false, Some("AB"), Some("ab"), -1),
+            (false, Some("ab"), Some("AB"), 1),
+            (false, Some("ab"), Some("a"), 1),
+            (false, Some("a"), Some("ab"), -1),
+            (false, Some(""), Some(""), 0),
+            (false, Some(""), Some("a"), -1),
+            (false, Some("aB"), Some("ab"), -1),
+            (false, Some("Ab"), Some("aB"), -1),
+            (false, Some("bb"), Some("ba"), 1),
+            (false, Some("abB"), Some("abb"), -1),
+            (false, Some("~"), Some("B"), 1),
+            (false, Some(" a"), Some("a"), -1),
+            (false, Some("~"), Some("~"), 0),
+            (false, Some("Ab~"), Some("Ab"), 1),
+            (true, Some("AB"), Some("ab"), 0),
+            (true, Some("aB"), Some("Ab"), 0),
+            (true, None, None, 0),
+            (true, None, Some("ab"), -1),
+            (true, Some("ab"), None, 1),
+            (true, Some("Ab"), Some("aa"), 1),
+            (true, Some("bB"), Some("bA"), 1),
+            (true, Some("~"), Some("b"), 1),
+            (true, Some("~"), Some("B"), 1),
+        ];
+        for (ignore_case, str1, str2, expected) in cases {
+            let (str1, str2) = (str1.map(w), str2.map(w));
+            let (str1, str2) = (str1.as_deref(), str2.as_deref());
+            let got = if ignore_case {
+                lstrcmpi_w(str1, str2)
+            } else {
+                lstrcmp_w(str1, str2)
+            };
+            assert_eq!(
+                got, expected,
+                "ignore_case={ignore_case} str1={str1:?} str2={str2:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn lstrcpyn_matches_wine_oracle() {
+        let cases: [(&str, i32, &str); 17] = [
+            ("abcdef", 3, "ab~ZZZZZZZZ"),
+            ("abc", 0, "ZZZZZ"),
+            ("abc", -2, "abc~Z"),
+            ("abc", 1, "~ZZZZZ"),
+            ("abc", 2, "a~ZZZZZ"),
+            ("abb", 3, "ab~ZZZZZ"),
+            ("ab", 5, "ab~ZZZZZZ"),
+            ("aa", 2, "a~ZZZZ"),
+            ("ab", 4, "ab~ZZZZZ"),
+            ("", -1, "~Z"),
+            ("", 0, "ZZ"),
+            ("", 1, "~ZZ"),
+            ("", 2, "~ZZZ"),
+            ("ab", 3, "ab~ZZZZ"),
+            ("aA", -3, "aA~Z"),
+            ("aAb", 6, "aAb~ZZZZZZZ"),
+            ("Ab", 3, "Ab~ZZZZ"),
+        ];
+        for (text, n, expected) in cases {
+            let src = w(text);
+            let mut dst = vec![u16::from(b'Z'); n.max(0) as usize + text.len() + 2];
+            lstrcpyn_w(&mut dst, &src, n);
+            assert_eq!(render(&dst), expected, "n={n} src={text:?}");
+        }
+    }
+
+    #[test]
+    fn char_next_and_prev_step_over_one_unit() {
+        let text = w("ab");
+        assert_eq!(char_next_w(&text, 0), 1);
+        assert_eq!(char_next_w(&text, 1), 2);
+        assert_eq!(char_next_w(&text, 2), 2);
+        assert_eq!(char_next_w(&text, 9), 9);
+        assert_eq!(char_prev_w(0, 0), 0);
+        assert_eq!(char_prev_w(0, 2), 1);
+        assert_eq!(char_prev_w(1, 1), 1);
     }
 }
