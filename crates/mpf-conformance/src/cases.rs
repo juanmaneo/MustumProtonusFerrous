@@ -161,6 +161,16 @@ fn kernelbase_strip_prefix() {
         Some(w("\\"))
     );
     assert_eq!(mpf_kernelbase::path_canonicalize(None), None);
+    assert_eq!(
+        mpf_kernelbase::path_combine(Some(&w("C:\\a")), Some(&w("..\\b"))),
+        Some(w("C:\\b"))
+    );
+    let mut appended = w("C:\\a");
+    assert!(mpf_kernelbase::path_append(
+        Some(&mut appended),
+        Some(&w("\\b"))
+    ));
+    assert_eq!(appended, w("C:\\a\\b"));
     assert!(!mpf_kernelbase::path_is_relative(&w("C:\\file.txt")));
     assert!(!mpf_kernelbase::path_is_relative(&w("\\rooted")));
     assert!(mpf_kernelbase::path_is_unc(&w("\\\\server\\share")));

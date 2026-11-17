@@ -1031,6 +1031,80 @@ pub fn path_cch_strip_prefix(path: &mut Vec<u16>, size: usize) -> i32 {
     }
 }
 
+fn copy_legacy_path(path: &[u16]) -> Vec<u16> {
+    let len = wlen(path).min(MAX_PATH - 1);
+    let mut copy = path[..len].to_vec();
+    copy.push(0);
+    copy
+}
+
+fn join_legacy_path(dir: &[u16], file: &[u16], strip_file_root: bool) -> Option<Vec<u16>> {
+    let mut tmp = copy_legacy_path(dir);
+    let mut file = file;
+    if strip_file_root {
+        path_strip_to_root(&mut tmp);
+        file = &file[1..];
+    }
+    /* copy_legacy_path caps the copy at MAX_PATH - 1, so the add cannot fail. */
+    path_add_backslash(&mut tmp);
+    let file = &file[..wlen(file)];
+    if wlen(&tmp) + file.len() >= MAX_PATH {
+        return None;
+    }
+    let len = wlen(&tmp);
+    tmp.truncate(len);
+    tmp.extend_from_slice(file);
+    tmp.push(0);
+    Some(tmp)
+}
+
+/// Combines directory and file paths following Wine's `PathCombineW` rules.
+/// `None` indicates a null source pair or an overflowing result, matching the
+/// API's null return.
+pub fn path_combine(dir: Option<&[u16]>, file: Option<&[u16]>) -> Option<Vec<u16>> {
+    let joined = match (dir, file) {
+        (None, None) => return None,
+        (Some(dir), None) => copy_legacy_path(dir),
+        (Some(dir), Some(file)) if wlen(file) == 0 => copy_legacy_path(dir),
+        (Some(dir), Some(file)) if wlen(dir) > 0 && path_is_relative(file) => {
+            join_legacy_path(dir, file, false)?
+        }
+        (Some(dir), Some(file))
+            if wlen(dir) > 0 && char_at(file, 0) == b'\\' as u16 && !path_is_unc(file) =>
+        {
+            join_legacy_path(dir, file, true)?
+        }
+        (_, Some(file)) => copy_legacy_path(file),
+    };
+    path_canonicalize(Some(&joined))
+}
+
+/// Appends a path in place following Wine's `PathAppendW` rules.
+pub fn path_append(path: Option<&mut Vec<u16>>, append: Option<&[u16]>) -> bool {
+    let (Some(path), Some(append)) = (path, append) else {
+        return false;
+    };
+    let append_start = if path_is_unc(append) {
+        0
+    } else {
+        append
+            .iter()
+            .take_while(|&&unit| unit == b'\\' as u16)
+            .count()
+    };
+    match path_combine(Some(path.as_slice()), Some(&append[append_start..])) {
+        Some(combined) => {
+            *path = combined;
+            true
+        }
+        None => {
+            path.clear();
+            path.push(0);
+            false
+        }
+    }
+}
+
 fn canonicalize_at(buf: &[u16], index: usize) -> u16 {
     if index < buf.len() {
         buf[index]
@@ -2384,6 +2458,126 @@ mod tests {
                 "{input}"
             );
         }
+    }
+
+    #[test]
+    fn combine_matches_wine_vectors_and_failure_rules() {
+        for (dir, file, expected) in [
+            (Some("C:\\"), Some("a"), Some("C:\\a")),
+            (Some("C:\\b"), Some("..\\a"), Some("C:\\a")),
+            (Some("C:"), Some("a"), Some("C:\\a")),
+            (Some("C:\\"), Some("."), Some("C:\\.")),
+            (Some("C:\\"), Some(".."), Some("C:\\")),
+            (Some("C:\\a"), Some(""), Some("C:\\a")),
+            (Some("\\"), Some("a"), Some("\\a")),
+            (Some("\\a"), Some("b"), Some("\\a\\b")),
+            (
+                Some("\\\\192.168.1.1\\test"),
+                Some("a"),
+                Some("\\\\192.168.1.1\\test\\a"),
+            ),
+            (
+                Some("\\\\192.168.1.1\\test"),
+                Some(".."),
+                Some("\\\\192.168.1.1"),
+            ),
+            (Some("\\\\"), Some("a"), Some("\\\\a")),
+            (Some("C:a\\b"), Some("\\1"), Some("C:\\1")),
+            (Some("C:\\a\\b"), Some("\\1"), Some("C:\\1")),
+            (Some("\\a\\b"), Some("\\1"), Some("\\1")),
+            (Some("\\\\a\\b"), Some("\\1"), Some("\\\\a\\b\\1")),
+            (Some("C:\\a\\b"), Some("\\"), Some("C:\\")),
+            (Some("X:\\"), Some("C:"), Some("C:\\")),
+            (Some("X:\\"), Some("C:\\a"), Some("C:\\a")),
+            (Some("X:\\"), Some("\\\\"), Some("\\\\")),
+            (Some("X:\\"), Some("\\\\a"), Some("\\\\a")),
+            (Some("C:\\a"), Some(".\\b"), Some("C:\\a\\b")),
+            (Some("C:\\a"), Some("..\\b"), Some("C:\\b")),
+            (Some(""), Some(""), Some("\\")),
+            (Some("a"), Some("b"), Some("a\\b")),
+            (None, Some("\\b"), Some("\\b")),
+            (Some("C:\\a"), None, Some("C:\\a")),
+            (Some(""), Some("C:\\a"), Some("C:\\a")),
+            (Some("C:\\a\\b"), Some("D:\\root"), Some("D:\\root")),
+            // Legacy PathCombineW strips the dir to its root and concatenates
+            // the file after skipping one separator, so the single backslash of
+            // the file merges with the root backslash. The Wine combine_tests
+            // table used by PathCchCombine and PathAllocCombine records
+            // C:\nonstd for this pair instead.
+            (Some("C:\\a\\b"), Some("\\nonstd"), Some("C:\\nonstd")),
+        ] {
+            let dir = dir.map(w);
+            let file = file.map(w);
+            assert_eq!(
+                path_combine(dir.as_deref(), file.as_deref()),
+                expected.map(w),
+                "dir={dir:?}, file={file:?}"
+            );
+        }
+        assert_eq!(path_combine(None, None), None);
+
+        assert_eq!(
+            path_combine(Some(&w(&"a".repeat(MAX_PATH - 1))), Some(&w("b"))),
+            None
+        );
+
+        // The joined length check triggers after a successful backslash add.
+        assert_eq!(
+            path_combine(Some(&w(&"a".repeat(MAX_PATH - 6))), Some(&w("bbbbb"))),
+            None
+        );
+        // Same overflow through the rooted-file branch, which strips the file's leading backslash.
+        let rooted_overflow = format!("\\{}", "b".repeat(MAX_PATH - 3));
+        assert_eq!(
+            path_combine(Some(&w("C:\\")), Some(&w(&rooted_overflow))),
+            None
+        );
+    }
+
+    #[test]
+    fn append_matches_wine_vectors_in_place_and_failure_rules() {
+        for (input, append, expected) in [
+            ("C:\\", "a", "C:\\a"),
+            ("C:\\b", "..\\a", "C:\\a"),
+            ("C:", "a", "C:\\a"),
+            ("C:\\", ".", "C:\\."),
+            ("C:\\", "..", "C:\\"),
+            ("C:\\a", "", "C:\\a"),
+            ("\\\\192.168.1.1\\test", "a", "\\\\192.168.1.1\\test\\a"),
+            ("\\a", "b", "\\a\\b"),
+            ("\\", "a", "\\a"),
+            ("\\\\", "a", "\\\\a"),
+            ("C:a\\b", "\\1", "C:a\\b\\1"),
+            ("C:\\a\\b", "\\1", "C:\\a\\b\\1"),
+            ("\\\\a\\b", "\\1", "\\\\a\\b\\1"),
+            ("C:\\a\\b", "\\", "C:\\a\\b"),
+            ("X:\\", "C:", "C:\\"),
+            ("X:\\", "C:\\", "C:\\"),
+            ("X:\\", "\\\\", "\\\\"),
+            ("C:\\a", ".\\b", "C:\\a\\b"),
+            ("C:\\a", "..\\b", "C:\\b"),
+            ("", "", "\\"),
+            ("a", "b", "a\\b"),
+        ] {
+            let mut path = w(input);
+            assert!(
+                path_append(Some(&mut path), Some(&w(append))),
+                "{input:?} + {append:?}"
+            );
+            assert_eq!(path, w(expected), "{input:?} + {append:?}");
+        }
+        assert!(!path_append(None, Some(&w("a"))));
+        assert!(!path_append(Some(&mut w("a")), None));
+        let mut path = w(&"a".repeat(MAX_PATH - 1));
+        assert!(!path_append(Some(&mut path), Some(&w("b"))));
+        assert_eq!(path, w(""));
+        let mut path = w(&"a".repeat(MAX_PATH - 1));
+
+        // A UNC append takes the file-only branch, so the call succeeds even
+        // though the original path exceeded MAX_PATH.
+        assert!(path_append(Some(&mut path), Some(&w("\\\\server"))));
+
+        assert_eq!(path, w("\\\\server"));
     }
 
     #[test]
