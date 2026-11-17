@@ -747,8 +747,9 @@ pub fn str_chr(s: &[u16], ch: u16) -> Option<usize> {
 }
 
 /// `StrChrNW`: like `str_chr`, but examines at most `max_len` characters and
-/// never matches the terminator.
-pub fn str_chr_n(s: &[u16], ch: u16, max_len: usize) -> Option<usize> {
+/// never matches the terminator, so `ch == 0` never matches. A null `s` gives None.
+pub fn str_chr_n(s: Option<&[u16]>, ch: u16, max_len: usize) -> Option<usize> {
+    let s = s?;
     let len = wlen(s).min(max_len);
     s[..len].iter().position(|&c| c == ch)
 }
@@ -1109,6 +1110,12 @@ pub fn str_cmp_niw(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32) -> i32 {
     str_cmp_n(s, comp, len, true)
 }
 
+/// `StrCmpNCW`: `str_cmp_nw` returned as a `DWORD`, so the -2 null error appears as
+/// `0xFFFF_FFFE`.
+pub fn str_cmp_ncw(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32) -> u32 {
+    str_cmp_nw(s, comp, len) as u32
+}
+
 fn str_cmp_n(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32, ignore_case: bool) -> i32 {
     let (Some(s), Some(comp)) = (s, comp) else {
         return -2;
@@ -1362,6 +1369,8 @@ mod tests {
         assert_eq!(str_cmp_nw(None, Some(&w("abc")), 3), -2);
         assert_eq!(str_cmp_niw(Some(&w("ABc")), Some(&w("abd")), 3), -1);
         assert_eq!(str_cmp_niw(Some(&w("abc")), Some(&w("abd")), 0), 0);
+        assert_eq!(str_cmp_ncw(Some(&w("abc")), Some(&w("abd")), 3), u32::MAX);
+        assert_eq!(str_cmp_ncw(None, Some(&w("abc")), 3), 0xFFFF_FFFE);
     }
 
     #[test]
@@ -1897,13 +1906,14 @@ mod tests {
         assert_eq!(str_chr(&s, 0), Some(14));
         assert_eq!(str_chr(&[b'a' as u16], b'b' as u16), None);
         assert_eq!(str_chr(&[b'a' as u16], b'a' as u16), Some(0));
-        assert_eq!(str_chr_n(&s, b't' as u16, 10), Some(3));
-        assert_eq!(str_chr_n(&s, b'S' as u16, 10), Some(8));
-        assert_eq!(str_chr_n(&s, b'r' as u16, 10), None);
-        assert_eq!(str_chr_n(&s, b'r' as u16, 11), Some(10));
-        assert_eq!(str_chr_n(&s, b'r' as u16, 0), None);
-        assert_eq!(str_chr_n(&w("ab"), 0, 5), None);
-        assert_eq!(str_chr_n(&w("ab"), b'b' as u16, 100), Some(1));
+        assert_eq!(str_chr_n(Some(&s), b't' as u16, 10), Some(3));
+        assert_eq!(str_chr_n(Some(&s), b'S' as u16, 10), Some(8));
+        assert_eq!(str_chr_n(Some(&s), b'r' as u16, 10), None);
+        assert_eq!(str_chr_n(Some(&s), b'r' as u16, 11), Some(10));
+        assert_eq!(str_chr_n(Some(&s), b'r' as u16, 0), None);
+        assert_eq!(str_chr_n(Some(&w("ab")), 0, 5), None);
+        assert_eq!(str_chr_n(Some(&w("ab")), b'b' as u16, 100), Some(1));
+        assert_eq!(str_chr_n(None, b'a' as u16, 5), None);
     }
 
     #[test]

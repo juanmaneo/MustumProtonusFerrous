@@ -71,8 +71,8 @@ fn shlwapi_path_helpers() {
 fn shlwapi_string_helpers() {
     let s = w("Testing String");
     assert_eq!(mpf_shlwapi::str_chr(&s, b'S' as u16), Some(8));
-    assert_eq!(mpf_shlwapi::str_chr_n(&s, b'r' as u16, 10), None);
-    assert_eq!(mpf_shlwapi::str_chr_n(&s, b't' as u16, 10), Some(3));
+    assert_eq!(mpf_shlwapi::str_chr_n(Some(&s), b'r' as u16, 10), None);
+    assert_eq!(mpf_shlwapi::str_chr_n(Some(&s), b't' as u16, 10), Some(3));
 
     let deadbeef = w("DeAdBeEf");
     assert_eq!(mpf_shlwapi::str_str(&deadbeef, &w("AdBe")), Some(2));
