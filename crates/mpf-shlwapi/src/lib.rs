@@ -20,6 +20,10 @@ const QUOTE: u16 = b'"' as u16;
 const QUESTION: u16 = b'?' as u16;
 const AMPERSAND: u16 = b'&' as u16;
 const PATHCCH_MAX_CCH: usize = 0x8000;
+const FILE_ATTRIBUTE_READONLY: u32 = 0x1;
+const FILE_ATTRIBUTE_SYSTEM: u32 = 0x4;
+const FILE_ATTRIBUTE_DIRECTORY: u32 = 0x10;
+const INVALID_FILE_ATTRIBUTES: u32 = u32::MAX;
 
 /// Length of the UTF-16 string before its first NUL, or the slice length.
 fn wlen(s: &[u16]) -> usize {
@@ -662,6 +666,26 @@ pub fn fix_slashes_and_colon(s: &mut [u16]) {
     }
 }
 
+/// `PathFindSuffixArrayW`: index of the first entry in `suffixes` that is the
+/// tail of `path`, compared case-sensitively. An entry must be strictly shorter
+/// than `path`, so an equal-length match and an empty `path` never match, while
+/// an empty entry matches any longer path.
+pub fn path_find_suffix_array(path: &[u16], suffixes: &[&[u16]]) -> Option<usize> {
+    let path = &path[..wlen(path)];
+    suffixes.iter().position(|suffix| {
+        let suffix = &suffix[..wlen(suffix)];
+        suffix.len() < path.len() && path.ends_with(suffix)
+    })
+}
+
+/// `PathIsSystemFolderW` once the attributes are known: true for a directory
+/// that is also marked system or read-only. `INVALID_FILE_ATTRIBUTES` is false.
+pub fn path_is_system_folder(attributes: u32) -> bool {
+    attributes != INVALID_FILE_ATTRIBUTES
+        && attributes & FILE_ATTRIBUTE_DIRECTORY != 0
+        && attributes & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_READONLY) != 0
+}
+
 /// `StrChrW`: index of the first `ch` before the terminator. As with `wcschr`,
 /// `ch == 0` matches the terminator itself.
 pub fn str_chr(s: &[u16], ch: u16) -> Option<usize> {
@@ -1044,6 +1068,34 @@ mod tests {
 
     fn w(s: &str) -> Vec<u16> {
         s.encode_utf16().chain(std::iter::once(0)).collect()
+    }
+
+    #[test]
+    fn suffix_array_finds_first_strictly_shorter_case_sensitive_tail() {
+        let exe = w(".exe");
+        let dll = w(".dll");
+        let empty = w("");
+        let suffixes: [&[u16]; 2] = [&exe, &dll];
+        assert_eq!(
+            path_find_suffix_array(&w("C:\\app\\game.dll"), &suffixes),
+            Some(1)
+        );
+        assert_eq!(path_find_suffix_array(&w("game.exe"), &suffixes), Some(0));
+        assert_eq!(path_find_suffix_array(&w("game.EXE"), &suffixes), None);
+        assert_eq!(path_find_suffix_array(&w(".exe"), &suffixes), None);
+        assert_eq!(path_find_suffix_array(&w(""), &suffixes), None);
+        assert_eq!(path_find_suffix_array(&w("x"), &[]), None);
+        assert_eq!(path_find_suffix_array(&w("x"), &[&empty]), Some(0));
+        assert_eq!(path_find_suffix_array(&w(""), &[&empty]), None);
+    }
+
+    #[test]
+    fn system_folder_requires_a_directory_marked_system_or_readonly() {
+        assert!(path_is_system_folder(0x10 | 0x4));
+        assert!(path_is_system_folder(0x10 | 0x1));
+        assert!(!path_is_system_folder(0x10));
+        assert!(!path_is_system_folder(0x4 | 0x1));
+        assert!(!path_is_system_folder(INVALID_FILE_ATTRIBUTES));
     }
 
     #[test]
