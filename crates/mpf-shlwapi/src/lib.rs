@@ -1120,6 +1120,34 @@ fn str_cmp_n(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32, ignore_case: boo
     compare_units(counted(s, limit), counted(comp, limit), ignore_case)
 }
 
+/// `StrChrIW`: index of the first character of `s` that matches `ch` with ASCII-only
+/// case folding. Only characters before the terminator are searched, so `ch == 0`
+/// never matches, unlike `str_chr`. A null `s` gives None.
+pub fn str_chr_iw(s: Option<&[u16]>, ch: u16) -> Option<usize> {
+    let s = s?;
+    let s = &s[..wlen(s)];
+    let ch = ascii_upper(ch);
+    s.iter().position(|&c| ascii_upper(c) == ch)
+}
+
+/// `StrStrIW`: index of the first occurrence of `search` in `s`, with ASCII-only
+/// case folding. An empty `search`, or a null argument, gives None.
+pub fn str_str_iw(s: Option<&[u16]>, search: Option<&[u16]>) -> Option<usize> {
+    let s = s?;
+    let search = search?;
+    let search = &search[..wlen(search)];
+    if search.is_empty() {
+        return None;
+    }
+    let s = &s[..wlen(s)];
+    s.windows(search.len()).position(|window| {
+        window
+            .iter()
+            .zip(search)
+            .all(|(&a, &b)| ascii_lower(a) == ascii_lower(b))
+    })
+}
+
 /// `StrRChrW`: index of the last `ch` before `end`, or before the terminator when
 /// `end` is `None`. `end` is an exclusive bound and is clamped to the slice.
 pub fn str_rchr(s: &[u16], end: Option<usize>, ch: u16) -> Option<usize> {
@@ -1302,6 +1330,21 @@ mod tests {
         assert_eq!(str_cmp_nw(None, Some(&w("abc")), 3), -2);
         assert_eq!(str_cmp_niw(Some(&w("ABc")), Some(&w("abd")), 3), -1);
         assert_eq!(str_cmp_niw(Some(&w("abc")), Some(&w("abd")), 0), 0);
+    }
+
+    #[test]
+    fn chr_and_str_ignore_ascii_case_and_stop_at_the_terminator() {
+        assert_eq!(str_chr_iw(Some(&w("abc")), u16::from(b'b')), Some(1));
+        assert_eq!(str_chr_iw(Some(&w("abc")), u16::from(b'B')), Some(1));
+        assert_eq!(str_chr_iw(Some(&w("abc")), u16::from(b'z')), None);
+        assert_eq!(str_chr_iw(Some(&w("abc")), 0), None);
+        assert_eq!(str_chr_iw(None, u16::from(b'a')), None);
+        assert_eq!(str_str_iw(Some(&w("abcABC")), Some(&w("bc"))), Some(1));
+        assert_eq!(str_str_iw(Some(&w("cabc")), Some(&w("CA"))), Some(0));
+        assert_eq!(str_str_iw(Some(&w("abc")), Some(&w("ABCD"))), None);
+        assert_eq!(str_str_iw(Some(&w("abc")), Some(&w(""))), None);
+        assert_eq!(str_str_iw(None, Some(&w("a"))), None);
+        assert_eq!(str_str_iw(Some(&w("a")), None), None);
     }
 
     #[test]
