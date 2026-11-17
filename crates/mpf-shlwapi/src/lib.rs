@@ -578,7 +578,6 @@ pub fn path_is_same_root(path1: &[u16], path2: &[u16]) -> bool {
     path_common_prefix(path1, path2) + 1 >= root_end
 }
 
-#[cfg(test)]
 /// `PathBuildRootW`: writes the root `X:\` for drive index `0..=25` (A-Z).
 ///
 /// Writes nothing for an out-of-range drive, and requires at least 4 units.
