@@ -84,6 +84,21 @@ fn shlwapi_string_helpers() {
         Some(0x44fd)
     );
     assert_eq!(mpf_shlwapi::str_to_int_ex(&w("+ 88987"), 0), None);
+
+    let mut cpy = [0xffffu16; 8];
+    assert_eq!(mpf_shlwapi::str_cpy_nx(&mut cpy, Some(&w("hello")), 8), 5);
+    assert_eq!(cpy[..6], w("hello")[..]);
+
+    let mut chain = [0x11u16; 33];
+    assert_eq!(
+        mpf_shlwapi::str_cat_chain(&mut chain, 32, Some(0), Some(&w("DeAd"))),
+        4
+    );
+    assert_eq!(
+        mpf_shlwapi::str_cat_chain(&mut chain, 32, None, Some(&w("BeEf"))),
+        8
+    );
+    assert_eq!(chain[..9], w("DeAdBeEf")[..]);
 }
 
 fn shlwapi_guid_and_map() {
@@ -687,7 +702,8 @@ pub fn all() -> Vec<Case> {
             run: shlwapi_path_helpers,
         },
         Case {
-            name: "shlwapi!StrChr/StrStr/StrCpy/StrCat/StrNCat/SHStripMneumonicW",
+            name:
+                "shlwapi!StrChr/StrStr/StrCpy/StrCat/StrNCat/StrCpyNX/StrCatChain/SHStripMneumonicW",
             run: shlwapi_string_helpers,
         },
         Case {

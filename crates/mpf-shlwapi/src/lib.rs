@@ -667,6 +667,22 @@ pub fn str_cpy_n(dst: &mut [u16], src: &[u16], count: usize) {
     dst[copied] = 0;
 }
 
+/// `StrCpyNXW`: copies at most `count - 1` units of `src`, stopping at its NUL,
+/// then writes a NUL after the copied text. Returns the index of that NUL.
+///
+/// A null `src`, or a `count` of zero or less, writes nothing and returns 0, as
+/// the C code returns `dst` unchanged. `count` is capped at `dst.len()`.
+pub fn str_cpy_nx(dst: &mut [u16], src: Option<&[u16]>, count: i32) -> usize {
+    let count = usize::try_from(count).unwrap_or(0).min(dst.len());
+    let Some(src) = src.filter(|_| count > 0) else {
+        return 0;
+    };
+    let copied = wlen(src).min(count - 1);
+    dst[..copied].copy_from_slice(&src[..copied]);
+    dst[copied] = 0;
+    copied
+}
+
 /// `StrCpyW`: copies `src` and its terminator into `dst`. Returns `false` and
 /// leaves `dst` untouched when the copy does not fit, where `lstrcpyW` would
 /// overflow.
@@ -700,6 +716,37 @@ pub fn str_ncat(dst: &mut [u16], src: &[u16], cch_max: i32) {
     let start = wlen(dst);
     let count = usize::try_from(cch_max).unwrap_or(0);
     str_cpy_n(&mut dst[start..], src, count);
+}
+
+/// `StrCatChainW`: writes `cat` into `s` at `at` and terminates it. `at` of
+/// `None` (Wine's -1) appends after the existing text. At most `max_len - 1`
+/// units are written, and `max_len` is capped at `s.len()`.
+///
+/// An `at` equal to `max_len` is moved back one unit. A larger `at`, or a null
+/// `cat`, writes nothing. Returns the index of the terminator, or `at` when
+/// nothing is written.
+pub fn str_cat_chain(
+    s: &mut [u16],
+    max_len: usize,
+    at: Option<usize>,
+    cat: Option<&[u16]>,
+) -> usize {
+    let max_len = max_len.min(s.len());
+    let mut at = at.unwrap_or_else(|| wlen(s));
+    if max_len == 0 {
+        return at;
+    }
+    if at == max_len {
+        at -= 1;
+    }
+    if let Some(cat) = cat.filter(|_| at < max_len) {
+        let cat = &cat[..wlen(cat)];
+        let n = cat.len().min(max_len - 1 - at);
+        s[at..at + n].copy_from_slice(&cat[..n]);
+        at += n;
+        s[at] = 0;
+    }
+    at
 }
 
 /// `SHStripMneumonicW`: removes the first `&` accelerator marker from `s` and
@@ -1642,6 +1689,84 @@ mod tests {
             str_to_int64_ex(&w("9223372036854775808"), 0),
             Some(i64::MIN)
         );
+    }
+
+    // Vectors come from dlls/shlwapi/tests/string.c (test_StrCpyNXW and
+    // test_StrCatChainW). Truncation and null-argument cases follow the
+    // StrCpyNXW and StrCatChainW bodies in dlls/kernelbase/string.c.
+    #[test]
+    fn cpy_nx_copies_at_most_count_minus_one_units() {
+        let mut dest = [u16::from(b'\n'); 8];
+        assert_eq!(str_cpy_nx(&mut dest, Some(&w("hello")), 8), 5);
+        let want: Vec<u16> = "hello\0\n\n".encode_utf16().collect();
+        assert_eq!(dest[..], want[..]);
+
+        let mut small = [0xffffu16; 4];
+        assert_eq!(str_cpy_nx(&mut small, Some(&w("hello")), 100), 3);
+        assert_eq!(
+            small,
+            [u16::from(b'h'), u16::from(b'e'), u16::from(b'l'), 0]
+        );
+
+        let mut one = [0xffffu16; 4];
+        assert_eq!(str_cpy_nx(&mut one, Some(&w("hello")), 1), 0);
+        assert_eq!(one[0], 0);
+        assert_eq!(one[1], 0xffff);
+    }
+
+    #[test]
+    fn cpy_nx_writes_nothing_for_null_source_or_bad_count() {
+        let mut untouched = [0xffffu16; 4];
+        assert_eq!(str_cpy_nx(&mut untouched, Some(&w("hello")), 0), 0);
+        assert_eq!(str_cpy_nx(&mut untouched, Some(&w("hello")), -3), 0);
+        assert_eq!(str_cpy_nx(&mut untouched, None, 4), 0);
+        assert_eq!(str_cpy_nx(&mut [], Some(&w("hello")), 4), 0);
+        assert_eq!(untouched, [0xffff; 4]);
+    }
+
+    #[test]
+    fn cat_chain_appends_truncates_and_terminates() {
+        let mut buf = [0x11u16; 33];
+        buf[..9].copy_from_slice(&w("DeAdBeEf"));
+        assert_eq!(str_cat_chain(&mut buf, 0, None, Some(&w("BeEf"))), 8);
+        assert_eq!(buf[..9], w("DeAdBeEf")[..]);
+
+        let mut buf = [0x11u16; 33];
+        assert_eq!(str_cat_chain(&mut [], 0, Some(0), Some(&w("BeEf"))), 0);
+        assert_eq!(str_cat_chain(&mut buf, 32, Some(0), Some(&w("DeAd"))), 4);
+        assert_eq!(buf[..5], w("DeAd")[..]);
+        assert_eq!(str_cat_chain(&mut buf, 32, None, Some(&w("BeEf"))), 8);
+        assert_eq!(buf[..9], w("DeAdBeEf")[..]);
+
+        let mut buf = [0x11u16; 33];
+        assert_eq!(str_cat_chain(&mut buf, 32, Some(0), Some(&w("DeAd"))), 4);
+        assert_eq!(str_cat_chain(&mut buf, 32, Some(4), Some(&w("BeEf"))), 8);
+        assert_eq!(buf[..9], w("DeAdBeEf")[..]);
+
+        let mut buf = [0x11u16; 33];
+        assert_eq!(str_cat_chain(&mut buf, 5, Some(0), Some(&w("DeAd"))), 4);
+        assert_eq!(buf[..5], w("DeAd")[..]);
+
+        let mut buf = [0x11u16; 33];
+        assert_eq!(str_cat_chain(&mut buf, 4, Some(0), Some(&w("DeAd"))), 3);
+        assert_eq!(buf[..4], w("DeA")[..]);
+        assert_eq!(buf[4], 0x11);
+        assert_eq!(str_cat_chain(&mut buf, 4, Some(1), Some(&w("BeEf"))), 3);
+        assert_eq!(buf[..4], w("DBe")[..]);
+    }
+
+    #[test]
+    fn cat_chain_at_bounds_and_null_cat_write_nothing() {
+        let mut buf = [0x11u16; 33];
+        buf[..9].copy_from_slice(&w("DeAdBeEf"));
+        buf[9..14].copy_from_slice(&w("DeAd"));
+        assert_eq!(str_cat_chain(&mut buf, 9, Some(8), Some(&w("BeEf"))), 8);
+        assert_eq!(str_cat_chain(&mut buf, 9, Some(9), Some(&w("BeEf"))), 8);
+        assert_eq!(str_cat_chain(&mut buf, 9, Some(10), Some(&w("BeEf"))), 10);
+        assert_eq!(str_cat_chain(&mut buf, 9, Some(2), None), 2);
+        assert_eq!(str_cat_chain(&mut buf, 9, Some(9), None), 8);
+        assert_eq!(buf[..9], w("DeAdBeEf")[..]);
+        assert_eq!(buf[9..14], w("DeAd")[..]);
     }
 
     // Vectors and the length rule come from dlls/shlwapi/tests/ordinal.c and
