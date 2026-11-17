@@ -9,6 +9,8 @@ pub const S_OK: i32 = 0;
 pub const S_FALSE: i32 = 1;
 /// Invalid argument HRESULT.
 pub const E_INVALIDARG: i32 = 0x8007_0057u32 as i32;
+/// Pointer HRESULT returned when a caller's buffer is too small.
+pub const E_POINTER: i32 = 0x8000_4003u32 as i32;
 /// Insufficient buffer HRESULT used by Wine's path extension helpers.
 pub const STRSAFE_E_INSUFFICIENT_BUFFER: i32 = 0x8007_007au32 as i32;
 /// `PathGetCharTypeW` flag for a character valid in long file names.
@@ -41,6 +43,12 @@ pub const PATH_CHAR_CLASS_OTHER_VALID: u32 = 0x0000_0100;
 pub const PATH_CHAR_CLASS_DOUBLEQUOTE: u32 = 0x0000_0200;
 /// `PathIsValidCharW` mask accepting any ASCII character class.
 pub const PATH_CHAR_CLASS_ANY: u32 = u32::MAX;
+/// `UrlUnescapeW` flag: unescape in place and ignore the output buffer.
+pub const URL_UNESCAPE_INPLACE: u32 = 0x0010_0000;
+/// `UrlUnescapeW` flag: decode `%XX` runs as UTF-8.
+pub const URL_UNESCAPE_AS_UTF8: u32 = 0x0004_0000;
+/// `UrlUnescapeW` flag: leave escapes after the first `#` or `?` untouched.
+pub const URL_DONT_UNESCAPE_EXTRA_INFO: u32 = 0x0200_0000;
 
 const MAX_PATH_CCH: usize = 0x8000;
 const MAX_PATH: usize = 260;
@@ -1337,6 +1345,214 @@ pub fn path_relative_path_to(
     }
     path.push(0);
     Some(path)
+}
+
+fn is_path_slash(unit: u16) -> bool {
+    unit == b'/' as u16 || unit == b'\\' as u16
+}
+
+fn starts_with_ascii_ci(text: &[u16], prefix: &str) -> bool {
+    prefix
+        .bytes()
+        .enumerate()
+        .all(|(index, unit)| ascii_lower(char_at(text, index)) == ascii_lower(u16::from(unit)))
+}
+
+/// Matches Wine's `is_escaped_drive_spec`: an ASCII letter followed by `:` or `|`.
+fn is_escaped_drive_spec(text: &[u16], at: usize) -> bool {
+    matches!(char_at(text, at), 65..=90 | 97..=122)
+        && (char_at(text, at + 1) == b':' as u16 || char_at(text, at + 1) == b'|' as u16)
+}
+
+fn hex_value(unit: u16) -> Option<i32> {
+    u8::try_from(unit)
+        .ok()
+        .and_then(|byte| char::from(byte).to_digit(16))
+        .map(|digit| digit as i32)
+}
+
+/// Parses the `0x` plus two-unit buffer that Wine's `UrlUnescapeW` passes to
+/// `StrToIntExW`. Returns `None` when the first unit is not hex, so the caller
+/// keeps its previous value, as Wine does.
+fn parse_url_hex_pair(first: u16, second: u16) -> Option<i32> {
+    let high = hex_value(first)?;
+    Some(match hex_value(second) {
+        Some(low) => high * 16 + low,
+        None => high,
+    })
+}
+
+fn utf8_sequence_len(code: u8) -> usize {
+    if code < 0x80 {
+        1
+    } else if (code & 0xe0) == 0xc0 {
+        2
+    } else if (code & 0xf0) == 0xe0 {
+        3
+    } else if (code & 0xf8) == 0xf0 {
+        4
+    } else {
+        0
+    }
+}
+
+fn unescape_units(url: &[u16], flags: u32) -> Vec<u16> {
+    let url = &url[..wlen(url)];
+    let mut out = Vec::new();
+    let mut stop_unescaping = false;
+    let mut ih = 0;
+    let mut src = 0;
+    while char_at(url, src) != 0 {
+        let unit = char_at(url, src);
+        if flags & URL_DONT_UNESCAPE_EXTRA_INFO != 0 && (unit == b'#' as u16 || unit == b'?' as u16)
+        {
+            stop_unescaping = true;
+            out.push(unit);
+        } else if unit == b'%' as u16
+            && !stop_unescaping
+            && hex_value(char_at(url, src + 1)).is_some()
+            && hex_value(char_at(url, src + 2)).is_some()
+        {
+            ih = parse_url_hex_pair(char_at(url, src + 1), char_at(url, src + 2)).unwrap_or(ih);
+            src += 2;
+            if flags & URL_UNESCAPE_AS_UTF8 != 0 {
+                let mut bytes = vec![ih as u8];
+                let sequence_len = utf8_sequence_len(ih as u8);
+                while bytes.len() < sequence_len
+                    && char_at(url, src + 1) == b'%' as u16
+                    && char_at(url, src + 2) != 0
+                    && char_at(url, src + 3) != 0
+                {
+                    ih = parse_url_hex_pair(char_at(url, src + 2), char_at(url, src + 3))
+                        .unwrap_or(ih);
+                    if (ih & 0xc0) != 0x80 {
+                        break;
+                    }
+                    bytes.push(ih as u8);
+                    src += 3;
+                }
+                match std::str::from_utf8(&bytes) {
+                    Ok(text) => out.extend(text.encode_utf16()),
+                    Err(_) => out.push(0xfffd),
+                }
+            } else {
+                out.push(ih as u16);
+            }
+        } else {
+            out.push(unit);
+        }
+        src += 1;
+    }
+    out
+}
+
+/// Decodes `%XX` escapes like Wine's `UrlUnescapeW`. Without
+/// `URL_UNESCAPE_INPLACE`, `capacity` is the caller's buffer size in units.
+/// Errors are `(E_INVALIDARG, 0)` or `(E_POINTER, required_units_with_nul)`.
+pub fn url_unescape(
+    url: Option<&[u16]>,
+    flags: u32,
+    capacity: Option<usize>,
+) -> Result<Vec<u16>, (i32, usize)> {
+    let Some(url) = url else {
+        return Err((E_INVALIDARG, 0));
+    };
+    let inplace = flags & URL_UNESCAPE_INPLACE != 0;
+    if !inplace && capacity.is_none() {
+        return Err((E_INVALIDARG, 0));
+    }
+    let out = unescape_units(url, flags);
+    match capacity {
+        Some(capacity) if !inplace && out.len() >= capacity => Err((E_POINTER, out.len() + 1)),
+        _ => Ok(out),
+    }
+}
+
+/// Converts a `file:` URL to a DOS or UNC path, matching `PathCreateFromUrlW`.
+/// `capacity` is the caller's `*pcchPath` in units; `dwReserved` is ignored, as
+/// in Wine. Returns a NUL-terminated path, or `(E_INVALIDARG, 0)` or
+/// `(E_POINTER, required_units_with_nul)`.
+pub fn path_create_from_url(
+    url: Option<&[u16]>,
+    capacity: usize,
+) -> Result<Vec<u16>, (i32, usize)> {
+    let Some(url) = url else {
+        return Err((E_INVALIDARG, 0));
+    };
+    if capacity == 0 || !starts_with_ascii_ci(url, "file:") {
+        return Err((E_INVALIDARG, 0));
+    }
+    let url = &url[..wlen(url)];
+    let rest = &url[5..];
+
+    let mut src = rest.iter().take_while(|&&unit| is_path_slash(unit)).count();
+    let mut unescape = true;
+    match src {
+        0 => {}
+        1 | 3 => {
+            if !is_escaped_drive_spec(rest, src) {
+                src -= 1;
+            }
+        }
+        2 => {
+            if rest.len() - src >= 10
+                && starts_with_ascii_ci(&rest[src..], "localhost")
+                && is_path_slash(char_at(rest, src + 9))
+            {
+                src += 10;
+            } else if is_escaped_drive_spec(rest, src) {
+                unescape = false;
+            } else {
+                while src < rest.len() && !is_path_slash(rest[src]) {
+                    src += 1;
+                }
+                let mut out_host = rest[..src].to_vec();
+                if src < rest.len() && is_escaped_drive_spec(rest, src + 1) {
+                    src += 1;
+                }
+                out_host.extend_from_slice(&rest[src..]);
+                return finish_path_from_url(out_host, unescape, capacity);
+            }
+        }
+        4 => {
+            unescape = false;
+            if !is_escaped_drive_spec(rest, src) {
+                src -= 2;
+            }
+        }
+        _ => src -= 2,
+    }
+    finish_path_from_url(rest[src..].to_vec(), unescape, capacity)
+}
+
+fn finish_path_from_url(
+    mut out: Vec<u16>,
+    unescape: bool,
+    capacity: usize,
+) -> Result<Vec<u16>, (i32, usize)> {
+    for unit in &mut out {
+        if *unit == b'/' as u16 {
+            *unit = b'\\' as u16;
+        }
+    }
+    if is_escaped_drive_spec(&out, 0) {
+        out[1] = b':' as u16;
+    }
+    if unescape {
+        out = unescape_units(&out, URL_UNESCAPE_INPLACE);
+    }
+    let len = wlen(&out);
+    if capacity < len + 1 {
+        return Err((E_POINTER, len + 1));
+    }
+    out.truncate(len);
+    out.push(0);
+    Ok(out)
+}
+
+/// Allocating form of `PathCreateFromUrlW`, which uses `MAX_PATH` as the buffer size.
+pub fn path_create_from_url_alloc(url: Option<&[u16]>) -> Result<Vec<u16>, (i32, usize)> {
+    path_create_from_url(url, MAX_PATH)
 }
 
 #[cfg(test)]
@@ -2828,6 +3044,127 @@ mod tests {
         );
         assert_eq!(path_relative_path_to(None, DIR, Some(&from), DIR), None);
         assert_eq!(path_relative_path_to(Some(&from), DIR, None, DIR), None);
+    }
+
+    fn units(text: &str) -> Vec<u16> {
+        text.encode_utf16().collect()
+    }
+
+    // Traced from Wine's UrlUnescapeW, including the stale `ih` value kept when
+    // StrToIntExW fails on a continuation escape.
+    #[test]
+    fn url_unescape_traced_from_wine_c() {
+        let inplace = URL_UNESCAPE_INPLACE;
+        let utf8 = URL_UNESCAPE_INPLACE | URL_UNESCAPE_AS_UTF8;
+        let extra = URL_UNESCAPE_INPLACE | URL_DONT_UNESCAPE_EXTRA_INFO;
+        for (input, flags, expected) in [
+            ("a%20b", inplace, "a b"),
+            ("%2f%2F", inplace, "//"),
+            ("%zz%4", inplace, "%zz%4"),
+            ("%41%", inplace, "A%"),
+            ("a?b%20", extra, "a?b%20"),
+            ("a#%20", extra, "a#%20"),
+            ("%41", utf8, "A"),
+            ("%C3%A9", utf8, "é"),
+            ("%F0%9F%98%80", utf8, "😀"),
+            ("%C3", utf8, "\u{fffd}"),
+            ("%C3%", utf8, "\u{fffd}%"),
+            ("%C3%4", utf8, "\u{fffd}%4"),
+            ("%C3%41", utf8, "\u{fffd}A"),
+            ("%E2%82%zz", utf8, "\u{2082}"),
+            ("%E2%82%8z", utf8, "\u{fffd}%8z"),
+            ("%E2%zz", utf8, "\u{fffd}%zz"),
+            ("%80", utf8, "\u{fffd}"),
+            ("%F8", utf8, "\u{fffd}"),
+            ("%ED%A0%80", utf8, "\u{fffd}"),
+        ] {
+            assert_eq!(
+                url_unescape(Some(&w(input)), flags, None),
+                Ok(units(expected)),
+                "{input}"
+            );
+        }
+    }
+
+    #[test]
+    fn url_unescape_buffer_and_argument_rules() {
+        assert_eq!(
+            url_unescape(Some(&w("a%20b")), 0, Some(4)),
+            Ok(units("a b"))
+        );
+        assert_eq!(
+            url_unescape(Some(&w("a%20b")), 0, Some(3)),
+            Err((E_POINTER, 4))
+        );
+        assert_eq!(url_unescape(Some(&w("a")), 0, None), Err((E_INVALIDARG, 0)));
+        assert_eq!(
+            url_unescape(None, URL_UNESCAPE_INPLACE, None),
+            Err((E_INVALIDARG, 0))
+        );
+        assert_eq!(
+            url_unescape(Some(&w("a%20b")), URL_UNESCAPE_INPLACE, Some(0)),
+            Ok(units("a b"))
+        );
+    }
+
+    #[test]
+    fn path_create_from_url_traced_from_wine_c() {
+        for (url, expected) in [
+            ("file:///C:/a/b%20c", "C:\\a\\b c"),
+            ("file:///x", "\\x"),
+            ("file:/C|/x", "C:\\x"),
+            ("file:C:/x", "C:\\x"),
+            ("file:/x/y", "\\x\\y"),
+            ("file:a%20b", "a b"),
+            ("FILE:/a", "\\a"),
+            ("file://server/share/a", "\\\\server\\share\\a"),
+            ("file://server/C:/x", "\\\\serverC:\\x"),
+            ("file://localhost", "\\\\localhost"),
+            ("file://localhostx/a", "\\\\localhostx\\a"),
+            ("file://localhost/C:/x", "C:\\x"),
+            ("file://C:/x", "C:\\x"),
+            ("file://C|/a%20b", "C:\\a%20b"),
+            ("file:////C:/x", "C:\\x"),
+            ("file:////server/share", "\\\\server\\share"),
+            ("file://///x", "\\\\x"),
+        ] {
+            assert_eq!(
+                path_create_from_url(Some(&w(url)), MAX_PATH),
+                Ok(w(expected)),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn path_create_from_url_buffer_and_argument_rules() {
+        assert_eq!(
+            path_create_from_url(Some(&w("file:/a")), 2),
+            Err((E_POINTER, 3))
+        );
+        assert_eq!(path_create_from_url(Some(&w("file:/a")), 3), Ok(w("\\a")));
+        assert_eq!(
+            path_create_from_url(Some(&w("http://x")), MAX_PATH),
+            Err((E_INVALIDARG, 0))
+        );
+        assert_eq!(
+            path_create_from_url(Some(&w("file")), MAX_PATH),
+            Err((E_INVALIDARG, 0))
+        );
+        assert_eq!(
+            path_create_from_url(Some(&w("file:/a")), 0),
+            Err((E_INVALIDARG, 0))
+        );
+        assert_eq!(path_create_from_url(None, MAX_PATH), Err((E_INVALIDARG, 0)));
+        assert_eq!(
+            path_create_from_url_alloc(Some(&w("file:/a"))),
+            Ok(w("\\a"))
+        );
+        let long = format!("file:/{}", "x".repeat(300));
+        assert_eq!(
+            path_create_from_url_alloc(Some(&w(&long))),
+            Err((E_POINTER, 302))
+        );
     }
 
     #[test]
