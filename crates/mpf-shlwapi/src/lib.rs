@@ -1381,6 +1381,84 @@ pub fn color_adjust_luma(color: u32, luma: i32) -> u32 {
     color_hls_to_rgb(hue, lum, sat)
 }
 
+/// `FDSA_info`: a growable array of fixed-size byte blocks. Wine keeps the block size
+/// and the growth increment in `BYTE`s, so both are truncated to 8 bits. The caller's
+/// `mem` buffer is not modelled because the port owns its storage. `grown` mirrors
+/// Wine's internal-allocation flag, which decides what `destroy` returns.
+pub struct Fdsa {
+    block_size: u8,
+    inc: u8,
+    blocks_alloced: u32,
+    num_items: u32,
+    grown: bool,
+    data: Vec<u8>,
+}
+
+impl Fdsa {
+    /// `FDSA_Initialize`. An `inc` of zero becomes one before it is truncated.
+    pub fn initialize(block_size: u32, inc: u32, init_blocks: u32) -> Self {
+        let inc = if inc == 0 { 1 } else { inc };
+        Self {
+            block_size: block_size as u8,
+            inc: inc as u8,
+            blocks_alloced: init_blocks,
+            num_items: 0,
+            grown: false,
+            data: Vec::new(),
+        }
+    }
+
+    /// `FDSA_Destroy`. Wine returns FALSE once it has freed its own allocation.
+    pub fn destroy(self) -> bool {
+        !self.grown
+    }
+
+    /// `FDSA_InsertItem`: inserts the first `block_size` bytes of `block` at `where_`,
+    /// or at the end when `where_` is past it, and returns the index used. `block`
+    /// must hold at least `block_size` bytes.
+    pub fn insert_item(&mut self, where_: u32, block: &[u8]) -> u32 {
+        let at = where_.min(self.num_items);
+        if self.num_items >= self.blocks_alloced {
+            self.blocks_alloced += u32::from(self.inc);
+            self.grown = true;
+        }
+        let size = usize::from(self.block_size);
+        let start = at as usize * size;
+        let tail = self.data.split_off(start);
+        self.data.extend_from_slice(&block[..size]);
+        self.data.extend(tail);
+        self.num_items += 1;
+        at
+    }
+
+    /// `FDSA_DeleteItem`: removes the item at `where_`. Returns false when there is
+    /// no such item.
+    pub fn delete_item(&mut self, where_: u32) -> bool {
+        if where_ >= self.num_items {
+            return false;
+        }
+        let size = usize::from(self.block_size);
+        let start = where_ as usize * size;
+        self.data.drain(start..start + size);
+        self.num_items -= 1;
+        true
+    }
+
+    /// The block at `index`, or None past the last item.
+    pub fn item(&self, index: u32) -> Option<&[u8]> {
+        if index >= self.num_items {
+            return None;
+        }
+        let size = usize::from(self.block_size);
+        let start = index as usize * size;
+        Some(&self.data[start..start + size])
+    }
+
+    pub fn num_items(&self) -> u32 {
+        self.num_items
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1541,6 +1619,34 @@ mod tests {
         assert_eq!(color_adjust_luma(0x808080, 10), 0x7F7F7F);
         assert_eq!(color_adjust_luma(0xFF0000, -30), 0xFF0000);
         assert_eq!(color_adjust_luma(0xFF00_0000, 0), 0xFF00_0000);
+    }
+
+    #[test]
+    fn fdsa_inserts_deletes_and_reports_growth() {
+        let mut a = Fdsa::initialize(4, 2, 0);
+        assert_eq!(a.insert_item(0, &[1, 2, 3, 4]), 0);
+        assert_eq!(a.insert_item(0, &[5, 6, 7, 8]), 0);
+        assert_eq!(a.insert_item(9, &[9, 9, 9, 9]), 2);
+        assert_eq!(a.num_items(), 3);
+        assert_eq!(a.item(0), Some(&[5, 6, 7, 8][..]));
+        assert_eq!(a.item(1), Some(&[1, 2, 3, 4][..]));
+        assert_eq!(a.item(2), Some(&[9, 9, 9, 9][..]));
+        assert_eq!(a.item(3), None);
+        assert!(a.delete_item(0));
+        assert!(!a.delete_item(5));
+        assert_eq!(a.item(0), Some(&[1, 2, 3, 4][..]));
+        assert!(
+            !a.destroy(),
+            "growth frees Wine's internal block, so destroy reports FALSE"
+        );
+
+        let mut b = Fdsa::initialize(2, 0, 4);
+        assert_eq!(b.insert_item(0, &[1, 2]), 0);
+        assert!(b.destroy());
+
+        let mut c = Fdsa::initialize(256, 1, 0);
+        assert_eq!(c.insert_item(0, &[]), 0);
+        assert_eq!(c.item(0), Some(&[][..]));
     }
 
     #[test]
