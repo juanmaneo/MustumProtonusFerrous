@@ -1014,6 +1014,62 @@ pub fn str_to_int(s: &[u16]) -> i32 {
     }
 }
 
+fn is_decimal_digit(c: u16) -> bool {
+    (b'0' as u16..=b'9' as u16).contains(&c)
+}
+
+/// `StrCmpLogicalW`: compares two strings with each run of decimal digits read as
+/// a number, so `file2` sorts before `file10`. Other characters compare by code
+/// unit after ASCII case folding, which is the C-locale policy of this crate and
+/// not Windows linguistic collation. Digit runs are truncated to 32 bits as
+/// `StrToIntExW` does. Null arguments give 0.
+pub fn str_cmp_logical(s: Option<&[u16]>, comp: Option<&[u16]>) -> i32 {
+    let (Some(s), Some(comp)) = (s, comp) else {
+        return 0;
+    };
+    let s = &s[..wlen(s)];
+    let comp = &comp[..wlen(comp)];
+    let (mut i, mut j) = (0, 0);
+    while i < s.len() {
+        if j == comp.len() {
+            return 1;
+        }
+        if is_decimal_digit(s[i]) {
+            if !is_decimal_digit(comp[j]) {
+                return -1;
+            }
+            let s_value = str_to_int_ex(&s[i..], 0).unwrap_or(0);
+            let comp_value = str_to_int_ex(&comp[j..], 0).unwrap_or(0);
+            match s_value.cmp(&comp_value) {
+                std::cmp::Ordering::Less => return -1,
+                std::cmp::Ordering::Greater => return 1,
+                std::cmp::Ordering::Equal => {}
+            }
+            while i < s.len() && is_decimal_digit(s[i]) {
+                i += 1;
+            }
+            while j < comp.len() && is_decimal_digit(comp[j]) {
+                j += 1;
+            }
+        } else if is_decimal_digit(comp[j]) {
+            return 1;
+        } else {
+            match ascii_lower(s[i]).cmp(&ascii_lower(comp[j])) {
+                std::cmp::Ordering::Less => return -1,
+                std::cmp::Ordering::Greater => return 1,
+                std::cmp::Ordering::Equal => {}
+            }
+            i += 1;
+            j += 1;
+        }
+    }
+    if j < comp.len() {
+        -1
+    } else {
+        0
+    }
+}
+
 /// `StrRChrW`: index of the last `ch` before `end`, or before the terminator when
 /// `end` is `None`. `end` is an exclusive bound and is clamped to the slice.
 pub fn str_rchr(s: &[u16], end: Option<usize>, ch: u16) -> Option<usize> {
@@ -1146,6 +1202,37 @@ mod tests {
         assert!(!path_is_system_folder(0x10));
         assert!(!path_is_system_folder(0x4 | 0x1));
         assert!(!path_is_system_folder(INVALID_FILE_ATTRIBUTES));
+    }
+
+    #[test]
+    fn cmp_logical_reads_digit_runs_as_numbers() {
+        let cases: [(&str, &str, i32); 16] = [
+            ("file2", "file10", -1),
+            ("a", "1", 1),
+            ("abd", "ABC", 1),
+            ("file10", "file2", 1),
+            ("abc", "abd", -1),
+            ("A1", "a1", 0),
+            ("12", "012", 0),
+            ("12abc", "12abd", -1),
+            ("x9", "x 9", -1),
+            ("x", "", 1),
+            ("", "x", -1),
+            ("", "", 0),
+            ("4294967297", "1", 0),
+            ("2147483648", "-2147483648", -1),
+            ("-1", "-2", -1),
+            ("1", "1 ", -1),
+        ];
+        for (s, comp, expected) in cases {
+            assert_eq!(
+                str_cmp_logical(Some(&w(s)), Some(&w(comp))),
+                expected,
+                "{s:?} vs {comp:?}"
+            );
+        }
+        assert_eq!(str_cmp_logical(None, Some(&w("x"))), 0);
+        assert_eq!(str_cmp_logical(Some(&w("x")), None), 0);
     }
 
     #[test]
