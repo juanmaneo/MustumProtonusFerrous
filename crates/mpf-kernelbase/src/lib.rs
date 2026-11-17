@@ -1555,6 +1555,203 @@ pub fn path_create_from_url_alloc(url: Option<&[u16]>) -> Result<Vec<u16>, (i32,
     path_create_from_url(url, MAX_PATH)
 }
 
+pub const PATHCCH_ALLOW_LONG_PATHS: u32 = 0x01;
+pub const PATHCCH_FORCE_ENABLE_LONG_NAME_PROCESS: u32 = 0x02;
+pub const PATHCCH_FORCE_DISABLE_LONG_NAME_PROCESS: u32 = 0x04;
+pub const PATHCCH_DO_NOT_NORMALIZE_SEGMENTS: u32 = 0x08;
+pub const PATHCCH_ENSURE_IS_EXTENDED_LENGTH_PATH: u32 = 0x10;
+pub const PATHCCH_ENSURE_TRAILING_SLASH: u32 = 0x20;
+
+const ERROR_FILENAME_EXCED_RANGE_HRESULT: i32 = 0x8007_00CEu32 as i32;
+
+fn is_drive_spec(path: &[u16]) -> bool {
+    matches!(char_at(path, 0), 65..=90 | 97..=122) && char_at(path, 1) == b':' as u16
+}
+
+/// `PathCchStripPrefix` applied to the canonicalization buffer in place. The
+/// buffer keeps its length and bytes past the new terminator, as in Wine.
+///
+/// The caller passes a buffer of `length + 6` units, which always holds the
+/// stripped tail, so Wine's size checks cannot fail here. The caller applies
+/// Wine's `MAX_PATH_CCH` size limit itself.
+fn strip_prefix_in_buffer(buffer: &mut [u16]) -> bool {
+    if is_prefixed_unc(buffer) {
+        let tail = wlen(&buffer[8..]);
+        buffer.copy_within(8..=8 + tail, 2);
+        true
+    } else if is_prefixed_disk(buffer) {
+        let tail = wlen(&buffer[4..]);
+        buffer.copy_within(4..=4 + tail, 0);
+        true
+    } else {
+        false
+    }
+}
+
+/// `PathAllocCanonicalize`: normalizes `.` and `..` segments, the root and the
+/// `\\?\` prefix. Returns the NUL-terminated result, or the `HRESULT` of the
+/// rejected call. Flags that Wine rejects return `E_INVALIDARG`, and paths that
+/// exceed the length limit return `ERROR_FILENAME_EXCED_RANGE`.
+///
+/// The working buffer has the same `length + 6` size and the same index
+/// arithmetic as Wine's, so the bytes past the terminator match too. Wine's
+/// `PathCchAddBackslash` receives a byte count there, and that size is kept.
+pub fn path_alloc_canonicalize(path_in: &[u16], flags: u32) -> Result<Vec<u16>, i32> {
+    const BACKSLASH: u16 = b'\\' as u16;
+    const DOT: u16 = b'.' as u16;
+    const STAR: u16 = b'*' as u16;
+    const COLON: u16 = b':' as u16;
+    const QUESTION: u16 = b'?' as u16;
+
+    let mut flags = flags;
+    let long_name_flags =
+        PATHCCH_FORCE_ENABLE_LONG_NAME_PROCESS | PATHCCH_FORCE_DISABLE_LONG_NAME_PROCESS;
+    if (flags & PATHCCH_FORCE_ENABLE_LONG_NAME_PROCESS != 0
+        && flags & PATHCCH_FORCE_DISABLE_LONG_NAME_PROCESS != 0)
+        || (flags & long_name_flags != 0 && flags & PATHCCH_ALLOW_LONG_PATHS == 0)
+        || (flags & PATHCCH_ENSURE_IS_EXTENDED_LENGTH_PATH != 0
+            && flags & PATHCCH_ALLOW_LONG_PATHS != 0)
+    {
+        return Err(E_INVALIDARG);
+    }
+
+    let length = wlen(path_in);
+    let long_path_flags = PATHCCH_ALLOW_LONG_PATHS | PATHCCH_ENSURE_IS_EXTENDED_LENGTH_PATH;
+    if (length + 1 > MAX_PATH && flags & long_path_flags == 0) || length + 1 > MAX_PATH_CCH {
+        return Err(ERROR_FILENAME_EXCED_RANGE_HRESULT);
+    }
+
+    if flags & PATHCCH_ENSURE_IS_EXTENDED_LENGTH_PATH != 0 {
+        flags |= PATHCCH_DO_NOT_NORMALIZE_SEGMENTS;
+    }
+
+    let buffer_bytes = 2 * (length + 6);
+    let mut buffer = vec![0_u16; length + 6];
+    let mut src = 0_usize;
+    let mut dst = 0_usize;
+    let mut root = root_end(path_in);
+
+    if let Some(end) = root {
+        for (index, unit) in buffer.iter_mut().enumerate().take(end + 1) {
+            *unit = char_at(path_in, index);
+        }
+        src = end + 1;
+        if length + 6 <= MAX_PATH_CCH && strip_prefix_in_buffer(&mut buffer) {
+            if is_drive_spec(&buffer) && buffer[2] != BACKSLASH {
+                buffer[2] = BACKSLASH;
+                buffer[3] = 0;
+            }
+            dst = wlen(&buffer);
+            root = Some(dst);
+        } else {
+            dst = end + 1;
+        }
+    }
+
+    while char_at(path_in, src) != 0 {
+        if char_at(path_in, src) != DOT {
+            buffer[dst] = char_at(path_in, src);
+            dst += 1;
+            src += 1;
+            continue;
+        }
+
+        if char_at(path_in, src + 1) == DOT {
+            if dst > 0 && buffer[dst - 1] == STAR {
+                buffer[dst] = DOT;
+                dst += 1;
+                src += 1;
+                continue;
+            }
+
+            let after = char_at(path_in, src + 2);
+            if (after != BACKSLASH && after != 0) || (dst > 0 && buffer[dst - 1] != BACKSLASH) {
+                buffer[dst] = DOT;
+                buffer[dst + 1] = DOT;
+                dst += 2;
+                src += 2;
+                continue;
+            }
+
+            if dst > 0 && buffer[dst - 1] == BACKSLASH && root.is_none_or(|end| dst - 1 > end) {
+                dst -= 1;
+                buffer[dst] = 0;
+                while dst > 0 {
+                    let was_backslash = buffer[dst - 1] == BACKSLASH;
+                    dst -= 1;
+                    buffer[dst] = 0;
+                    if was_backslash {
+                        break;
+                    }
+                }
+            } else if after == BACKSLASH {
+                src += 1;
+            }
+            src += 2;
+        } else {
+            let next = char_at(path_in, src + 1);
+            if (next != BACKSLASH && next != 0) || (dst > 0 && buffer[dst - 1] != BACKSLASH) {
+                buffer[dst] = DOT;
+                dst += 1;
+                src += 1;
+                continue;
+            }
+
+            if dst > 0 && buffer[dst - 1] == BACKSLASH && root.is_none_or(|end| dst - 1 > end) {
+                dst -= 1;
+            } else if next == BACKSLASH {
+                src += 1;
+            }
+            src += 1;
+        }
+
+        if is_drive_spec(&buffer) && buffer[2] != BACKSLASH {
+            root = Some(2);
+            dst = 3;
+            buffer[2] = BACKSLASH;
+            if char_at(path_in, src) == BACKSLASH {
+                src += 1;
+            }
+        }
+    }
+    buffer[dst] = 0;
+
+    if flags & PATHCCH_DO_NOT_NORMALIZE_SEGMENTS == 0 {
+        while dst > 0 && buffer[dst - 1] == DOT {
+            if dst > 1 && buffer[dst - 2] == STAR {
+                break;
+            } else if dst == 3 && buffer[1] == COLON {
+                dst -= 1;
+                buffer[dst] = BACKSLASH;
+            } else {
+                dst -= 1;
+                buffer[dst] = 0;
+            }
+        }
+    }
+
+    if buffer[0] == 0 {
+        buffer[0] = BACKSLASH;
+        buffer[1] = 0;
+    }
+
+    let length = wlen(&buffer);
+    let drive = is_drive_spec(&buffer);
+    if ((length + 1 > MAX_PATH && drive)
+        || (drive && flags & PATHCCH_ENSURE_IS_EXTENDED_LENGTH_PATH != 0))
+        && flags & PATHCCH_FORCE_ENABLE_LONG_NAME_PROCESS == 0
+    {
+        buffer.copy_within(0..=length, 4);
+        buffer[..4].copy_from_slice(&[BACKSLASH, BACKSLASH, QUESTION, BACKSLASH]);
+    }
+
+    let mut result = buffer[..=wlen(&buffer)].to_vec();
+    if flags & PATHCCH_ENSURE_TRAILING_SLASH != 0 {
+        path_cch_add_backslash_ex(&mut result, buffer_bytes);
+    }
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3363,5 +3560,74 @@ mod tests {
         let original = too_small.clone();
         assert_eq!(path_cch_strip_prefix(&mut too_small, 9), E_INVALIDARG);
         assert_eq!(too_small, original);
+    }
+
+    fn canonicalize_text(path: &str, flags: u32) -> Result<String, i32> {
+        let units: Vec<u16> = path.encode_utf16().collect();
+        path_alloc_canonicalize(&units, flags).map(|out| {
+            let end = out.iter().position(|&unit| unit == 0).unwrap();
+            assert_eq!(end + 1, out.len());
+            String::from_utf16(&out[..end]).unwrap()
+        })
+    }
+
+    #[test]
+    fn alloc_canonicalize_matches_wine_vectors() {
+        let long = format!("C:\\{}", "a".repeat(257));
+        let long_extended = format!("\\\\?\\{long}");
+        let cases: [(u32, &str, Result<&str, i32>); 33] = [
+            (0x06, "C:\\a", Err(E_INVALIDARG)),
+            (0x02, "C:\\a", Err(E_INVALIDARG)),
+            (0x11, "C:\\a", Err(E_INVALIDARG)),
+            (0x00, &long, Err(ERROR_FILENAME_EXCED_RANGE_HRESULT)),
+            (0x01, &long, Ok(&long_extended)),
+            (0x00, "C:\\a\\..\\..\\x", Ok("C:\\x")),
+            (0x00, "C:.", Ok("C:\\")),
+            (0x00, "C:", Ok("C:")),
+            (0x00, "", Ok("\\")),
+            (0x00, "\\\\?\\UNC\\srv\\sh\\..\\x", Ok("\\\\srv\\x")),
+            (0x00, "\\\\?\\C:\\", Ok("C:\\")),
+            (0x10, "C:\\dir", Ok("\\\\?\\C:\\dir")),
+            (0x10, "\\\\?\\C:", Ok("\\\\?\\C:\\")),
+            (0x20, "C:\\a\\b", Ok("C:\\a\\b\\")),
+            (0x20, "", Ok("\\")),
+            (0x08, "C:\\a\\b\\..", Ok("C:\\a")),
+            (0x08, "C:\\a\\b\\.", Ok("C:\\a\\b")),
+            (0x00, "C:\\a\\b\\.", Ok("C:\\a\\b")),
+            (0x00, "C:a", Ok("C:a")),
+            (0x00, "a*..", Ok("a*.")),
+            (0x00, "\\\\srv\\sh\\..\\x", Ok("\\\\srv\\x")),
+            (
+                0x00,
+                "\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}\\..",
+                Ok("\\\\?\\Volume{12345678-1234-1234-1234-123456789abc}\\"),
+            ),
+            (0x00, "\\\\.\\x", Ok("\\\\x")),
+            (0x00, "dir\\", Ok("dir\\")),
+            (0x00, "\\\\?\\UNC\\srv\\sh", Ok("\\\\srv\\sh")),
+            (0x00, "C:\\a..b", Ok("C:\\a..b")),
+            (0x00, "C:\\.", Ok("C:\\")),
+            (0x00, "C:x\\.\\y", Ok("C:\\y")),
+            (0x00, "C:x\\.\\", Ok("C:\\")),
+            (0x00, "C:x\\..\\y", Ok("\\y")),
+            (0x00, "C:x\\.", Ok("C:\\")),
+            (0x00, "\\\\?\\C:\\a..b", Ok("C:\\a..b")),
+            (0x00, "C:\\.x", Ok("C:\\.x")),
+        ];
+        for (flags, path, expected) in cases {
+            assert_eq!(
+                canonicalize_text(path, flags),
+                expected.map(str::to_owned),
+                "flags={flags:#x} path={path:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn alloc_canonicalize_keeps_unc_prefix_when_buffer_exceeds_max_path_cch() {
+        let unc = |len: usize| format!("\\\\?\\UNC\\srv\\sh\\{}", "a".repeat(len - 15));
+        let stripped = format!("\\\\srv\\sh\\{}", "a".repeat(32762 - 15));
+        assert_eq!(canonicalize_text(&unc(32762), 0x01), Ok(stripped));
+        assert_eq!(canonicalize_text(&unc(32763), 0x01), Ok(unc(32763)));
     }
 }
