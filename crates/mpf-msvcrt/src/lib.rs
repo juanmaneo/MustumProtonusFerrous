@@ -9,6 +9,10 @@
 //! ASCII-only folding; locale-aware behavior and `MSVCRT_CHECK_PMT`
 //! invalid-parameter handling are not ported.
 
+pub mod ctype;
+pub mod math;
+pub mod misc;
+
 /// Replaces all bytes before the first NUL and returns the count changed.
 ///
 /// This slice-based equivalent of Wine's `_strset` reports a count instead of
