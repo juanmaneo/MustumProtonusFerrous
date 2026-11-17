@@ -1285,6 +1285,102 @@ pub fn guid_from_string_w(s: Option<&[u16]>) -> Option<Uuid> {
     })
 }
 
+/// `ColorRGBToHLS`: converts a `COLORREF` to (hue, luminosity, saturation), each in
+/// 0..=240. Wine's optional out-parameters become the returned tuple. An achromatic
+/// colour gets hue 160, as Wine returns.
+pub fn color_rgb_to_hls(color: u32) -> (u16, u16, u16) {
+    let r = (color & 0xFF) as i32;
+    let g = ((color >> 8) & 0xFF) as i32;
+    let b = ((color >> 16) & 0xFF) as i32;
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let lum = ((max + min) * 240 + 255) / 510;
+    if max == min {
+        return (160, lum as u16, 0);
+    }
+    let delta = max - min;
+    let sat = if lum <= 120 {
+        ((max + min) / 2 + delta * 240) / (max + min)
+    } else {
+        ((510 - max - min) / 2 + delta * 240) / (510 - max - min)
+    };
+    let norm = |c: i32| (delta / 2 + max * 40 - c * 40) / delta;
+    let (r_norm, g_norm, b_norm) = (norm(r), norm(g), norm(b));
+    let mut hue = if r == max {
+        b_norm - g_norm
+    } else if g == max {
+        80 + r_norm - b_norm
+    } else {
+        160 + g_norm - r_norm
+    };
+    // Each `norm` lies in 0..=40, so hue stays at or below 200 and only a negative
+    // value needs wrapping.
+    if hue < 0 {
+        hue += 240;
+    }
+    (hue as u16, lum as u16, sat as u16)
+}
+
+/// `ColorHLSToRGB`: converts hue, luminosity and saturation, nominally 0..=240, to a
+/// `COLORREF`. Intermediates are truncated to 16 bits (`WORD`) and then to 8 bits
+/// (`BYTE`), as Wine does, so out-of-range inputs wrap the same way.
+pub fn color_hls_to_rgb(hue: u16, lum: u16, sat: u16) -> u32 {
+    let (hue, lum, sat) = (i32::from(hue), i32::from(lum), i32::from(sat));
+    if sat == 0 {
+        let v = (lum * 255 / 240) as u8;
+        return colorref(v, v, v);
+    }
+    let mid2 = (if lum > 120 {
+        sat + lum - (sat * lum + 120) / 240
+    } else {
+        ((sat + 240) * lum + 120) / 240
+    }) as u16;
+    let mid1 = (lum * 2 - i32::from(mid2)) as u16;
+    colorref(
+        hls_channel(hue + 80, mid1, mid2),
+        hls_channel(hue, mid1, mid2),
+        hls_channel(hue - 80, mid1, mid2),
+    )
+}
+
+/// `ConvertHue`: one channel of `color_hls_to_rgb`, before it is scaled to 0..=255.
+fn convert_hue(hue: i32, mid1: u16, mid2: u16) -> u16 {
+    let hue = if hue > 240 {
+        hue - 240
+    } else if hue < 0 {
+        hue + 240
+    } else {
+        hue
+    };
+    let hue = match hue {
+        h if h > 160 => return mid1,
+        h if h > 120 => 160 - h,
+        h if h > 40 => return mid2,
+        h => h,
+    };
+    let (m1, m2) = (i32::from(mid1), i32::from(mid2));
+    (((hue * (m2 - m1) + 20) / 40) + m1) as u16
+}
+
+fn hls_channel(hue: i32, mid1: u16, mid2: u16) -> u8 {
+    ((i32::from(convert_hue(hue, mid1, mid2)) * 255 + 120) / 240) as u8
+}
+
+fn colorref(r: u8, g: u8, b: u8) -> u32 {
+    u32::from(r) | (u32::from(g) << 8) | (u32::from(b) << 16)
+}
+
+/// `ColorAdjustLuma`: returns `color` unchanged when `luma` is 0. Otherwise the
+/// colour makes an HLS round trip, which is all Wine does: the luma adjustment is
+/// not applied. Wine's `bUnknown` argument is ignored and therefore omitted.
+pub fn color_adjust_luma(color: u32, luma: i32) -> u32 {
+    if luma == 0 {
+        return color;
+    }
+    let (hue, lum, sat) = color_rgb_to_hls(color);
+    color_hls_to_rgb(hue, lum, sat)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1415,6 +1511,36 @@ mod tests {
         assert_eq!(str_rstr_iw(Some(&w("abc")), None, Some(&w(""))), None);
         assert_eq!(str_rstr_iw(None, None, Some(&w("a"))), None);
         assert_eq!(str_rstr_iw(Some(&w("a")), None, None), None);
+    }
+
+    #[test]
+    fn colour_conversions_match_wine_vectors() {
+        assert_eq!(color_rgb_to_hls(0x000000), (160, 0, 0));
+        assert_eq!(color_rgb_to_hls(0xFFFFFF), (160, 240, 0));
+        assert_eq!(color_rgb_to_hls(0x0000FF), (0, 120, 240));
+        assert_eq!(color_rgb_to_hls(0x00FF00), (80, 120, 240));
+        assert_eq!(color_rgb_to_hls(0xFF0000), (160, 120, 240));
+        assert_eq!(color_rgb_to_hls(0x808080), (160, 120, 0));
+        assert_eq!(color_rgb_to_hls(0x000080), (0, 60, 240));
+        assert_eq!(color_rgb_to_hls(0x202020), (160, 30, 0));
+        assert_eq!(color_rgb_to_hls(0x8080FF), (0, 180, 240));
+        assert_eq!(color_rgb_to_hls(0x8000FF), (220, 120, 240));
+        assert_eq!(color_hls_to_rgb(0, 120, 240), 0x0000FF);
+        assert_eq!(color_hls_to_rgb(80, 120, 240), 0x00FF00);
+        assert_eq!(color_hls_to_rgb(160, 120, 240), 0xFF0000);
+        assert_eq!(color_hls_to_rgb(0, 0, 0), 0x000000);
+        assert_eq!(color_hls_to_rgb(0, 240, 0), 0xFFFFFF);
+        assert_eq!(color_hls_to_rgb(0, 120, 0), 0x7F7F7F);
+        assert_eq!(color_hls_to_rgb(200, 60, 120), 6_299_744);
+        assert_eq!(color_hls_to_rgb(0, 200, 100), 12_763_879);
+        assert_eq!(color_hls_to_rgb(120, 200, 100), 15_198_146);
+        // A hue above 240 wraps only once, as Wine does.
+        assert_eq!(color_hls_to_rgb(300, 100, 200), 1_229_418);
+        assert_eq!(color_adjust_luma(0x0000FF, 0), 0x0000FF);
+        assert_eq!(color_adjust_luma(0x0000FF, 5), 0x0000FF);
+        assert_eq!(color_adjust_luma(0x808080, 10), 0x7F7F7F);
+        assert_eq!(color_adjust_luma(0xFF0000, -30), 0xFF0000);
+        assert_eq!(color_adjust_luma(0xFF00_0000, 0), 0xFF00_0000);
     }
 
     #[test]
