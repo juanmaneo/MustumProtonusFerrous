@@ -1120,6 +1120,12 @@ fn str_cmp_n(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32, ignore_case: boo
     compare_units(counted(s, limit), counted(comp, limit), ignore_case)
 }
 
+/// `ChrCmpIW`: compares two characters with ASCII-only case folding. Returns -1, 0
+/// or 1, the sign convention of `str_cmp_iw`.
+pub fn chr_cmp_iw(a: u16, b: u16) -> i32 {
+    compare_units(&[a], &[b], true)
+}
+
 /// `StrChrIW`: index of the first character of `s` that matches `ch` with ASCII-only
 /// case folding. Only characters before the terminator are searched, so `ch == 0`
 /// never matches, unlike `str_chr`. A null `s` gives None.
@@ -1370,6 +1376,9 @@ mod tests {
         assert_eq!(str_str_iw(Some(&w("abc")), Some(&w("ABCD"))), None);
         assert_eq!(str_str_iw(Some(&w("abc")), Some(&w(""))), None);
         assert_eq!(str_str_iw(None, Some(&w("a"))), None);
+        assert_eq!(chr_cmp_iw(u16::from(b'a'), u16::from(b'A')), 0);
+        assert_eq!(chr_cmp_iw(u16::from(b'a'), u16::from(b'b')), -1);
+        assert_eq!(chr_cmp_iw(u16::from(b'C'), u16::from(b'b')), 1);
         assert_eq!(str_str_iw(Some(&w("a")), None), None);
     }
 
