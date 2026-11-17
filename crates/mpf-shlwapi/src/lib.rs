@@ -6,6 +6,8 @@
 //! indices into that slice instead of raw pointers, so callers never handle
 //! pointer arithmetic. Only the subset that needs no filesystem is ported.
 
+use mpf_rpcrt4::Uuid;
+
 /// `MAX_PATH`, the limit `PathAddBackslash` enforces.
 pub const MAX_PATH: usize = 260;
 
@@ -812,6 +814,78 @@ pub fn str_trim(s: &mut Vec<u16>, trim: &[u16]) -> bool {
     trimmed
 }
 
+/// `SHSearchMapInt`: the value paired with the first key equal to `key`, or -1.
+///
+/// The slices replace the C `iLen`, so a short list is never read past its end.
+/// Pairs are matched up to the shorter of the two slices.
+pub fn sh_search_map_int(keys: &[i32], values: &[i32], key: i32) -> i32 {
+    keys.iter()
+        .zip(values)
+        .find(|(k, _)| **k == key)
+        .map_or(-1, |(_, value)| *value)
+}
+
+/// `SHStringFromGUIDW`: writes `guid` as uppercase `{8-4-4-4-12}` text with a
+/// terminating NUL. Returns the length in units including the NUL, or `None`
+/// when `dst` cannot hold all 39 units. Nothing is written in that case.
+pub fn sh_string_from_guid(guid: &Uuid, dst: &mut [u16]) -> Option<usize> {
+    let d = guid.data4;
+    let text = format!(
+        "{{{:08X}-{:04X}-{:04X}-{:02X}{:02X}-{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}}}",
+        guid.data1, guid.data2, guid.data3, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]
+    );
+    let units: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
+    dst.get_mut(..units.len())?.copy_from_slice(&units);
+    Some(units.len())
+}
+
+/// `count` hexadecimal digits starting at `start`, most significant first.
+fn hex_run(s: &[u16], start: usize, count: usize) -> Option<u64> {
+    (start..start + count).try_fold(0, |acc, i| {
+        Some((acc << 4) | u64::from(digit_at(s, i, 16)?))
+    })
+}
+
+fn dash_at(s: &[u16], index: usize) -> Option<()> {
+    (char_at(s, index) == u16::from(b'-')).then_some(())
+}
+
+/// `GUIDFromStringW`: parses `{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}` with hex
+/// digits in either case. The NUL must follow the closing brace, and text after
+/// that NUL is ignored. `None` is the null string, which gives the nil GUID.
+///
+/// Wine's `CLSIDFromString` also falls back to a ProgID lookup in the registry.
+/// This port has no registry, so a ProgID returns `None`.
+pub fn guid_from_string_w(s: Option<&[u16]>) -> Option<Uuid> {
+    let Some(s) = s else {
+        return Some(Uuid::default());
+    };
+    if char_at(s, 0) != u16::from(b'{') {
+        return None;
+    }
+    let data1 = hex_run(s, 1, 8)? as u32;
+    dash_at(s, 9)?;
+    let data2 = hex_run(s, 10, 4)? as u16;
+    dash_at(s, 14)?;
+    let data3 = hex_run(s, 15, 4)? as u16;
+    dash_at(s, 19)?;
+    dash_at(s, 24)?;
+    let mut data4 = [0u8; 8];
+    for (k, byte) in data4.iter_mut().enumerate() {
+        let at = 20 + 2 * k + usize::from(k >= 2);
+        *byte = hex_run(s, at, 2)? as u8;
+    }
+    if char_at(s, 37) != u16::from(b'}') || s.get(38) != Some(&0) {
+        return None;
+    }
+    Some(Uuid {
+        data1,
+        data2,
+        data3,
+        data4,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1568,5 +1642,113 @@ mod tests {
             str_to_int64_ex(&w("9223372036854775808"), 0),
             Some(i64::MIN)
         );
+    }
+
+    // Vectors and the length rule come from dlls/shlwapi/tests/ordinal.c and
+    // dlls/shlwapi/tests/clsid.c (IID_Endianness). The no-match cases follow the
+    // SHSearchMapInt body in dlls/shlwapi/ordinal.c.
+    #[test]
+    fn search_map_int_returns_first_matching_value_or_minus_one() {
+        let keys = [1, 2, 2];
+        let values = [10, 20, 30];
+        assert_eq!(sh_search_map_int(&keys, &values, 1), 10);
+        assert_eq!(sh_search_map_int(&keys, &values, 2), 20);
+        assert_eq!(sh_search_map_int(&keys, &values, 100), -1);
+        assert_eq!(sh_search_map_int(&keys[..1], &values, 2), -1);
+        assert_eq!(sh_search_map_int(&keys[..0], &values, 1), -1);
+        assert_eq!(sh_search_map_int(&[7, 8], &[1], 8), -1);
+    }
+
+    fn endianness() -> Uuid {
+        Uuid {
+            data1: 0x0102_0304,
+            data2: 0x0506,
+            data3: 0x0708,
+            data4: [0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x0A],
+        }
+    }
+
+    #[test]
+    fn string_from_guid_writes_uppercase_braced_text_when_it_fits() {
+        let mut dst = [0xffffu16; 256];
+        assert_eq!(sh_string_from_guid(&endianness(), &mut dst), Some(39));
+        assert_eq!(dst[..39], w("{01020304-0506-0708-090A-0B0C0D0E0F0A}")[..]);
+        assert_eq!(dst[39], 0xffff);
+
+        let mut exact = [0u16; 39];
+        assert_eq!(sh_string_from_guid(&endianness(), &mut exact), Some(39));
+        assert_eq!(exact[0], u16::from(b'{'));
+    }
+
+    #[test]
+    fn string_from_guid_rejects_short_buffers_without_writing() {
+        for len in [0, 38] {
+            let mut dst = vec![7u16; len];
+            assert_eq!(sh_string_from_guid(&endianness(), &mut dst), None);
+            assert!(dst.iter().all(|&c| c == 7));
+        }
+    }
+
+    #[test]
+    fn guid_from_string_parses_wine_endianness_vector() {
+        let text = w("{01020304-0506-0708-090A-0B0C0D0E0F0A}");
+        assert_eq!(guid_from_string_w(Some(&text)), Some(endianness()));
+    }
+
+    #[test]
+    fn guid_from_string_accepts_lowercase_and_round_trips_uppercase() {
+        let text = w("{abcdef01-2345-6789-abcd-ef0123456789}");
+        let guid = guid_from_string_w(Some(&text)).unwrap();
+        assert_eq!(
+            guid,
+            Uuid {
+                data1: 0xabcd_ef01,
+                data2: 0x2345,
+                data3: 0x6789,
+                data4: [0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89],
+            }
+        );
+        let mut dst = [0u16; 39];
+        assert_eq!(sh_string_from_guid(&guid, &mut dst), Some(39));
+        assert_eq!(dst[..], w("{ABCDEF01-2345-6789-ABCD-EF0123456789}")[..]);
+    }
+
+    #[test]
+    fn guid_from_string_null_is_nil_guid() {
+        assert_eq!(guid_from_string_w(None), Some(Uuid::default()));
+    }
+
+    // Each entry breaks one check in the guid_from_string body of
+    // dlls/combase/combase.c: the brace, each hex field, each dash, and the
+    // closing brace or the terminator.
+    #[test]
+    fn guid_from_string_rejects_each_malformed_field() {
+        let cases = [
+            "",
+            "01020304-0506-0708-090A-0B0C0D0E0F0A}",
+            "{0102030G-0506-0708-090A-0B0C0D0E0F0A}",
+            "{01020304_0506-0708-090A-0B0C0D0E0F0A}",
+            "{01020304-050G-0708-090A-0B0C0D0E0F0A}",
+            "{01020304-0506_0708-090A-0B0C0D0E0F0A}",
+            "{01020304-0506-070G-090A-0B0C0D0E0F0A}",
+            "{01020304-0506-0708_090A-0B0C0D0E0F0A}",
+            "{01020304-0506-0708-090A_0B0C0D0E0F0A}",
+            "{01020304-0506-0708-G90A-0B0C0D0E0F0A}",
+            "{01020304-0506-0708-090A-0B0C0D0E0F0G}",
+            "{01020304-0506-0708-090A-0B0C0D0E0F0Ax",
+            "{01020304-0506-0708-090A-0B0C0D0E0F0A",
+        ];
+        for input in cases {
+            assert_eq!(guid_from_string_w(Some(&w(input))), None, "{input:?}");
+        }
+    }
+
+    #[test]
+    fn guid_from_string_needs_terminator_and_ignores_text_after_it() {
+        let text = w("{01020304-0506-0708-090A-0B0C0D0E0F0A}");
+        let mut trailing = text.clone();
+        trailing.extend("junk".encode_utf16());
+        assert_eq!(guid_from_string_w(Some(&trailing)), Some(endianness()));
+        assert_eq!(guid_from_string_w(Some(&text[..38])), None);
     }
 }

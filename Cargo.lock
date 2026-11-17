@@ -114,6 +114,9 @@ version = "0.1.0"
 [[package]]
 name = "mpf-shlwapi"
 version = "0.1.0"
+dependencies = [
+ "mpf-rpcrt4",
+]
 
 [[package]]
 name = "mpf-ucrtbase"

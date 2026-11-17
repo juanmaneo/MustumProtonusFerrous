@@ -6,3 +6,4 @@ license.workspace = true
 description = "shlwapi subset for MPF: Windows path string helpers"
 
 [dependencies]
+mpf-rpcrt4 = { path = "../mpf-rpcrt4" }

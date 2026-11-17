@@ -86,6 +86,21 @@ fn shlwapi_string_helpers() {
     assert_eq!(mpf_shlwapi::str_to_int_ex(&w("+ 88987"), 0), None);
 }
 
+fn shlwapi_guid_and_map() {
+    assert_eq!(mpf_shlwapi::sh_search_map_int(&[1, 2], &[10, 20], 2), 20);
+    assert_eq!(mpf_shlwapi::sh_search_map_int(&[1, 2], &[10, 20], 3), -1);
+
+    let text = w("{01020304-0506-0708-090A-0B0C0D0E0F0A}");
+    let guid = mpf_shlwapi::guid_from_string_w(Some(&text)).unwrap();
+    let mut buf = [0u16; 39];
+    assert_eq!(mpf_shlwapi::sh_string_from_guid(&guid, &mut buf), Some(39));
+    assert_eq!(buf[..], text[..]);
+    assert_eq!(
+        mpf_shlwapi::sh_string_from_guid(&guid, &mut buf[..38]),
+        None
+    );
+}
+
 fn kernelbase_strip_prefix() {
     let mut legacy_backslash = w("C:\\folder");
     assert_eq!(
@@ -674,6 +689,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "shlwapi!StrChr/StrStr/StrCpy/StrCat/StrNCat/SHStripMneumonicW",
             run: shlwapi_string_helpers,
+        },
+        Case {
+            name: "shlwapi!SHSearchMapInt/SHStringFromGUIDW/GUIDFromStringW",
+            run: shlwapi_guid_and_map,
         },
         Case {
             name: "kernelbase!PathCchStripPrefix",
