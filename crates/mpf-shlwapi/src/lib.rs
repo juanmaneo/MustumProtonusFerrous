@@ -1070,6 +1070,56 @@ pub fn str_cmp_logical(s: Option<&[u16]>, comp: Option<&[u16]>) -> i32 {
     }
 }
 
+/// The units of `s` up to and including its terminator, at most `limit` of them.
+fn counted(s: &[u16], limit: usize) -> &[u16] {
+    &s[..(wlen(s) + 1).min(limit).min(s.len())]
+}
+
+/// Lexicographic order of two code unit runs, with a shorter run that is a prefix
+/// of the other sorting first. `ignore_case` folds ASCII letters before comparing.
+fn compare_units(a: &[u16], b: &[u16], ignore_case: bool) -> i32 {
+    let fold = |&c: &u16| if ignore_case { ascii_lower(c) } else { c };
+    match a.iter().map(fold).cmp(b.iter().map(fold)) {
+        std::cmp::Ordering::Less => -1,
+        std::cmp::Ordering::Greater => 1,
+        std::cmp::Ordering::Equal => 0,
+    }
+}
+
+/// `StrCmpW`: compares two terminated strings code unit by code unit, the C-locale
+/// policy of this crate and not Windows linguistic collation.
+pub fn str_cmp_w(s: &[u16], comp: &[u16]) -> i32 {
+    compare_units(counted(s, usize::MAX), counted(comp, usize::MAX), false)
+}
+
+/// `StrCmpIW`: `str_cmp_w` with ASCII-only case folding.
+pub fn str_cmp_iw(s: &[u16], comp: &[u16]) -> i32 {
+    compare_units(counted(s, usize::MAX), counted(comp, usize::MAX), true)
+}
+
+/// `StrCmpNW`: `str_cmp_w` over at most `len` units. A negative `len` is unlimited,
+/// as the C `size_t` conversion makes it. Zero compares equal. Null arguments give
+/// -2, which Wine also reports with `ERROR_INVALID_PARAMETER`.
+pub fn str_cmp_nw(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32) -> i32 {
+    str_cmp_n(s, comp, len, false)
+}
+
+/// `StrCmpNIW`: `str_cmp_nw` with ASCII-only case folding.
+pub fn str_cmp_niw(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32) -> i32 {
+    str_cmp_n(s, comp, len, true)
+}
+
+fn str_cmp_n(s: Option<&[u16]>, comp: Option<&[u16]>, len: i32, ignore_case: bool) -> i32 {
+    let (Some(s), Some(comp)) = (s, comp) else {
+        return -2;
+    };
+    if len == 0 {
+        return 0;
+    }
+    let limit = usize::try_from(len).unwrap_or(usize::MAX);
+    compare_units(counted(s, limit), counted(comp, limit), ignore_case)
+}
+
 /// `StrRChrW`: index of the last `ch` before `end`, or before the terminator when
 /// `end` is `None`. `end` is an exclusive bound and is clamped to the slice.
 pub fn str_rchr(s: &[u16], end: Option<usize>, ch: u16) -> Option<usize> {
@@ -1233,6 +1283,25 @@ mod tests {
         }
         assert_eq!(str_cmp_logical(None, Some(&w("x"))), 0);
         assert_eq!(str_cmp_logical(Some(&w("x")), None), 0);
+    }
+
+    #[test]
+    fn cmp_strings_orders_units_and_honours_counts() {
+        assert_eq!(str_cmp_w(&w("ab"), &w("ab")), 0);
+        assert_eq!(str_cmp_w(&w("ab"), &w("abc")), -1);
+        assert_eq!(str_cmp_w(&w("abc"), &w("ab")), 1);
+        assert_eq!(str_cmp_w(&w("A"), &w("a")), -1);
+        assert_eq!(str_cmp_iw(&w("AB"), &w("ab")), 0);
+        assert_eq!(str_cmp_iw(&w("ABc"), &w("abd")), -1);
+        assert_eq!(str_cmp_iw(&w("abd"), &w("ABC")), 1);
+        assert_eq!(str_cmp_nw(Some(&w("abc")), Some(&w("abd")), 2), 0);
+        assert_eq!(str_cmp_nw(Some(&w("abc")), Some(&w("abd")), 3), -1);
+        assert_eq!(str_cmp_nw(Some(&w("abc")), Some(&w("abd")), -1), -1);
+        assert_eq!(str_cmp_nw(Some(&w("abc")), Some(&w("abd")), 0), 0);
+        assert_eq!(str_cmp_nw(Some(&w("ab")), Some(&w("abc")), 3), -1);
+        assert_eq!(str_cmp_nw(None, Some(&w("abc")), 3), -2);
+        assert_eq!(str_cmp_niw(Some(&w("ABc")), Some(&w("abd")), 3), -1);
+        assert_eq!(str_cmp_niw(Some(&w("abc")), Some(&w("abd")), 0), 0);
     }
 
     #[test]
