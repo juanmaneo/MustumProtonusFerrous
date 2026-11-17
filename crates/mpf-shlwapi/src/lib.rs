@@ -786,6 +786,32 @@ pub fn str_to_int(s: &[u16]) -> i32 {
     }
 }
 
+/// `StrRChrW`: index of the last `ch` before `end`, or before the terminator when
+/// `end` is `None`. `end` is an exclusive bound and is clamped to the slice.
+pub fn str_rchr(s: &[u16], end: Option<usize>, ch: u16) -> Option<usize> {
+    let end = end.unwrap_or_else(|| wlen(s)).min(s.len());
+    (0..end).rev().find(|&i| s[i] == ch)
+}
+
+/// `StrTrimW`: removes the leading and trailing characters of `s` that appear in
+/// `trim`. Returns `true` when anything was removed.
+pub fn str_trim(s: &mut Vec<u16>, trim: &[u16]) -> bool {
+    let is_trim = |c: u16| str_chr(trim, c).is_some();
+    let lead = s[..wlen(s)].iter().take_while(|&&c| is_trim(c)).count();
+    let mut trimmed = false;
+    if lead > 0 {
+        s.drain(..lead);
+        trimmed = true;
+    }
+    let len = wlen(s);
+    let tail = s[..len].iter().rev().take_while(|&&c| is_trim(c)).count();
+    if tail > 0 {
+        s[len - tail] = 0;
+        trimmed = true;
+    }
+    trimmed
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1467,6 +1493,49 @@ mod tests {
             assert_eq!(dec_got, dec, "decimal {input:?}");
             assert_eq!(hex_got, hex, "hex {input:?}");
             assert_eq!(str_to_int(&s), to_int, "StrToIntW {input:?}");
+        }
+    }
+
+    // The alphabet and `StrRChrW` vectors follow test_StrRChrW in
+    // dlls/shlwapi/tests/string.c. The bounded and empty cases are derived from
+    // the StrRChrW body in dlls/kernelbase/string.c.
+    #[test]
+    fn rchr_finds_last_match_before_bound() {
+        let mut alphabet: Vec<u16> = (32u16..128).collect();
+        alphabet.push(0);
+        for ch in 32u16..128 {
+            assert_eq!(str_rchr(&alphabet, None, ch), Some(usize::from(ch - 32)));
+        }
+        assert_eq!(str_rchr(&alphabet, None, 0), None);
+
+        assert_eq!(str_rchr(&w("abcabc"), None, b'a' as u16), Some(3));
+        assert_eq!(str_rchr(&w("abcabc"), Some(3), b'a' as u16), Some(0));
+        assert_eq!(str_rchr(&w("abcabc"), Some(0), b'a' as u16), None);
+        assert_eq!(str_rchr(&w("abcabc"), Some(4), b'b' as u16), Some(1));
+        assert_eq!(str_rchr(&w("abc"), None, 0), None);
+        assert_eq!(str_rchr(&w("abc"), Some(100), 0), Some(3));
+        assert_eq!(str_rchr(&w(""), None, b'a' as u16), None);
+    }
+
+    // Expected results are derived by hand from the StrTrimW body in
+    // dlls/kernelbase/string.c. Wine's own tests do not cover StrTrimW.
+    #[test]
+    fn trim_removes_leading_and_trailing_members() {
+        let cases: [(&str, &str, &str, bool); 7] = [
+            ("  hello  ", " ", "hello", true),
+            ("hello", " ", "hello", false),
+            ("xxhixx", "x", "hi", true),
+            ("   ", " ", "", true),
+            ("a\tb\n", "\t\n", "a\tb", true),
+            ("--a", "-", "a", true),
+            ("  a", "", "  a", false),
+        ];
+        for (input, trim, expected, changed) in cases {
+            let mut s = w(input);
+            assert_eq!(str_trim(&mut s, &w(trim)), changed, "{input:?}");
+            let text = &s[..wlen(&s)];
+            let want: Vec<u16> = expected.encode_utf16().collect();
+            assert_eq!(text, &want[..], "{input:?}");
         }
     }
 
