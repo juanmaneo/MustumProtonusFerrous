@@ -1031,6 +1031,103 @@ pub fn path_cch_strip_prefix(path: &mut Vec<u16>, size: usize) -> i32 {
     }
 }
 
+fn canonicalize_at(buf: &[u16], index: usize) -> u16 {
+    if index < buf.len() {
+        buf[index]
+    } else {
+        0
+    }
+}
+
+/// Canonicalizes a path into a fresh buffer, matching Wine's
+/// `PathCanonicalizeW`. `None` represents Wine's failure for a NULL source;
+/// an empty source canonicalizes to a single backslash.
+pub fn path_canonicalize(path: Option<&[u16]>) -> Option<Vec<u16>> {
+    let path = path?;
+    let len = wlen(path);
+    let mut buf: Vec<u16> = Vec::new();
+    let mut pos = 0usize;
+    if len == 0 {
+        buf.push(b'\\' as u16);
+        buf.push(0);
+        return Some(buf);
+    }
+    let mut src = 0usize;
+    if path[0] == b'\\' as u16 {
+        buf.push(path[0]);
+        pos = 1;
+        src = 1;
+    } else if char_at(path, 1) == b':' as u16 {
+        buf.push(path[0]);
+        buf.push(path[1]);
+        pos = 2;
+        src = 2;
+        if char_at(path, 2) == b'\\' as u16 {
+            buf.push(b'\\' as u16);
+            pos = 3;
+            src = 3;
+        }
+    }
+    while src < len {
+        let unit = path[src];
+        if unit == b'.' as u16 {
+            let next = char_at(path, src + 1);
+            let preceded = src == 0
+                || char_at(path, src - 1) == b'\\' as u16
+                || char_at(path, src - 1) == b':' as u16;
+            if next == b'\\' as u16 && preceded {
+                src += 2; /* Skip .\ */
+                continue;
+            }
+            if next == b'.' as u16 && !buf.is_empty() && buf[buf.len() - 1] == b'\\' as u16 {
+                /* \.. backs up a directory, over the root if it has no \
+                 * following X:. .. is ignored if it would remove a UNC server
+                 * name or initial \\ */
+                if buf.len() > 1 && (buf[buf.len() - 2] != b'\\' as u16 || buf.len() > 2) {
+                    if buf[buf.len() - 2] == b':' as u16
+                        && (buf.len() > 3 || buf[buf.len() - 3] == b':' as u16)
+                    {
+                        pos -= 2;
+                        while pos > 0 && canonicalize_at(&buf, pos) != b'\\' as u16 {
+                            pos -= 1;
+                        }
+                        if canonicalize_at(&buf, pos) == b'\\' as u16 {
+                            pos += 1;
+                        } else {
+                            pos = 0;
+                        }
+                    } else if buf[buf.len() - 2] != b':' as u16 && !path_is_unc_server_share(&buf) {
+                        pos -= 2;
+                    }
+                }
+                while pos > 0 && canonicalize_at(&buf, pos) != b'\\' as u16 {
+                    pos -= 1;
+                }
+                buf.truncate(pos);
+                if pos == 0 {
+                    buf.push(b'\\' as u16);
+                    src += 1;
+                }
+                src += 2; /* Skip .. in src path */
+                continue;
+            }
+            buf.push(unit);
+            pos += 1;
+            src += 1;
+        } else {
+            buf.push(unit);
+            pos += 1;
+            src += 1;
+        }
+    }
+    /* Append \ to naked drive specs */
+    if buf.len() == 2 && buf[1] == b':' as u16 {
+        buf.push(b'\\' as u16);
+    }
+    buf.push(0);
+    Some(buf)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2246,6 +2343,47 @@ mod tests {
             assert_eq!(path_is_url(path.as_deref()), expected);
         }
         assert!(!path_is_url(Some(&[])));
+    }
+
+    #[test]
+    fn canonicalize_matches_wine_vectors_and_quirks() {
+        assert_eq!(path_canonicalize(None), None);
+        for (input, expected) in [
+            ("", "\\"),
+            ("C:\\", "C:\\"),
+            (" ", " "),
+            ("one\\two", "one\\two"),
+            ("C:\\one\\.\\..\\two\\three\\..", "C:\\two"),
+            (
+                "C:\\one/two/three\\four/five\\six",
+                "C:\\one/two/three\\four/five\\six",
+            ),
+            ("C:\\one/.\\two", "C:\\one/.\\two"),
+            ("C:\\one/.\\two\\..", "C:\\one/."),
+            ("../../one/two/", "../../one/two/"),
+            ("../../one/two/\\*", "../../one/two/\\*"),
+            ("C:\\one/.\\..\\two/three\\..\\four/.five", "C:\\four/.five"),
+            ("a\\..\\b", "\\b"),
+            ("C:\\..\\b", "C:\\b"),
+            (".\\a", "a"),
+            ("C:.\\", "C:\\"),
+            ("\\\\server\\..\\share", "\\\\server\\share"),
+            ("\\\\server\\share\\..", "\\\\server"),
+            ("\\\\..\\a", "\\\\a"),
+            ("\\\\\\..\\a", "\\\\\\a"),
+            ("::\\..", "\\"),
+            ("C:\\a\\..b", "C:b"),
+            ("C:\\a\\b\\..\\c", "C:\\a\\c"),
+            ("C:\\foo:\\..", "C:\\"),
+            ("C:", "C:\\"),
+            ("C:a", "C:a"),
+        ] {
+            assert_eq!(
+                path_canonicalize(Some(&w(input))),
+                Some(w(expected)),
+                "{input}"
+            );
+        }
     }
 
     #[test]
