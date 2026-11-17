@@ -90,6 +90,27 @@ impl AtexitRegistry {
     }
 }
 
+/// Mirrors `__isascii`: true for values in `0..0x80` (negative values are not).
+pub fn is_ascii(c: i32) -> bool {
+    (c as u32) < 0x80
+}
+
+/// Mirrors `__toascii`: keeps the low seven bits.
+pub fn to_ascii(c: i32) -> i32 {
+    (c as u32 & 0x7f) as i32
+}
+
+/// Mirrors `__iscsym`: ASCII letters, digits and `_`. EOF and other values
+/// outside the byte range are not symbol characters.
+pub fn is_csym(c: i32) -> bool {
+    u8::try_from(c).is_ok_and(|b| b.is_ascii_alphanumeric() || b == b'_')
+}
+
+/// Mirrors `__iscsymf`: ASCII letters and `_`.
+pub fn is_csymf(c: i32) -> bool {
+    u8::try_from(c).is_ok_and(|b| b.is_ascii_alphabetic() || b == b'_')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,5 +191,28 @@ mod tests {
         registry.execute();
         registry.execute();
         assert_eq!(*ORDER.lock().unwrap(), vec![2, 1]);
+    }
+
+    #[test]
+    fn ascii_predicates_follow_msvcrt_semantics() {
+        assert!(is_ascii(0) && is_ascii(0x7f));
+        assert!(!is_ascii(0x80) && !is_ascii(-1) && !is_ascii(0x100));
+        assert_eq!(to_ascii(0xc1), 0x41);
+        assert_eq!(to_ascii(0x7f), 0x7f);
+        assert_eq!(to_ascii(-1), 0x7f);
+    }
+
+    #[test]
+    fn csym_predicates_accept_ascii_identifier_characters() {
+        for c in *b"aZ09_" {
+            assert!(is_csym(i32::from(c)));
+        }
+        for c in [b' ', b'-', 127, 0x80, 0xe9] {
+            assert!(!is_csym(i32::from(c)));
+        }
+        assert!(!is_csym(-1));
+        assert!(!is_csym(256));
+        assert!(is_csymf(i32::from(b'a')) && is_csymf(i32::from(b'_')));
+        assert!(!is_csymf(i32::from(b'0')) && !is_csymf(-1) && !is_csymf(0x80));
     }
 }

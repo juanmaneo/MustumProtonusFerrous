@@ -555,6 +555,17 @@ fn shell32_pidl_layout() {
     assert_eq!(mpf_shell32::il_get_size(&removable), Some(5));
 }
 
+fn ucrtbase_ctype_predicates() {
+    // mirrors dlls/msvcrt/ctype.c __isascii/__toascii/__iscsym/__iscsymf
+    assert!(mpf_ucrtbase::is_ascii(0x7f));
+    assert!(!mpf_ucrtbase::is_ascii(0x80));
+    assert_eq!(mpf_ucrtbase::to_ascii(0xc1), 0x41);
+    assert!(mpf_ucrtbase::is_csym(i32::from(b'_')));
+    assert!(!mpf_ucrtbase::is_csym(-1));
+    assert!(mpf_ucrtbase::is_csymf(i32::from(b'z')));
+    assert!(!mpf_ucrtbase::is_csymf(i32::from(b'9')));
+}
+
 fn ucrtbase_onexit_table() {
     // mirrors dlls/ucrtbase/tests/misc.c on-exit table expectations
     let mut table = mpf_ucrtbase::OnExitTable::new();
@@ -864,6 +875,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "ucrtbase!_initialize/_register/_execute_onexit_table",
             run: ucrtbase_onexit_table,
+        },
+        Case {
+            name: "ucrtbase!__isascii/__toascii/__iscsym/__iscsymf",
+            run: ucrtbase_ctype_predicates,
         },
         Case {
             name: "kernel32!lstrlenW semantics",
