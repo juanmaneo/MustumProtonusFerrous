@@ -1202,6 +1202,82 @@ pub fn path_canonicalize(path: Option<&[u16]>) -> Option<Vec<u16>> {
     Some(buf)
 }
 
+fn ascii_upper(unit: u16) -> u16 {
+    if (b'a' as u16..=b'z' as u16).contains(&unit) {
+        unit - 32
+    } else {
+        unit
+    }
+}
+
+fn wide_eq(text: &[u16], ascii: &str) -> bool {
+    text[..wlen(text)].iter().copied().eq(ascii.encode_utf16())
+}
+
+/// Matches one mask against a name from the given offsets, matching the
+/// recursive `path_match_maskW` helper in Wine's `PathMatchSpecExW`. Case
+/// folding is ASCII-only; Wine uses `towupper`, which also folds non-ASCII.
+fn path_match_mask(name: &[u16], mut name_at: usize, mask: &[u16], mut mask_at: usize) -> bool {
+    while char_at(name, name_at) != 0
+        && char_at(mask, mask_at) != 0
+        && char_at(mask, mask_at) != b';' as u16
+    {
+        if char_at(mask, mask_at) == b'*' as u16 {
+            loop {
+                if path_match_mask(name, name_at, mask, mask_at + 1) {
+                    return true;
+                }
+                let current = char_at(name, name_at);
+                name_at += 1;
+                if current == 0 {
+                    break;
+                }
+            }
+            return false;
+        }
+        if ascii_upper(char_at(mask, mask_at)) != ascii_upper(char_at(name, name_at))
+            && char_at(mask, mask_at) != b'?' as u16
+        {
+            return false;
+        }
+        name_at += 1;
+        mask_at += 1;
+    }
+    if char_at(name, name_at) == 0 {
+        while char_at(mask, mask_at) == b'*' as u16 {
+            mask_at += 1;
+        }
+        if char_at(mask, mask_at) == 0 || char_at(mask, mask_at) == b';' as u16 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Tests a path against a `;`-separated mask list, matching Wine's
+/// `PathMatchSpecExW`. Flags are ignored, as in Wine. Returns `S_OK` on a match.
+pub fn path_match_spec_ex(path: &[u16], mask: &[u16]) -> i32 {
+    if wide_eq(mask, "*.*") {
+        return S_OK;
+    }
+    let mut mask_at = 0;
+    while char_at(mask, mask_at) != 0 {
+        while char_at(mask, mask_at) == b' ' as u16 {
+            mask_at += 1;
+        }
+        if path_match_mask(path, 0, mask, mask_at) {
+            return S_OK;
+        }
+        while char_at(mask, mask_at) != 0 && char_at(mask, mask_at) != b';' as u16 {
+            mask_at += 1;
+        }
+        if char_at(mask, mask_at) == b';' as u16 {
+            mask_at += 1;
+        }
+    }
+    S_FALSE
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2578,6 +2654,67 @@ mod tests {
         assert!(path_append(Some(&mut path), Some(&w("\\\\server"))));
 
         assert_eq!(path, w("\\\\server"));
+    }
+
+    #[test]
+    fn match_spec_matches_wine_mask_vectors() {
+        let file = "c:\\foo\\bar\\filename.ext";
+        for (mask, expected) in [
+            (".ext", S_FALSE),
+            ("*.ext", S_OK),
+            ("*.ext ", S_FALSE),
+            ("  *.ext", S_OK),
+            // Wine's todo_wine vectors: Windows expects S_OK, Wine's C returns S_FALSE.
+            ("* .ext", S_FALSE),
+            ("*. ext", S_FALSE),
+            ("* . ext", S_FALSE),
+            ("*.e?t", S_OK),
+            ("filename.ext", S_FALSE),
+            ("*bar\\filename.ext", S_OK),
+            (" foo; *.ext", S_OK),
+            ("*.ext;*.bar", S_OK),
+            ("*bar*", S_OK),
+        ] {
+            assert_eq!(path_match_spec_ex(&w(file), &w(mask)), expected, "{mask:?}");
+        }
+    }
+
+    #[test]
+    fn match_spec_covers_wildcards_case_and_separators() {
+        for (path, mask, expected) in [
+            ("c:\\anything", "*.*", S_OK),
+            ("a", "*.*", S_OK),
+            ("", "*", S_OK),
+            ("", "", S_FALSE),
+            ("abc", "", S_FALSE),
+            ("", ";", S_OK),
+            ("", "x", S_FALSE),
+            ("a", "x", S_FALSE),
+            ("abc", "a?c", S_OK),
+            ("ABC", "abc", S_OK),
+            ("a.b", "a-b", S_FALSE),
+            ("abc", "abd", S_FALSE),
+            ("ab", "abc", S_FALSE),
+            ("abc", "ab", S_FALSE),
+            ("abc", "abc*", S_OK),
+            ("abc", "*c", S_OK),
+            ("abc", "*d", S_FALSE),
+            ("abc", "a*c*", S_OK),
+            ("abc", "a*x", S_FALSE),
+            ("ab", "*b*", S_OK),
+            ("a", "x;a", S_OK),
+            ("a", "x;", S_FALSE),
+            ("ab", "a;x", S_FALSE),
+            ("ab", "ab;x", S_OK),
+            ("a", "  a", S_OK),
+            ("a", "a ;  ", S_FALSE),
+        ] {
+            assert_eq!(
+                path_match_spec_ex(&w(path), &w(mask)),
+                expected,
+                "{path:?} vs {mask:?}"
+            );
+        }
     }
 
     #[test]
