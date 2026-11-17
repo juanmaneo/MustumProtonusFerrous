@@ -53,6 +53,19 @@ fn shlwapi_path_helpers() {
     mpf_shlwapi::path_quote_spaces(&mut quoted);
     mpf_shlwapi::path_unquote_spaces(&mut quoted);
     assert_eq!(quoted, w("a path\\file.txt"));
+
+    let is_z_drive = |drive: i32| drive == 25;
+    assert!(mpf_shlwapi::path_is_network_path(Some(&unc), is_z_drive));
+    assert!(mpf_shlwapi::path_is_network_path(
+        Some(&w("Z:\\data")),
+        is_z_drive
+    ));
+    let mut decorated = w("file[1].txt");
+    mpf_shlwapi::path_undecorate(&mut decorated);
+    assert_eq!(decorated, w("file.txt"));
+    let mut slashed = w("C:/dir/sub");
+    mpf_shlwapi::fix_slashes_and_colon(&mut slashed);
+    assert_eq!(slashed, w("C:\\dir\\sub"));
 }
 
 fn shlwapi_string_helpers() {
@@ -99,6 +112,18 @@ fn shlwapi_string_helpers() {
         8
     );
     assert_eq!(chain[..9], w("DeAdBeEf")[..]);
+
+    assert_eq!(mpf_shlwapi::str_spn(Some(&w("abc1")), Some(&w("cba"))), 3);
+    assert_eq!(mpf_shlwapi::str_cspn(Some(&w("abc1")), Some(&w("1"))), 3);
+    assert_eq!(
+        mpf_shlwapi::str_pbrk(Some(&w("hello")), Some(&w("lo"))),
+        Some(2)
+    );
+    assert_eq!(mpf_shlwapi::str_dup(Some(&w("dup"))), w("dup"));
+    let mut cat_buf = [0u16; 8];
+    assert!(mpf_shlwapi::str_cpy(&mut cat_buf, &w("abc")));
+    mpf_shlwapi::str_cat_buff(Some(&mut cat_buf), &w("defgh"), 8);
+    assert_eq!(cat_buf[..], w("abcdefg")[..]);
 }
 
 fn shlwapi_guid_and_map() {

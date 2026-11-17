@@ -619,6 +619,50 @@ pub fn path_remove_args(path: &mut Vec<u16>) {
     }
 }
 
+/// `PathIsNetworkPathW`: true for a UNC path, or for a drive that `is_net_drive`
+/// reports as remote. `is_net_drive` stands in for shell32's `IsNetDrive`
+/// (ordinal 66), which this crate does not depend on. A null `path` is not a
+/// network path.
+pub fn path_is_network_path(path: Option<&[u16]>, is_net_drive: impl Fn(i32) -> bool) -> bool {
+    let Some(path) = path else {
+        return false;
+    };
+    if char_at(path, 0) == BACKSLASH && char_at(path, 1) == BACKSLASH {
+        return true;
+    }
+    let drive = path_get_drive_number(path);
+    drive != -1 && is_net_drive(drive)
+}
+
+/// `PathUndecorateW`: removes a `[digits]` suffix that sits directly before the
+/// extension, so `name[12].txt` becomes `name.txt`. Nothing changes unless the
+/// text before the extension ends in `]`, and the bracket is removed only when
+/// it is not preceded by a backslash. Only ASCII digits count.
+pub fn path_undecorate(path: &mut Vec<u16>) {
+    let ext = path_find_extension(path);
+    if ext == 0 || path[ext - 1] != u16::from(b']') {
+        return;
+    }
+    let mut skip = ext.saturating_sub(2);
+    while skip > 0 && (u16::from(b'0')..=u16::from(b'9')).contains(&path[skip]) {
+        skip -= 1;
+    }
+    if skip > 0 && path[skip] == u16::from(b'[') && path[skip - 1] != BACKSLASH {
+        path.drain(skip..ext);
+    }
+}
+
+/// `FixSlashesAndColonW`: turns each `/` before the terminator into `\`. Despite
+/// the name, `:` is left alone.
+pub fn fix_slashes_and_colon(s: &mut [u16]) {
+    let len = wlen(s);
+    for c in &mut s[..len] {
+        if *c == SLASH {
+            *c = BACKSLASH;
+        }
+    }
+}
+
 /// `StrChrW`: index of the first `ch` before the terminator. As with `wcschr`,
 /// `ch == 0` matches the terminator itself.
 pub fn str_chr(s: &[u16], ch: u16) -> Option<usize> {
@@ -747,6 +791,68 @@ pub fn str_cat_chain(
         s[at] = 0;
     }
     at
+}
+
+/// `StrCatBuffW`: appends `cat` to `s` within a buffer of `max_len` units that
+/// also holds the text already in `s`. Nothing is appended once that text fills
+/// the buffer. A null `s` does nothing, where Wine returns NULL.
+pub fn str_cat_buff(s: Option<&mut [u16]>, cat: &[u16], max_len: i32) {
+    let Some(s) = s else {
+        return;
+    };
+    let len = wlen(s);
+    let remaining = i64::from(max_len) - i64::try_from(len).unwrap_or(i64::MAX);
+    if remaining > 0 {
+        str_cpy_n(&mut s[len..], cat, usize::try_from(remaining).unwrap_or(0));
+    }
+}
+
+/// `StrSpnW`: length of the leading run of `s` made only of characters in
+/// `accept`. A null argument gives 0.
+pub fn str_spn(s: Option<&[u16]>, accept: Option<&[u16]>) -> usize {
+    let (Some(s), Some(accept)) = (s, accept) else {
+        return 0;
+    };
+    let accept = &accept[..wlen(accept)];
+    s[..wlen(s)]
+        .iter()
+        .take_while(|&&c| accept.contains(&c))
+        .count()
+}
+
+/// `StrCSpnW`: length of the leading run of `s` with no character from
+/// `reject`. A null argument gives 0.
+pub fn str_cspn(s: Option<&[u16]>, reject: Option<&[u16]>) -> usize {
+    let (Some(s), Some(reject)) = (s, reject) else {
+        return 0;
+    };
+    let reject = &reject[..wlen(reject)];
+    s[..wlen(s)]
+        .iter()
+        .take_while(|&&c| !reject.contains(&c))
+        .count()
+}
+
+/// `StrPBrkW`: index of the first character of `s` that is in `accept`, if any.
+pub fn str_pbrk(s: Option<&[u16]>, accept: Option<&[u16]>) -> Option<usize> {
+    let s = s?;
+    let accept = accept?;
+    let accept = &accept[..wlen(accept)];
+    s[..wlen(s)].iter().position(|c| accept.contains(c))
+}
+
+/// `StrDupW`: a NUL-terminated copy of `s` up to its terminator. A null `s`
+/// gives the empty string. Wine allocates with `LocalAlloc`, which this port
+/// replaces with a `Vec`.
+pub fn str_dup(s: Option<&[u16]>) -> Vec<u16> {
+    match s {
+        None => vec![0],
+        Some(s) => {
+            let mut copy = s[..wlen(s)].to_vec();
+            copy.push(0);
+            copy
+        }
+    }
 }
 
 /// `SHStripMneumonicW`: removes the first `&` accelerator marker from `s` and
@@ -1875,5 +1981,134 @@ mod tests {
         trailing.extend("junk".encode_utf16());
         assert_eq!(guid_from_string_w(Some(&trailing)), Some(endianness()));
         assert_eq!(guid_from_string_w(Some(&text[..38])), None);
+    }
+
+    #[test]
+    fn path_undecorate_matches_wine_vectors() {
+        // Vectors from Wine's dlls/shlwapi/tests/path.c test_PathUndecorate.
+        let cases = [
+            ("c:\\test\\a[123]", "c:\\test\\a"),
+            ("c:\\test\\a[123].txt", "c:\\test\\a.txt"),
+            ("c:\\test\\a.txt[123]", "c:\\test\\a.txt[123]"),
+            ("c:\\test\\a[123a].txt", "c:\\test\\a[123a].txt"),
+            ("c:\\test\\a[a123].txt", "c:\\test\\a[a123].txt"),
+            ("c:\\test\\a[12\u{0660}].txt", "c:\\test\\a[12\u{0660}].txt"),
+            ("c:\\test\\a[12]file", "c:\\test\\a[12]file"),
+            ("c:\\test[123]\\a", "c:\\test[123]\\a"),
+            ("c:\\test\\[123]", "c:\\test\\[123]"),
+            ("a[123]", "a"),
+            ("a[]", "a"),
+            ("[123]", "[123]"),
+        ];
+        for (input, expected) in cases {
+            let mut path = w(input);
+            path_undecorate(&mut path);
+            assert_eq!(path, w(expected), "{input:?}");
+        }
+    }
+
+    #[test]
+    fn path_undecorate_ignores_inputs_without_a_closing_bracket_or_digits() {
+        // Hand-derived from the C body: empty and dot-led paths return early, a
+        // lone `]` never reaches index 0, and a file name ending in `]` keeps its
+        // text when the bracket is not preceded by digits.
+        let cases = [
+            ("", ""),
+            (".txt", ".txt"),
+            ("]", "]"),
+            ("name]", "name]"),
+            ("file.txt", "file.txt"),
+            ("x[]", "x"),
+            ("file[1]", "file"),
+            ("file[1].txt", "file.txt"),
+            ("[12].txt", "[12].txt"),
+            ("a\\[1].txt", "a\\[1].txt"),
+        ];
+        for (input, expected) in cases {
+            let mut path = w(input);
+            path_undecorate(&mut path);
+            assert_eq!(path, w(expected), "{input:?}");
+        }
+    }
+
+    #[test]
+    fn path_is_network_path_checks_unc_then_drive_type() {
+        let remote_d = |drive: i32| drive == 3;
+        assert!(!path_is_network_path(None, remote_d));
+        assert!(path_is_network_path(
+            Some(&w("\\\\server\\share")),
+            remote_d
+        ));
+        assert!(path_is_network_path(Some(&w("D:\\data")), remote_d));
+        assert!(!path_is_network_path(Some(&w("C:\\data")), remote_d));
+        assert!(!path_is_network_path(Some(&w("relative\\path")), remote_d));
+        assert!(!path_is_network_path(Some(&w("\\x")), remote_d));
+        assert!(!path_is_network_path(Some(&w("")), remote_d));
+    }
+
+    #[test]
+    fn fix_slashes_and_colon_rewrites_slashes_before_nul_only() {
+        let mut path = w("C:/dir/sub");
+        fix_slashes_and_colon(&mut path);
+        assert_eq!(path, w("C:\\dir\\sub"));
+
+        let mut tail = [u16::from(b'/'), 0, u16::from(b'/')];
+        fix_slashes_and_colon(&mut tail);
+        assert_eq!(tail, [u16::from(b'\\'), 0, u16::from(b'/')]);
+    }
+
+    #[test]
+    fn str_cat_buff_counts_existing_text_against_buffer() {
+        let mut buf = [0u16; 8];
+        assert!(str_cpy(&mut buf, &w("abc")));
+        str_cat_buff(Some(&mut buf), &w("defgh"), 8);
+        assert_eq!(buf[..], w("abcdefg")[..]);
+
+        let mut full = w("abcdefg");
+        str_cat_buff(Some(&mut full), &w("X"), 8);
+        assert_eq!(full, w("abcdefg"));
+
+        let mut short = w("abc");
+        str_cat_buff(Some(&mut short), &w("X"), 2);
+        assert_eq!(short, w("abc"));
+
+        str_cat_buff(None, &w("X"), 8);
+    }
+
+    #[test]
+    fn str_span_helpers_stop_at_nul_and_handle_null() {
+        assert_eq!(str_spn(Some(&w("abc1d")), Some(&w("cba"))), 3);
+        assert_eq!(str_spn(Some(&w("xyz")), Some(&w("cba"))), 0);
+        assert_eq!(str_spn(Some(&w("")), Some(&w("abc"))), 0);
+        assert_eq!(str_spn(None, Some(&w("abc"))), 0);
+        assert_eq!(str_spn(Some(&w("abc")), None), 0);
+        let accept_after_nul = [u16::from(b'a'), 0, u16::from(b'b')];
+        assert_eq!(str_spn(Some(&w("ab")), Some(&accept_after_nul)), 1);
+
+        assert_eq!(str_cspn(Some(&w("abc1d")), Some(&w("1"))), 3);
+        assert_eq!(str_cspn(Some(&w("abc")), Some(&w(""))), 3);
+        assert_eq!(str_cspn(Some(&w("")), Some(&w("x"))), 0);
+        assert_eq!(str_cspn(None, Some(&w("x"))), 0);
+        assert_eq!(str_cspn(Some(&w("abc")), None), 0);
+        let reject_after_nul = [u16::from(b'x'), 0, u16::from(b'a')];
+        assert_eq!(str_cspn(Some(&w("ab")), Some(&reject_after_nul)), 2);
+
+        assert_eq!(str_pbrk(Some(&w("hello")), Some(&w("lo"))), Some(2));
+        assert_eq!(str_pbrk(Some(&w("hello")), Some(&w("xyz"))), None);
+        assert_eq!(str_pbrk(Some(&w("")), Some(&w("a"))), None);
+        assert_eq!(str_pbrk(None, Some(&w("a"))), None);
+        assert_eq!(str_pbrk(Some(&w("a")), None), None);
+        let break_after_nul = [u16::from(b'b'), 0, u16::from(b'a')];
+        assert_eq!(str_pbrk(Some(&w("ab")), Some(&break_after_nul)), Some(1));
+    }
+
+    #[test]
+    fn str_dup_copies_up_to_nul_and_null_gives_empty() {
+        assert_eq!(str_dup(None), vec![0]);
+        assert_eq!(str_dup(Some(&w("abc"))), w("abc"));
+        assert_eq!(
+            str_dup(Some(&[u16::from(b'a'), 0, u16::from(b'b')])),
+            w("a")
+        );
     }
 }
