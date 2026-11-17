@@ -1752,6 +1752,53 @@ pub fn path_alloc_canonicalize(path_in: &[u16], flags: u32) -> Result<Vec<u16>, 
     Ok(result)
 }
 
+/// `PathAllocCombine`: joins `path2` onto `path1` and canonicalizes the result.
+/// A fully qualified `path2` (a drive spec or `\\`) replaces `path1`. A missing
+/// argument yields the canonical form of the other one.
+pub fn path_alloc_combine(
+    path1: Option<&[u16]>,
+    path2: Option<&[u16]>,
+    flags: u32,
+) -> Result<Vec<u16>, i32> {
+    let (path1, path2) = match (path1, path2) {
+        (None, None) => return Err(E_INVALIDARG),
+        (Some(path), None) | (None, Some(path)) => return path_alloc_canonicalize(path, flags),
+        (Some(path1), Some(path2)) => (path1, path2),
+    };
+    let path2 = &path2[..wlen(path2)];
+    let mut base = &path1[..wlen(path1)];
+    let mut tail = Some(path2);
+    let mut add_backslash = false;
+    if is_drive_spec(path2) || starts_with(path2, b"\\\\") {
+        base = path2;
+        tail = None;
+        add_backslash = (is_drive_spec(base) && char_at(base, 2) == 0)
+            || (is_prefixed_disk(base) && char_at(base, 6) == 0);
+    }
+
+    let combined_length = base.len() + tail.map_or(0, <[u16]>::len) + 2;
+    let mut combined = base.to_vec();
+    combined.push(0);
+    path_cch_strip_prefix(&mut combined, combined_length);
+    if add_backslash {
+        path_cch_add_backslash_ex(&mut combined, combined_length);
+    }
+    if let Some(tail) = tail.filter(|tail| !tail.is_empty()) {
+        let tail = if tail[0] == b'\\' as u16 {
+            path_cch_strip_to_root(&mut combined, combined_length);
+            &tail[1..]
+        } else {
+            tail
+        };
+        path_cch_add_backslash_ex(&mut combined, combined_length);
+        let len = wlen(&combined);
+        combined.truncate(len);
+        combined.extend_from_slice(tail);
+        combined.push(0);
+    }
+    path_alloc_canonicalize(&combined, flags)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3629,5 +3676,58 @@ mod tests {
         let stripped = format!("\\\\srv\\sh\\{}", "a".repeat(32762 - 15));
         assert_eq!(canonicalize_text(&unc(32762), 0x01), Ok(stripped));
         assert_eq!(canonicalize_text(&unc(32763), 0x01), Ok(unc(32763)));
+    }
+
+    fn combine_text(path1: Option<&str>, path2: Option<&str>, flags: u32) -> Result<String, i32> {
+        let units1: Option<Vec<u16>> = path1.map(|text| text.encode_utf16().collect());
+        let units2: Option<Vec<u16>> = path2.map(|text| text.encode_utf16().collect());
+        path_alloc_combine(units1.as_deref(), units2.as_deref(), flags).map(|out| {
+            let end = out.iter().position(|&unit| unit == 0).unwrap();
+            assert_eq!(end + 1, out.len());
+            String::from_utf16(&out[..end]).unwrap()
+        })
+    }
+
+    #[test]
+    fn alloc_combine_matches_wine_vectors() {
+        type Case = (
+            u32,
+            Option<&'static str>,
+            Option<&'static str>,
+            Result<&'static str, i32>,
+        );
+        let cases: [Case; 19] = [
+            (0, None, None, Err(E_INVALIDARG)),
+            (0, Some("C:\\a"), None, Ok("C:\\a")),
+            (0, None, Some("C:\\x"), Ok("C:\\x")),
+            (0, Some("C:\\a"), Some("\\b"), Ok("C:\\b")),
+            (0, Some("C:\\a\\"), Some("\\b"), Ok("C:\\b")),
+            (0, Some("C:"), Some("x"), Ok("C:\\x")),
+            (0, Some("\\\\srv\\sh\\a"), Some("C:\\y"), Ok("C:\\y")),
+            (0, Some("C:\\a"), Some("..\\b"), Ok("C:\\b")),
+            (
+                0,
+                Some("\\\\?\\C:\\a"),
+                Some("\\\\?\\UNC\\srv\\sh\\t"),
+                Ok("\\\\srv\\sh\\t"),
+            ),
+            (0, Some("C:\\a"), Some(""), Ok("C:\\a")),
+            (0, Some("C:\\a"), Some("\\"), Ok("C:\\")),
+            (0, Some("a"), Some("\\\\?\\C:"), Ok("C:\\")),
+            (0, Some("a"), Some("D:"), Ok("D:\\")),
+            (0, Some("C:\\a"), Some("D:x"), Ok("D:x")),
+            (0, Some("C:\\a"), Some("D:"), Ok("D:\\")),
+            (0x10, Some("C:\\a"), Some("b"), Ok("\\\\?\\C:\\a\\b")),
+            (0, Some("C:"), Some("\\\\?\\C:\\q"), Ok("C:\\q")),
+            (0, Some("C:\\a"), Some("\\\\?\\C:"), Ok("C:\\")),
+            (0x20, Some("C:\\a"), Some("b\\"), Ok("C:\\a\\b\\")),
+        ];
+        for (flags, path1, path2, expected) in cases {
+            assert_eq!(
+                combine_text(path1, path2, flags),
+                expected.map(str::to_owned),
+                "flags={flags:#x} path1={path1:?} path2={path2:?}"
+            );
+        }
     }
 }
