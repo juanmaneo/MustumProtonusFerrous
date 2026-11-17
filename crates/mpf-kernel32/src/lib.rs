@@ -39,6 +39,34 @@ pub fn lstrcpyn_w(dst: &mut [u16], src: &[u16]) -> usize {
     src_len
 }
 
+/// Mirrors `lstrcpyW` (`wcscpy`): copies `src` up to its NUL, terminator
+/// included. Returns the copied length, or `None` when `dst` is too small;
+/// Win32 would overrun the buffer there, so the port leaves `dst` untouched.
+pub fn lstrcpy_w(dst: &mut [u16], src: &[u16]) -> Option<usize> {
+    let len = lstrlen_w(src);
+    if len >= dst.len() {
+        return None;
+    }
+    dst[..len].copy_from_slice(&src[..len]);
+    dst[len] = 0;
+    Some(len)
+}
+
+/// Mirrors `lstrcatW` (`wcscat`): appends `src` up to its NUL to the string
+/// in `dst`. Returns the new length, or `None` when it does not fit with its
+/// terminator; `dst` is left untouched in that case.
+pub fn lstrcat_w(dst: &mut [u16], src: &[u16]) -> Option<usize> {
+    let start = lstrlen_w(dst);
+    let len = lstrlen_w(src);
+    let end = start + len;
+    if end >= dst.len() {
+        return None;
+    }
+    dst[start..end].copy_from_slice(&src[..len]);
+    dst[end] = 0;
+    Some(end)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,5 +105,51 @@ mod tests {
         let mut dst = [9u16; 1];
         assert_eq!(lstrcpyn_w(&mut dst, &w("abc")), 3);
         assert_eq!(dst, [0]);
+    }
+
+    #[test]
+    fn lstrcpy_copies_with_terminator() {
+        let mut dst = [9u16; 8];
+        assert_eq!(lstrcpy_w(&mut dst, &w("abc")), Some(3));
+        assert_eq!(dst, [b'a' as u16, b'b' as u16, b'c' as u16, 0, 9, 9, 9, 9]);
+        assert_eq!(lstrcpy_w(&mut dst, &w("")), Some(0));
+        assert_eq!(dst[0], 0);
+    }
+
+    #[test]
+    fn lstrcpy_rejects_destination_without_room_for_nul() {
+        let mut dst = [9u16; 3];
+        assert_eq!(lstrcpy_w(&mut dst, &w("abc")), None);
+        assert_eq!(dst, [9, 9, 9]);
+        assert_eq!(lstrcpy_w(&mut [], &w("")), None);
+    }
+
+    #[test]
+    fn lstrcpy_stops_at_source_nul() {
+        let mut dst = [9u16; 8];
+        assert_eq!(lstrcpy_w(&mut dst, &[b'x' as u16, 0, b'y' as u16]), Some(1));
+        assert_eq!(dst[..3], [b'x' as u16, 0, 9]);
+    }
+
+    #[test]
+    fn lstrcat_appends_to_existing_string() {
+        let mut dst = [0u16; 8];
+        dst[..3].copy_from_slice(&[b'a' as u16, b'b' as u16, 0]);
+        assert_eq!(lstrcat_w(&mut dst, &w("cd")), Some(4));
+        assert_eq!(
+            dst[..5],
+            [b'a' as u16, b'b' as u16, b'c' as u16, b'd' as u16, 0]
+        );
+        assert_eq!(lstrcat_w(&mut dst, &w("")), Some(4));
+    }
+
+    #[test]
+    fn lstrcat_rejects_overflow_and_unterminated_destination() {
+        let mut dst = [0u16; 4];
+        dst[..2].copy_from_slice(&[b'a' as u16, b'b' as u16]);
+        assert_eq!(lstrcat_w(&mut dst, &w("cd")), None);
+        assert_eq!(dst, [b'a' as u16, b'b' as u16, 0, 0]);
+        let mut full = [b'z' as u16; 2];
+        assert_eq!(lstrcat_w(&mut full, &w("")), None);
     }
 }
