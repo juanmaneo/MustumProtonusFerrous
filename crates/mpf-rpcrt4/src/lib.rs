@@ -115,6 +115,49 @@ pub fn to_string_wide(uuid: Option<&Uuid>) -> Vec<u16> {
         .collect()
 }
 
+/// Orders UUIDs field by field like `UuidCompare`; `None` models the nil UUID.
+pub fn uuid_compare(a: Option<&Uuid>, b: Option<&Uuid>) -> i32 {
+    let a = a.copied().unwrap_or_default();
+    let b = b.copied().unwrap_or_default();
+    (a.data1, a.data2, a.data3, a.data4).cmp(&(b.data1, b.data2, b.data3, b.data4)) as i32
+}
+
+/// `UuidEqual`: true when `uuid_compare` returns zero.
+pub fn uuid_equal(a: Option<&Uuid>, b: Option<&Uuid>) -> bool {
+    uuid_compare(a, b) == 0
+}
+
+/// `UuidIsNil`: `None` and the all-zero UUID are both nil.
+pub fn uuid_is_nil(uuid: Option<&Uuid>) -> bool {
+    uuid.copied().unwrap_or_default() == Uuid::default()
+}
+
+fn uuid_bytes(uuid: &Uuid) -> [u8; 16] {
+    let mut bytes = [0u8; 16];
+    bytes[0..4].copy_from_slice(&uuid.data1.to_le_bytes());
+    bytes[4..6].copy_from_slice(&uuid.data2.to_le_bytes());
+    bytes[6..8].copy_from_slice(&uuid.data3.to_le_bytes());
+    bytes[8..16].copy_from_slice(&uuid.data4);
+    bytes
+}
+
+/// `UuidHash` (FreeDCE checksum over the 16-byte memory image).
+///
+/// The C code keeps `c0`/`c1` in `short` (wrapping) and uses truncated `%`
+/// followed by a `+255` fixup for negatives, which is `rem_euclid(255)`.
+pub fn uuid_hash(uuid: Option<&Uuid>) -> u16 {
+    let uuid = uuid.copied().unwrap_or_default();
+    let mut c0: i16 = 0;
+    let mut c1: i16 = 0;
+    for byte in uuid_bytes(&uuid) {
+        c0 = c0.wrapping_add(i16::from(byte));
+        c1 = c1.wrapping_add(c0);
+    }
+    let x = (-i32::from(c1)).rem_euclid(255);
+    let y = (i32::from(c1) - i32::from(c0)).rem_euclid(255);
+    (y * 256 + x) as u16
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,5 +224,96 @@ mod tests {
     #[test]
     fn rpc_status_constant_matches_wine() {
         assert_eq!(RPC_S_INVALID_STRING_UUID, 1705);
+    }
+
+    const NIL: Uuid = Uuid {
+        data1: 0,
+        data2: 0,
+        data3: 0,
+        data4: [0; 8],
+    };
+
+    fn uuid_from_memory(bytes: [u8; 16]) -> Uuid {
+        Uuid {
+            data1: u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+            data2: u16::from_le_bytes([bytes[4], bytes[5]]),
+            data3: u16::from_le_bytes([bytes[6], bytes[7]]),
+            data4: [
+                bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14],
+                bytes[15],
+            ],
+        }
+    }
+
+    #[test]
+    fn compare_orders_by_each_field() {
+        let fields = [
+            Uuid { data1: 1, ..NIL },
+            Uuid { data2: 1, ..NIL },
+            Uuid { data3: 1, ..NIL },
+            Uuid {
+                data4: [0, 0, 0, 0, 0, 0, 0, 1],
+                ..NIL
+            },
+        ];
+        for field in fields {
+            assert_eq!(uuid_compare(Some(&NIL), Some(&field)), -1);
+            assert_eq!(uuid_compare(Some(&field), Some(&NIL)), 1);
+        }
+        assert_eq!(uuid_compare(None, None), 0);
+        assert_eq!(uuid_compare(None, Some(&NIL)), 0);
+        let high = Uuid {
+            data1: 0x8000_0000,
+            ..NIL
+        };
+        assert_eq!(uuid_compare(Some(&high), None), 1);
+        let hi_byte = Uuid {
+            data4: [0, 0, 0, 0, 0, 0, 0, 0x80],
+            ..NIL
+        };
+        let lo_byte = Uuid {
+            data4: [0, 0, 0, 0, 0, 0, 0, 0x7f],
+            ..NIL
+        };
+        assert_eq!(uuid_compare(Some(&hi_byte), Some(&lo_byte)), 1);
+    }
+
+    #[test]
+    fn equal_and_nil_predicates() {
+        let nonzero = Uuid { data3: 1, ..NIL };
+        assert!(uuid_equal(None, Some(&NIL)));
+        assert!(uuid_equal(Some(&nonzero), Some(&nonzero)));
+        assert!(!uuid_equal(Some(&nonzero), None));
+        assert!(uuid_is_nil(None));
+        assert!(uuid_is_nil(Some(&NIL)));
+        assert!(!uuid_is_nil(Some(&nonzero)));
+    }
+
+    #[test]
+    fn hash_matches_freedce_checksum_vectors() {
+        let vectors: [([u8; 16], u16); 6] = [
+            ([0; 16], 0),
+            ([0xff; 16], 65025),
+            (
+                [
+                    0x04, 0x03, 0x02, 0x01, 0x06, 0x05, 0x08, 0x07, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+                    0x0e, 0x0f, 0x0a,
+                ],
+                46790,
+            ),
+            ([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4079),
+            ([0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0),
+            (
+                [
+                    0x78, 0x56, 0x34, 0x12, 0xbc, 0x9a, 0xf0, 0xde, 0x11, 0x22, 0x33, 0x44, 0x55,
+                    0x66, 0x77, 0x88,
+                ],
+                30438,
+            ),
+        ];
+        for (bytes, expected) in vectors {
+            assert_eq!(uuid_hash(Some(&uuid_from_memory(bytes))), expected);
+        }
+        assert_eq!(uuid_hash(None), 0);
     }
 }

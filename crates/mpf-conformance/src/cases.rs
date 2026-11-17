@@ -424,6 +424,85 @@ fn rpcrt4_uuid_string_roundtrip() {
     );
 }
 
+fn rpc_uuid(data1: u32, data2: u16, data3: u16, data4: [u8; 8]) -> mpf_rpcrt4::Uuid {
+    mpf_rpcrt4::Uuid {
+        data1,
+        data2,
+        data3,
+        data4,
+    }
+}
+
+fn rpcrt4_uuid_equal_grid() {
+    // mirrors dlls/rpcrt4/tests/rpc.c test_UuidEqual (Uuid_Table / Uuid_Comparison_Grid)
+    let table = [
+        rpc_uuid(0x0000_0000, 0x0000, 0x0000, [0x00; 8]),
+        rpc_uuid(
+            0xdead_beef,
+            0xdead,
+            0xbeef,
+            [0x10, 0x21, 0x35, 0x56, 0x89, 0xa0, 0xf4, 0x8a],
+        ),
+        rpc_uuid(
+            0xabad_feed,
+            0x49ff,
+            0xbead,
+            [0x8a, 0xf4, 0xa0, 0x89, 0x56, 0x35, 0x21, 0x10],
+        ),
+        rpc_uuid(
+            0x93da_375c,
+            0x1324,
+            0x1355,
+            [0x87, 0xff, 0x49, 0x44, 0x34, 0x44, 0x22, 0x19],
+        ),
+        rpc_uuid(
+            0xdead_beef,
+            0xdead,
+            0xbeef,
+            [0x10, 0x21, 0x35, 0x56, 0x89, 0xa0, 0xf4, 0x8b],
+        ),
+        rpc_uuid(
+            0x9bad_feed,
+            0x49ff,
+            0xbead,
+            [0x8a, 0xf4, 0xa0, 0x89, 0x56, 0x35, 0x21, 0x10],
+        ),
+        rpc_uuid(0x0000_0000, 0x0001, 0x0000, [0x00; 8]),
+        rpc_uuid(0x0000_0000, 0x0000, 0x0000, [0, 0, 0, 0, 0, 0, 0, 1]),
+        rpc_uuid(
+            0x1231_2312,
+            0x1231,
+            0x1231,
+            [0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xff],
+        ),
+        rpc_uuid(0x1111_1111, 0x1111, 0x1111, [0x11; 8]),
+    ];
+    // index 10 is NULL, which `table.get` yields as None
+    #[rustfmt::skip]
+    let grid: [[bool; 11]; 11] = [
+        [true,  false, false, false, false, false, false, false, false, false, true ],
+        [false, true,  false, false, false, false, false, false, false, false, false],
+        [false, false, true,  false, false, false, false, false, false, false, false],
+        [false, false, false, true,  false, false, false, false, false, false, false],
+        [false, false, false, false, true,  false, false, false, false, false, false],
+        [false, false, false, false, false, true,  false, false, false, false, false],
+        [false, false, false, false, false, false, true,  false, false, false, false],
+        [false, false, false, false, false, false, false, true,  false, false, false],
+        [false, false, false, false, false, false, false, false, true,  false, false],
+        [false, false, false, false, false, false, false, false, false, true,  false],
+        [true,  false, false, false, false, false, false, false, false, false, true ],
+    ];
+    for (i1, row) in grid.iter().enumerate() {
+        for (i2, expected) in row.iter().enumerate() {
+            assert_eq!(
+                mpf_rpcrt4::uuid_equal(table.get(i1), table.get(i2)),
+                *expected,
+                "UuidEqual({i1}, {i2})"
+            );
+        }
+    }
+}
+
 fn ole32_thread_com_state() {
     // mirrors dlls/ole32/compobj.c CoGetState/CoSetState semantics
     mpf_ole32::co_set_state(None);
@@ -765,6 +844,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "rpcrt4!UuidFromString/UuidToString roundtrip",
             run: rpcrt4_uuid_string_roundtrip,
+        },
+        Case {
+            name: "rpcrt4!UuidEqual grid",
+            run: rpcrt4_uuid_equal_grid,
         },
         Case {
             name: "ole32!CoGetState/CoSetState thread-local state",
