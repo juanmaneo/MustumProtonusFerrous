@@ -6,3 +6,4 @@ license.workspace = true
 description = "ole32 per-thread COM state subset for MPF"
 
 [dependencies]
+mpf-rpcrt4 = { path = "../mpf-rpcrt4" }

@@ -440,6 +440,21 @@ fn ole32_thread_com_state() {
     assert!(mpf_ole32::is_equal_guid(None, Some(&[0; 16])));
 }
 
+fn ole32_guid_strings() {
+    // mirrors dlls/combase/combase.c CLSIDFromString, IIDFromString and StringFromGUID2
+    let text = w("{01020304-0506-0708-090A-0B0C0D0E0F0A}");
+    let clsid = mpf_ole32::clsid_from_string(Some(&text)).unwrap();
+    assert_eq!(mpf_ole32::clsid_from_string(None), Some(Default::default()));
+    assert_eq!(mpf_ole32::iid_from_string(Some(&text)), Ok(clsid));
+    assert_eq!(
+        mpf_ole32::iid_from_string(Some(&w("{01020304-0506}"))),
+        Err(mpf_ole32::IidStringError::InvalidArg)
+    );
+    let mut buf = [0u16; 39];
+    assert_eq!(mpf_ole32::string_from_guid2(Some(&clsid), &mut buf), 39);
+    assert_eq!(buf[..], text[..]);
+}
+
 fn shell32_pidl_layout() {
     // mirrors dlls/shell32/pidl.c ILGetSize/ILGetNext/ILFindLastID
     let pidl = [3, 0, 0xaa, 4, 0, 0xbb, 0xcc, 0, 0];
@@ -754,6 +769,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "ole32!CoGetState/CoSetState thread-local state",
             run: ole32_thread_com_state,
+        },
+        Case {
+            name: "ole32!CLSIDFromString/IIDFromString/StringFromGUID2",
+            run: ole32_guid_strings,
         },
         Case {
             name: "shell32!ILGetSize/ILGetNext/ILFindLastID PIDL layout",
