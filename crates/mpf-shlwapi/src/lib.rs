@@ -18,6 +18,9 @@ const DOT: u16 = b'.' as u16;
 const SPACE: u16 = b' ' as u16;
 const QUOTE: u16 = b'"' as u16;
 const QUESTION: u16 = b'?' as u16;
+const STAR: u16 = b'*' as u16;
+const SEMI: u16 = b';' as u16;
+const ALL_FILES: [u16; 3] = [STAR, DOT, STAR];
 const AMPERSAND: u16 = b'&' as u16;
 const PATHCCH_MAX_CCH: usize = 0x8000;
 const FILE_ATTRIBUTE_READONLY: u32 = 0x1;
@@ -686,6 +689,53 @@ pub fn path_is_system_folder(attributes: u32) -> bool {
         && attributes & (FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_READONLY) != 0
 }
 
+/// `PathMatchSpecW` (`PathMatchSpecExW` with no flags): true when `path` matches
+/// one of the `;`-separated masks in `mask`. A `*.*` mask matches every path,
+/// including the empty one; each mask skips leading spaces. Letters fold ASCII-only,
+/// as elsewhere in this crate.
+pub fn path_match_spec(path: &[u16], mask: &[u16]) -> bool {
+    let path = &path[..wlen(path)];
+    let mask = &mask[..wlen(mask)];
+    if mask == &ALL_FILES[..] {
+        return true;
+    }
+    let mut rest = mask;
+    while !rest.is_empty() {
+        while let [SPACE, tail @ ..] = rest {
+            rest = tail;
+        }
+        if path_match_mask(path, rest) {
+            return true;
+        }
+        let end = rest.iter().position(|&c| c == SEMI).unwrap_or(rest.len());
+        rest = rest.get(end + 1..).unwrap_or_default();
+    }
+    false
+}
+
+/// `path_match_maskW`: matches `name` against a single mask that ends at the
+/// terminator or at the next `;`. A `*` retries every suffix of `name`.
+fn path_match_mask(name: &[u16], mask: &[u16]) -> bool {
+    let (mut n, mut m) = (0, 0);
+    while n < name.len() && m < mask.len() && mask[m] != SEMI {
+        if mask[m] == STAR {
+            return (n..=name.len()).any(|k| path_match_mask(&name[k..], &mask[m + 1..]));
+        }
+        if ascii_upper(mask[m]) != ascii_upper(name[n]) && mask[m] != QUESTION {
+            return false;
+        }
+        n += 1;
+        m += 1;
+    }
+    if n < name.len() {
+        return false;
+    }
+    while m < mask.len() && mask[m] == STAR {
+        m += 1;
+    }
+    m == mask.len() || mask[m] == SEMI
+}
+
 /// `StrChrW`: index of the first `ch` before the terminator. As with `wcschr`,
 /// `ch == 0` matches the terminator itself.
 pub fn str_chr(s: &[u16], ch: u16) -> Option<usize> {
@@ -1096,6 +1146,43 @@ mod tests {
         assert!(!path_is_system_folder(0x10));
         assert!(!path_is_system_folder(0x4 | 0x1));
         assert!(!path_is_system_folder(INVALID_FILE_ATTRIBUTES));
+    }
+
+    #[test]
+    fn match_spec_folds_ascii_case_and_honours_wildcards() {
+        let cases: [(&str, &str, bool); 24] = [
+            ("game.exe", "*.exe", true),
+            ("GAME.EXE", "*.exe", true),
+            ("game.exe", "*.dll;*.exe", true),
+            ("game.exe", "*.dll", false),
+            ("", "*", true),
+            ("", "**", true),
+            ("", "*.*", true),
+            ("abc", "*.*", true),
+            ("", "", false),
+            ("", " ", true),
+            ("", ";", true),
+            ("", " ;", true),
+            ("abc", " *c ; x", false),
+            ("abc", ";abc", true),
+            ("abc", "abc;", true),
+            ("abc", ";;abc", true),
+            ("a", "ab", false),
+            ("ab", "a?", true),
+            ("a", "a*b", false),
+            ("ab", "a*b", true),
+            ("a", "a*", true),
+            ("a", "?", true),
+            ("abc", "?bc", true),
+            ("abc", "*c", true),
+        ];
+        for (path, mask, expected) in cases {
+            assert_eq!(
+                path_match_spec(&w(path), &w(mask)),
+                expected,
+                "path {path:?} mask {mask:?}"
+            );
+        }
     }
 
     #[test]
