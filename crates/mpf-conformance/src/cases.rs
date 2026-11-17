@@ -55,6 +55,30 @@ fn shlwapi_path_helpers() {
     assert_eq!(quoted, w("a path\\file.txt"));
 }
 
+fn shlwapi_string_helpers() {
+    let s = w("Testing String");
+    assert_eq!(mpf_shlwapi::str_chr(&s, b'S' as u16), Some(8));
+    assert_eq!(mpf_shlwapi::str_chr_n(&s, b'r' as u16, 10), None);
+    assert_eq!(mpf_shlwapi::str_chr_n(&s, b't' as u16, 10), Some(3));
+
+    let deadbeef = w("DeAdBeEf");
+    assert_eq!(mpf_shlwapi::str_str(&deadbeef, &w("AdBe")), Some(2));
+    assert_eq!(mpf_shlwapi::str_str(&deadbeef, &w("adbe")), None);
+    assert_eq!(mpf_shlwapi::str_str_n(&deadbeef, &w("BeEf"), 4), None);
+    assert_eq!(mpf_shlwapi::str_str_n(&deadbeef, &w("BeEf"), 5), Some(4));
+
+    let mut buf = [0u16; 8];
+    assert!(mpf_shlwapi::str_cpy(&mut buf, &w("Test")));
+    assert!(mpf_shlwapi::str_cat(&mut buf, &w("!")));
+    assert_eq!(buf[..6], w("Test!")[..]);
+    mpf_shlwapi::str_ncat(&mut buf, &w("XYZ"), 2);
+    assert_eq!(buf[..7], w("Test!X")[..]);
+
+    let mut accel = w("&File");
+    assert_eq!(mpf_shlwapi::sh_strip_mneumonic(&mut accel), b'F' as u16);
+    assert_eq!(accel, w("File"));
+}
+
 fn kernelbase_strip_prefix() {
     let mut legacy_backslash = w("C:\\folder");
     assert_eq!(
@@ -639,6 +663,10 @@ pub fn all() -> Vec<Case> {
         Case {
             name: "shlwapi!PathFindFileName/Extension/IsRelative/UNC/SkipRoot/RemoveFileSpecW",
             run: shlwapi_path_helpers,
+        },
+        Case {
+            name: "shlwapi!StrChr/StrStr/StrCpy/StrCat/StrNCat/SHStripMneumonicW",
+            run: shlwapi_string_helpers,
         },
         Case {
             name: "kernelbase!PathCchStripPrefix",

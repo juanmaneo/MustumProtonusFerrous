@@ -16,6 +16,7 @@ const DOT: u16 = b'.' as u16;
 const SPACE: u16 = b' ' as u16;
 const QUOTE: u16 = b'"' as u16;
 const QUESTION: u16 = b'?' as u16;
+const AMPERSAND: u16 = b'&' as u16;
 const PATHCCH_MAX_CCH: usize = 0x8000;
 
 /// Length of the UTF-16 string before its first NUL, or the slice length.
@@ -616,6 +617,107 @@ pub fn path_remove_args(path: &mut Vec<u16>) {
     }
 }
 
+/// `StrChrW`: index of the first `ch` before the terminator. As with `wcschr`,
+/// `ch == 0` matches the terminator itself.
+pub fn str_chr(s: &[u16], ch: u16) -> Option<usize> {
+    let len = wlen(s);
+    if ch == 0 {
+        return Some(len);
+    }
+    s[..len].iter().position(|&c| c == ch)
+}
+
+/// `StrChrNW`: like `str_chr`, but examines at most `max_len` characters and
+/// never matches the terminator.
+pub fn str_chr_n(s: &[u16], ch: u16, max_len: usize) -> Option<usize> {
+    let len = wlen(s).min(max_len);
+    s[..len].iter().position(|&c| c == ch)
+}
+
+/// `StrStrNW`: index of the first occurrence of `search` that starts within the
+/// first `max_len` characters. An empty `search` or a zero `max_len` never
+/// matches.
+pub fn str_str_n(s: &[u16], search: &[u16], max_len: usize) -> Option<usize> {
+    let needle = &search[..wlen(search)];
+    let hay = &s[..wlen(s)];
+    if needle.is_empty() || max_len == 0 {
+        return None;
+    }
+    (0..max_len.min(hay.len())).find(|&pos| hay[pos..].starts_with(needle))
+}
+
+/// `StrStrW`: index of the first occurrence of `search` in `s`. An empty
+/// `search` never matches.
+pub fn str_str(s: &[u16], search: &[u16]) -> Option<usize> {
+    str_str_n(s, search, usize::MAX)
+}
+
+/// `StrCpyNW`: copies at most `count - 1` characters of `src` into `dst` and
+/// NUL-terminates the result. `count` is capped at `dst.len()`, because the
+/// slice bound replaces the caller's promise about the buffer size.
+pub fn str_cpy_n(dst: &mut [u16], src: &[u16], count: usize) {
+    let count = count.min(dst.len());
+    if count == 0 {
+        return;
+    }
+    let copied = wlen(src).min(count - 1);
+    dst[..copied].copy_from_slice(&src[..copied]);
+    dst[copied] = 0;
+}
+
+/// `StrCpyW`: copies `src` and its terminator into `dst`. Returns `false` and
+/// leaves `dst` untouched when the copy does not fit, where `lstrcpyW` would
+/// overflow.
+pub fn str_cpy(dst: &mut [u16], src: &[u16]) -> bool {
+    let len = wlen(src);
+    if len >= dst.len() {
+        return false;
+    }
+    dst[..len].copy_from_slice(&src[..len]);
+    dst[len] = 0;
+    true
+}
+
+/// `StrCatW`: appends `src` to the string in `dst`. Returns `false` and leaves
+/// `dst` untouched when the result and its terminator do not fit.
+pub fn str_cat(dst: &mut [u16], src: &[u16]) -> bool {
+    let start = wlen(dst);
+    let len = wlen(src);
+    if start + len >= dst.len() {
+        return false;
+    }
+    dst[start..start + len].copy_from_slice(&src[..len]);
+    dst[start + len] = 0;
+    true
+}
+
+/// `StrNCatW`: appends at most `cch_max - 1` characters of `src` to `dst`, as
+/// `StrCpyNW` does at the end of the string. A non-positive `cch_max` leaves
+/// `dst` unchanged.
+pub fn str_ncat(dst: &mut [u16], src: &[u16], cch_max: i32) {
+    let start = wlen(dst);
+    let count = usize::try_from(cch_max).unwrap_or(0);
+    str_cpy_n(&mut dst[start..], src, count);
+}
+
+/// `SHStripMneumonicW`: removes the first `&` accelerator marker from `s` and
+/// returns the character it marks. A `&&` removes one `&` and marks nothing, and
+/// a marker with no character after it is left alone. In those cases the first
+/// character is returned.
+pub fn sh_strip_mneumonic(s: &mut Vec<u16>) -> u16 {
+    let mut ch = char_at(s, 0);
+    if let Some(amp) = str_chr(s, AMPERSAND) {
+        let next = char_at(s, amp + 1);
+        if next != 0 {
+            if next != AMPERSAND {
+                ch = next;
+            }
+            s.remove(amp);
+        }
+    }
+    ch
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1062,5 +1164,194 @@ mod tests {
         let mut p = w("test");
         path_strip_path(&mut p);
         assert_eq!(p, w("test"));
+    }
+
+    // Vectors from dlls/shlwapi/tests/string.c (test_StrChrNW, test_StrChrW,
+    // test_StrStrW, test_StrStrNW) on "Testing String" and "DeAdBeEf".
+    #[test]
+    fn chr_matches_wcschr_and_respects_limit() {
+        let s = w("Testing String");
+        assert_eq!(str_chr(&s, b't' as u16), Some(3));
+        assert_eq!(str_chr(&s, b'S' as u16), Some(8));
+        assert_eq!(str_chr(&s, b'r' as u16), Some(10));
+        assert_eq!(str_chr(&s, b'z' as u16), None);
+        assert_eq!(str_chr(&s, 0), Some(14));
+        assert_eq!(str_chr(&[b'a' as u16], b'b' as u16), None);
+        assert_eq!(str_chr(&[b'a' as u16], b'a' as u16), Some(0));
+        assert_eq!(str_chr_n(&s, b't' as u16, 10), Some(3));
+        assert_eq!(str_chr_n(&s, b'S' as u16, 10), Some(8));
+        assert_eq!(str_chr_n(&s, b'r' as u16, 10), None);
+        assert_eq!(str_chr_n(&s, b'r' as u16, 11), Some(10));
+        assert_eq!(str_chr_n(&s, b'r' as u16, 0), None);
+        assert_eq!(str_chr_n(&w("ab"), 0, 5), None);
+        assert_eq!(str_chr_n(&w("ab"), b'b' as u16, 100), Some(1));
+    }
+
+    #[test]
+    fn str_str_matches_wcsstr() {
+        let s = w("DeAdBeEf");
+        assert_eq!(str_str(&s, &w("")), None);
+        assert_eq!(str_str(&s, &w("DeAd")), Some(0));
+        assert_eq!(str_str(&s, &w("dead")), None);
+        assert_eq!(str_str(&s, &w("AdBe")), Some(2));
+        assert_eq!(str_str(&s, &w("adbe")), None);
+        assert_eq!(str_str(&s, &w("BeEf")), Some(4));
+        assert_eq!(str_str(&s, &w("beef")), None);
+        assert_eq!(str_str(&w(""), &w("")), None);
+        assert_eq!(str_str(&w(""), &w("x")), None);
+        assert_eq!(str_str(&w("ab"), &w("abc")), None);
+        assert_eq!(str_str(&w("aab"), &w("ab")), Some(1));
+    }
+
+    #[test]
+    fn str_str_n_counts_only_starting_positions() {
+        let s = w("DeAdBeEf");
+        let beef = w("BeEf");
+        assert_eq!(str_str_n(&s, &w(""), 8), None);
+        assert_eq!(str_str_n(&s, &w("DeAd"), 8), Some(0));
+        assert_eq!(str_str_n(&s, &w("dead"), 8), None);
+        assert_eq!(str_str_n(&s, &w("AdBe"), 8), Some(2));
+        assert_eq!(str_str_n(&s, &w("adbe"), 8), None);
+        assert_eq!(str_str_n(&s, &w("beef"), 8), None);
+        assert_eq!(str_str_n(&s, &beef, 0), None);
+        for count in 1..=4 {
+            assert_eq!(str_str_n(&s, &beef, count), None, "count {count}");
+        }
+        for count in [5, 6, 7, 8, 9, 100] {
+            assert_eq!(str_str_n(&s, &beef, count), Some(4), "count {count}");
+        }
+        assert_eq!(str_str_n(&w("ab"), &w("abc"), 5), None);
+    }
+
+    // Vectors from dlls/shlwapi/tests/string.c (test_StrCpyW), plus the
+    // StrCpyNW body in dlls/kernelbase/string.c.
+    #[test]
+    fn cpy_n_truncates_and_terminates() {
+        let mut dst = [9u16; 8];
+        str_cpy_n(&mut dst, &w("abc"), 4);
+        assert_eq!(&dst[..4], &w("abc")[..]);
+        assert_eq!(dst[4], 9);
+
+        let mut dst = [9u16; 8];
+        str_cpy_n(&mut dst, &w("abc"), 3);
+        assert_eq!(&dst[..3], &w("ab")[..]);
+        assert_eq!(dst[3], 9);
+
+        let mut dst = [9u16; 8];
+        str_cpy_n(&mut dst, &w("abc"), 1);
+        assert_eq!(dst[0], 0);
+
+        let mut dst = [9u16; 8];
+        str_cpy_n(&mut dst, &w("abc"), 0);
+        assert_eq!(dst, [9u16; 8]);
+
+        let mut dst = [9u16; 4];
+        str_cpy_n(&mut dst, &w("abcdef"), 100);
+        assert_eq!(dst, [b'a' as u16, b'b' as u16, b'c' as u16, 0]);
+    }
+
+    #[test]
+    fn cpy_copies_when_it_fits() {
+        let mut dst = [0u16; 8];
+        assert!(str_cpy(&mut dst, &w("Test")));
+        assert_eq!(&dst[..5], &w("Test")[..]);
+
+        let mut small = [7u16; 4];
+        assert!(!str_cpy(&mut small, &w("Test")));
+        assert_eq!(small, [7u16; 4]);
+
+        let mut exact = [7u16; 5];
+        assert!(str_cpy(&mut exact, &w("Test")));
+        assert_eq!(
+            exact,
+            [b'T' as u16, b'e' as u16, b's' as u16, b't' as u16, 0]
+        );
+
+        let mut empty = [1u16; 1];
+        assert!(str_cpy(&mut empty, &w("")));
+        assert_eq!(empty, [0u16]);
+    }
+
+    #[test]
+    fn cat_appends_when_it_fits() {
+        let mut dst = [0u16; 10];
+        dst[..6].copy_from_slice(&w("Hello"));
+        assert!(str_cat(&mut dst, &w(", W")));
+        assert_eq!(&dst[..9], &w("Hello, W")[..]);
+
+        let mut tight = [0u16; 8];
+        tight[..6].copy_from_slice(&w("Hello"));
+        assert!(!str_cat(&mut tight, &w(", W")));
+        assert_eq!(&tight[..6], &w("Hello")[..]);
+        assert_eq!(tight[6], 0);
+
+        let mut exact = [0u16; 9];
+        exact[..6].copy_from_slice(&w("Hello"));
+        assert!(str_cat(&mut exact, &w(", W")));
+        assert_eq!(&exact[..9], &w("Hello, W")[..]);
+
+        let mut empty_src = [0u16; 3];
+        empty_src[..3].copy_from_slice(&[b'a' as u16, b'b' as u16, 0]);
+        assert!(str_cat(&mut empty_src, &w("")));
+        assert_eq!(&empty_src[..3], &w("ab")[..]);
+    }
+
+    #[test]
+    fn ncat_appends_at_most_count_minus_one() {
+        let mut dst = [0u16; 16];
+        dst[..6].copy_from_slice(&w("Hello"));
+        str_ncat(&mut dst, &w("World"), 3);
+        assert_eq!(&dst[..8], &w("HelloWo")[..]);
+
+        let mut dst = [0u16; 16];
+        dst[..6].copy_from_slice(&w("Hello"));
+        str_ncat(&mut dst, &w("World"), 100);
+        assert_eq!(&dst[..11], &w("HelloWorld")[..]);
+
+        let mut dst = [0u16; 16];
+        dst[..6].copy_from_slice(&w("Hello"));
+        str_ncat(&mut dst, &w("World"), 0);
+        assert_eq!(&dst[..6], &w("Hello")[..]);
+        str_ncat(&mut dst, &w("World"), -1);
+        assert_eq!(&dst[..6], &w("Hello")[..]);
+
+        let mut dst = [0u16; 8];
+        dst[..6].copy_from_slice(&w("Hello"));
+        str_ncat(&mut dst, &w("World"), 100);
+        assert_eq!(&dst[..8], &w("HelloWo")[..]);
+    }
+
+    // Expected results follow the body of SHStripMneumonicW in
+    // dlls/shlwapi/string.c: the first `&` is removed, `&&` removes one and
+    // marks nothing, and a trailing `&` is left in place.
+    #[test]
+    fn strip_mneumonic_removes_marker_and_returns_marked_char() {
+        let mut s = w("&File");
+        assert_eq!(sh_strip_mneumonic(&mut s), b'F' as u16);
+        assert_eq!(s, w("File"));
+
+        let mut s = w("Save &As");
+        assert_eq!(sh_strip_mneumonic(&mut s), b'A' as u16);
+        assert_eq!(s, w("Save As"));
+
+        let mut s = w("&&Name");
+        assert_eq!(sh_strip_mneumonic(&mut s), b'&' as u16);
+        assert_eq!(s, w("&Name"));
+
+        let mut s = w("A&&B&C");
+        assert_eq!(sh_strip_mneumonic(&mut s), b'A' as u16);
+        assert_eq!(s, w("A&B&C"));
+
+        let mut s = w("Trail&");
+        assert_eq!(sh_strip_mneumonic(&mut s), b'T' as u16);
+        assert_eq!(s, w("Trail&"));
+
+        let mut s = w("NoMarker");
+        assert_eq!(sh_strip_mneumonic(&mut s), b'N' as u16);
+        assert_eq!(s, w("NoMarker"));
+
+        let mut s = w("");
+        assert_eq!(sh_strip_mneumonic(&mut s), 0);
+        assert_eq!(s, w(""));
     }
 }
