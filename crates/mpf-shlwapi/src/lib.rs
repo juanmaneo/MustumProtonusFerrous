@@ -718,6 +718,74 @@ pub fn sh_strip_mneumonic(s: &mut Vec<u16>) -> u16 {
     ch
 }
 
+/// `STIF_SUPPORT_HEX`: `StrToInt64ExW` also reads a `0x` or `0X` prefix.
+pub const STIF_SUPPORT_HEX: u32 = 0x1;
+
+/// The ASCII byte at `index`, or `None` for a unit past the terminator or
+/// outside ASCII. Non-ASCII digits never parse, as in Wine.
+fn ascii_at(s: &[u16], index: usize) -> Option<u8> {
+    u8::try_from(char_at(s, index)).ok()
+}
+
+fn digit_at(s: &[u16], index: usize, radix: u32) -> Option<u32> {
+    ascii_at(s, index).and_then(|c| (c as char).to_digit(radix))
+}
+
+/// `StrToInt64ExW`: skips leading spaces, tabs, and newlines, reads an optional
+/// sign, then a decimal number, or a hexadecimal one after a `0x` prefix when
+/// `flags` has `STIF_SUPPORT_HEX`. Text after the digits is ignored. Returns
+/// `None` where Wine returns FALSE.
+///
+/// A sign before a hexadecimal number is skipped, not applied, so `-0x44fd`
+/// reads as `0x44fd`. Overflow wraps, as the C arithmetic does in practice.
+pub fn str_to_int64_ex(s: &[u16], flags: u32) -> Option<i64> {
+    let s = &s[..wlen(s)];
+    let mut pos = 0;
+    while matches!(ascii_at(s, pos), Some(b' ' | b'\t' | b'\n')) {
+        pos += 1;
+    }
+    let negative = ascii_at(s, pos) == Some(b'-');
+    if negative || ascii_at(s, pos) == Some(b'+') {
+        pos += 1;
+    }
+    let hex = (flags & STIF_SUPPORT_HEX) != 0
+        && ascii_at(s, pos) == Some(b'0')
+        && matches!(ascii_at(s, pos + 1), Some(b'x' | b'X'));
+    let radix = if hex {
+        pos += 2;
+        16
+    } else {
+        10
+    };
+    digit_at(s, pos, radix)?;
+    let mut value: i64 = 0;
+    while let Some(digit) = digit_at(s, pos, radix) {
+        value = value
+            .wrapping_mul(i64::from(radix))
+            .wrapping_add(i64::from(digit));
+        pos += 1;
+    }
+    Some(if negative && !hex {
+        value.wrapping_neg()
+    } else {
+        value
+    })
+}
+
+/// `StrToIntExW`: `str_to_int64_ex` truncated to 32 bits.
+pub fn str_to_int_ex(s: &[u16], flags: u32) -> Option<i32> {
+    str_to_int64_ex(s, flags).map(|value| value as i32)
+}
+
+/// `StrToIntW`: the number at the start of `s`, or 0. Only text that starts with
+/// `-` or a digit is parsed, so leading spaces and `0x` prefixes give 0.
+pub fn str_to_int(s: &[u16]) -> i32 {
+    match ascii_at(s, 0) {
+        Some(b'-' | b'0'..=b'9') => str_to_int_ex(s, 0).unwrap_or(0),
+        _ => 0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1353,5 +1421,83 @@ mod tests {
         let mut s = w("");
         assert_eq!(sh_strip_mneumonic(&mut s), 0);
         assert_eq!(s, w(""));
+    }
+
+    // Rows from the StrToInt_results table in dlls/shlwapi/tests/string.c:
+    // (input, StrToInt64ExW with flags 0, with STIF_SUPPORT_HEX, StrToIntW).
+    // `None` marks the rows where Wine reports failure.
+    #[test]
+    fn str_to_int_matches_wine_table() {
+        let rows: [(&str, Option<i64>, Option<i64>, i32); 30] = [
+            ("1099", Some(1099), Some(1099), 1099),
+            ("4294967319", Some(4294967319), Some(4294967319), 23),
+            ("+88987", Some(88987), Some(88987), 0),
+            ("012", Some(12), Some(12), 12),
+            ("-55", Some(-55), Some(-55), -55),
+            ("-0", Some(0), Some(0), 0),
+            ("0x44ff", Some(0), Some(0x44ff), 0),
+            ("0x2bdc546291f4b1", Some(0), Some(0x2bdc546291f4b1), 0),
+            ("+0x44f4", Some(0), Some(0x44f4), 0),
+            ("-0x44fd", Some(0), Some(0x44fd), 0),
+            ("+ 88987", None, None, 0),
+            ("- 55", None, None, 0),
+            ("- 0", None, None, 0),
+            ("+ 0x44f4", None, None, 0),
+            ("--0x44fd", None, None, 0),
+            (" 1999", Some(1999), Some(1999), 0),
+            (" +88987", Some(88987), Some(88987), 0),
+            (" 012", Some(12), Some(12), 0),
+            (" -55", Some(-55), Some(-55), 0),
+            (" 0x44ff", Some(0), Some(0x44ff), 0),
+            (" +0x44f4", Some(0), Some(0x44f4), 0),
+            (" -0x44fd", Some(0), Some(0x44fd), 0),
+            ("\t\n +3", Some(3), Some(3), 0),
+            ("\u{b}+4", None, None, 0),
+            ("\u{c}+5", None, None, 0),
+            ("\r+6", None, None, 0),
+            ("", None, None, 0),
+            ("-", None, None, 0),
+            ("0x", Some(0), None, 0),
+            ("0xg", Some(0), None, 0),
+        ];
+        for (input, dec, hex, to_int) in rows {
+            let s = w(input);
+            let dec_got = str_to_int64_ex(&s, 0);
+            let hex_got = str_to_int64_ex(&s, STIF_SUPPORT_HEX);
+            assert_eq!(dec_got, dec, "decimal {input:?}");
+            assert_eq!(hex_got, hex, "hex {input:?}");
+            assert_eq!(str_to_int(&s), to_int, "StrToIntW {input:?}");
+        }
+    }
+
+    #[test]
+    fn str_to_int_ex_truncates_to_32_bits_and_keeps_failure_visible() {
+        assert_eq!(str_to_int_ex(&w("4294967319"), 0), Some(23));
+        assert_eq!(str_to_int_ex(&w("-55"), 0), Some(-55));
+        assert_eq!(str_to_int_ex(&w("x"), 0), None);
+    }
+
+    #[test]
+    fn str_to_int_ignores_non_ascii_digits() {
+        assert_eq!(str_to_int64_ex(&[0x0661, 0x0662, 0], 0), None);
+        assert_eq!(str_to_int64_ex(&[0x07c3, 0x07c4, 0], 0), None);
+        assert_eq!(
+            str_to_int64_ex(&[0x00a0, b'-' as u16, b'2' as u16, 0], 0),
+            None
+        );
+    }
+
+    #[test]
+    fn str_to_int_stops_at_the_terminator() {
+        let s = [b'4' as u16, b'2' as u16, 0, b'9' as u16];
+        assert_eq!(str_to_int64_ex(&s, 0), Some(42));
+    }
+
+    #[test]
+    fn str_to_int64_wraps_on_overflow() {
+        assert_eq!(
+            str_to_int64_ex(&w("9223372036854775808"), 0),
+            Some(i64::MIN)
+        );
     }
 }

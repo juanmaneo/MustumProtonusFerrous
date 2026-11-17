@@ -77,6 +77,13 @@ fn shlwapi_string_helpers() {
     let mut accel = w("&File");
     assert_eq!(mpf_shlwapi::sh_strip_mneumonic(&mut accel), b'F' as u16);
     assert_eq!(accel, w("File"));
+
+    assert_eq!(mpf_shlwapi::str_to_int(&w("-55")), -55);
+    assert_eq!(
+        mpf_shlwapi::str_to_int64_ex(&w("-0x44fd"), mpf_shlwapi::STIF_SUPPORT_HEX),
+        Some(0x44fd)
+    );
+    assert_eq!(mpf_shlwapi::str_to_int_ex(&w("+ 88987"), 0), None);
 }
 
 fn kernelbase_strip_prefix() {
