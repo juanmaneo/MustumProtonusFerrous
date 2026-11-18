@@ -1,0 +1,6 @@
+[package]
+name = "mpf-ir50_32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ir50_32 subset for MPF: Indeo 5 (IV50) DriverProc handler and frame-copy logic"
