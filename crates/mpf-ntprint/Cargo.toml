@@ -1,0 +1,8 @@
+[package]
+name = "mpf-ntprint"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ntprint subset for MPF: monitor name enumeration buffer rules"
+
+[dependencies]
