@@ -51,5 +51,16 @@ dlls/comctl32         -               todo     P2
 dlls/winmm            -               todo     P2
 dlls/dsound           -               todo     P2
 dlls/gdiplus          -               todo     P2
-dlls/version          -               todo     P2
+dlls/version          mpf-version     partial  P2
 dlls/setupapi         -               todo     P2
+dlls/iyuv_32          mpf-iyuv_32     partial  P3
+dlls/msrle32          mpf-msrle32     partial  P3
+dlls/msasn1           mpf-msasn1      partial  P3
+dlls/ntdsapi          mpf-ntdsapi     partial  P3
+dlls/userenv          mpf-userenv     partial  P3
+dlls/bcp47langs       mpf-bcp47langs  partial  P3
+dlls/t2embed          mpf-t2embed     partial  P3
+dlls/dssenh           mpf-dssenh      partial  P3
+dlls/wer              mpf-wer         partial  P3
+dlls/slc              mpf-slc         partial  P3
+dlls/faultrep         mpf-faultrep    partial  P3

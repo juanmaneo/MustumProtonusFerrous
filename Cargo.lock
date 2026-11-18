@@ -7,6 +7,10 @@ name = "mpf-advapi32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-bcp47langs"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cli"
 version = "0.1.0"
 dependencies = [
@@ -40,6 +44,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-dssenh"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-faultrep"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-gdi32"
 version = "0.1.0"
 dependencies = [
@@ -48,6 +60,10 @@ dependencies = [
 
 [[package]]
 name = "mpf-graphics"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-iyuv_32"
 version = "0.1.0"
 
 [[package]]
@@ -71,11 +87,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-msasn1"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msrle32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msvcrt"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-ntdll"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ntdsapi"
 version = "0.1.0"
 
 [[package]]
@@ -122,6 +150,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-slc"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-t2embed"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ucrtbase"
 version = "0.1.0"
 
@@ -139,6 +175,18 @@ version = "0.1.0"
 dependencies = [
  "mpf-ntdll",
 ]
+
+[[package]]
+name = "mpf-userenv"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-version"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wer"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-wineboot"
