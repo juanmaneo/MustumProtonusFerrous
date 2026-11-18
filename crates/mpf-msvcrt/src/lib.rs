@@ -137,7 +137,7 @@ pub fn strtoi64(source: &[u8], base: u32) -> Option<ParseI64> {
 
     let source_end = strnlen(source, source.len());
     let mut index = 0;
-    while index < source_end && source[index].is_ascii_whitespace() {
+    while index < source_end && ctype::isspace(i32::from(source[index])) {
         index += 1;
     }
     let negative = if index < source_end && matches!(source[index], b'+' | b'-') {
@@ -231,14 +231,23 @@ pub struct ParseI32 {
 /// This models Windows `long` width and the value/end-pointer behavior of
 /// Wine's `strtol`; `errno` is intentionally not modeled in this safe API.
 pub fn strtol(source: &[u8], base: u32) -> Option<ParseI32> {
-    let parsed = strtoi64(source, base)?;
+    strtoi64(source, base).map(clamp_i32)
+}
+
+/// Parses a Wine-compatible 32-bit signed integer from a UTF-16 string, as `wcstol`
+/// does. Non-ASCII code units terminate parsing, as in [`wcstoi64`].
+pub fn wcstol(source: &[u16], base: u32) -> Option<ParseI32> {
+    wcstoi64(source, base).map(clamp_i32)
+}
+
+fn clamp_i32(parsed: ParseI64) -> ParseI32 {
     let overflow =
         parsed.overflow || parsed.value < i64::from(i32::MIN) || parsed.value > i64::from(i32::MAX);
-    Some(ParseI32 {
+    ParseI32 {
         value: parsed.value.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32,
         end: parsed.end,
         overflow,
-    })
+    }
 }
 
 /// Parses a decimal `int` as the msvcrt.dll `atoi` does.
@@ -351,7 +360,7 @@ pub fn strtoui64(source: &[u8], base: u32) -> Option<ParseU64> {
 
     let source_end = strnlen(source, source.len());
     let mut index = 0;
-    while index < source_end && source[index].is_ascii_whitespace() {
+    while index < source_end && ctype::isspace(i32::from(source[index])) {
         index += 1;
     }
     let negative = if index < source_end && matches!(source[index], b'+' | b'-') {
@@ -1995,6 +2004,40 @@ mod tests {
         assert_eq!(to_lower(b'[' as u16), b'[' as u16);
         assert_eq!(to_lower(b'Z' as u16), b'z' as u16);
         assert_eq!(to_lower(0x00C9), 0x00C9);
+    }
+
+    #[test]
+    fn wcstol_matches_wine_ascii_vectors() {
+        // ASCII subset of Wine's test__wcstol; non-ASCII digits are outside the
+        // documented policy and are not tested.
+        for (text, base, value, overflow) in [
+            ("9", 10, 9, false),
+            (" ", 0, 0, false),
+            ("-1234", 0, -1234, false),
+            ("\t\n\u{b}\u{c}\r -123", 0, -123, false),
+            ("2147483647", 0, i32::MAX, false),
+            ("2147483648", 0, i32::MAX, true),
+            ("4294967295", 0, i32::MAX, true),
+            ("4294967296", 0, i32::MAX, true),
+            ("9223372036854775807", 0, i32::MAX, true),
+            ("-2147483647", 0, -2_147_483_647, false),
+            ("-2147483648", 0, i32::MIN, false),
+            ("-4294967295", 0, i32::MIN, true),
+            ("-4294967296", 0, i32::MIN, true),
+            ("-9223372036854775807", 0, i32::MIN, true),
+            ("-0x91", 0, -0x91, false),
+            ("071", 0, 0o71, false),
+            ("9f9", 16, 0x9f9, false),
+            ("abc", 10, 0, false),
+        ] {
+            let parsed = wcstol(&w(text), base).unwrap();
+            assert_eq!(
+                (parsed.value, parsed.overflow),
+                (value, overflow),
+                "{text:?} base {base}"
+            );
+        }
+        assert_eq!(wcstol(&w("42"), 1), None);
     }
 
     #[test]
