@@ -1,0 +1,8 @@
+[package]
+name = "mpf-ncrypt"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ncrypt subset for MPF: NCrypt key creation, import, property and argument checks"
+
+[dependencies]
