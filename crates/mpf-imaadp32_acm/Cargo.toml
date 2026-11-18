@@ -1,0 +1,8 @@
+[package]
+name = "mpf-imaadp32_acm"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "imaadp32.acm subset for MPF: IMA ADPCM format tables, stream sizing, open checks and the block codec"
+
+[dependencies]
