@@ -1,0 +1,8 @@
+[package]
+name = "mpf-l3codeca_acm"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "l3codeca.acm subset for MPF: MPEG Layer-3 format tables, stream sizing, open checks and convert flow"
+
+[dependencies]
