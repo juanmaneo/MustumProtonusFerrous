@@ -41,7 +41,7 @@
 #[cfg(test)]
 mod oracle;
 #[cfg(test)]
-mod tests;
+mod oracle_checks;
 
 /// Strips a frame may carry. Wine drops a frame with this many or more (`MAX_STRIPS`).
 const MAX_STRIPS: usize = 32;

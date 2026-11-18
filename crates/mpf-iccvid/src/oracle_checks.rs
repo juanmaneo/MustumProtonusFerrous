@@ -211,6 +211,12 @@ fn unknown_oracle_command_panics() {
 }
 
 #[test]
+#[should_panic(expected = "ga takes six operands")]
+fn get_addr_with_missing_operands_panics() {
+    run("ga 1 2 3");
+}
+
+#[test]
 fn every_frame_prefix_is_ok_or_truncated() {
     for &(command, _) in DC.iter().chain(EDGE) {
         let args: Vec<&str> = command.split_whitespace().skip(1).collect();

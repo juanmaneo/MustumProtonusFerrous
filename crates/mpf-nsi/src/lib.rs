@@ -8,7 +8,7 @@
 //! port: the device is a closure and buffers are described by sizes and returned
 //! segments. No network, adapter, routing, or registry state is read.
 //!
-//! Ported (oracle-derived table vectors and edge tests, see `oracle_tests.rs`):
+//! Ported (oracle-derived table vectors and edge tests, see `oracle_checks.rs`):
 //! - `NsiGetParameter`, `NsiGetParameterEx`: [`get_parameter`]
 //! - `NsiGetAllParameters`, `NsiGetAllParametersEx`: [`get_all_parameters`]
 //! - `NsiEnumerateObjectsAllParameters`, `NsiEnumerateObjectsAllParametersEx`: [`enumerate_all_parameters`]
@@ -285,9 +285,9 @@ pub fn cancel_change_notification(
 }
 
 #[cfg(test)]
-mod oracle_data;
+mod oracle_checks;
 #[cfg(test)]
-mod oracle_tests;
+mod oracle_data;
 
 #[cfg(test)]
 mod tests {

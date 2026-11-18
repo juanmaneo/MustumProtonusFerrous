@@ -4,13 +4,26 @@
 //! per-file regions flag) and its per-file lines flag compares with a strict
 //! `>` that rejects exactly 100%. So the gate is owned here instead: run the
 //! tests, export the per-file summary and require `covered == count` for
-//! every metric of every file.
+//! every metric of every file. Every Rust source file must also appear in that
+//! summary: cargo-llvm-cov leaves out files whose names match its ignore pattern
+//! (such as `*tests.rs`) and files with no code, so the latter are listed in
+//! `NO_CODE_FILES` and any other missing file fails the gate.
 
 use crate::json::{self, Value};
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitCode, Stdio};
 
 /// Metrics that must be fully covered in every file.
 const METRICS: [&str; 3] = ["regions", "lines", "functions"];
+
+/// Source files that hold only constants or `mod` declarations, which
+/// llvm-cov never lists because they contain no code.
+const NO_CODE_FILES: [&str; 3] = [
+    "crates/mpf-iccvid/src/oracle.rs",
+    "crates/mpf-nsi/src/oracle_data.rs",
+    "crates/mpf-ntdll/src/lib.rs",
+];
 
 /// Runs the workspace tests under coverage and prints the usual table.
 const TEST_ARGS: [&str; 3] = ["llvm-cov", "--workspace", "--no-cfg-coverage"];
@@ -78,11 +91,41 @@ fn shortfall(file: &Value, metric: &str) -> Option<String> {
     }
 }
 
-/// Checks a cargo-llvm-cov JSON summary: `Ok` with a one-line summary if
-/// every file is complete, otherwise `Err` naming each file and metric that
-/// is not. A report without any file is an error, so the gate cannot pass
-/// by measuring nothing.
-pub fn verify(report: &str) -> Result<String, String> {
+/// The Rust sources of every crate and of xtask: the files the gate must measure.
+fn source_files(root: &Path) -> Vec<PathBuf> {
+    let mut sources = Vec::new();
+    let crate_src_dirs = fs::read_dir(root.join("crates"))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path().join("src"));
+    for dir in crate_src_dirs.chain([root.join("xtask").join("src")]) {
+        collect_rust_files(&dir, &mut sources);
+    }
+    sources
+}
+
+fn collect_rust_files(dir: &Path, sources: &mut Vec<PathBuf>) {
+    for entry in fs::read_dir(dir).into_iter().flatten().flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_rust_files(&path, sources);
+        } else if path.extension().is_some_and(|ext| ext == "rs") {
+            sources.push(path);
+        }
+    }
+}
+
+fn is_no_code(source: &Path) -> bool {
+    NO_CODE_FILES.iter().any(|file| source.ends_with(file))
+}
+
+/// Checks a cargo-llvm-cov JSON summary against the workspace `sources`:
+/// `Ok` with a one-line summary if every file is complete and every source is
+/// listed, otherwise `Err` naming each file, metric or source that is not. A
+/// report without any file is an error, so the gate cannot pass by measuring
+/// nothing.
+pub fn verify(report: &str, sources: &[PathBuf]) -> Result<String, String> {
     let report = json::parse(report)?;
     let files: Vec<&Value> = report
         .get("data")
@@ -96,6 +139,19 @@ pub fn verify(report: &str) -> Result<String, String> {
                 .unwrap_or_default()
         })
         .collect();
+    let reported: Vec<&str> = files
+        .iter()
+        .filter_map(|file| file.get("filename").and_then(Value::as_str))
+        .collect();
+    let unmeasured = sources
+        .iter()
+        .filter(|source| {
+            !is_no_code(source)
+                && !reported
+                    .iter()
+                    .any(|name| Path::new(name) == source.as_path())
+        })
+        .map(|source| format!("{}: not in the coverage report", source.display()));
     let problems: Vec<String> = files
         .iter()
         .flat_map(|file| {
@@ -103,6 +159,7 @@ pub fn verify(report: &str) -> Result<String, String> {
                 .iter()
                 .filter_map(move |metric| shortfall(file, metric))
         })
+        .chain(unmeasured)
         .collect();
 
     if files.is_empty() {
@@ -137,7 +194,8 @@ fn conclude(outcome: Result<String, String>) -> ExitCode {
 
 /// The `coverage` command, with the cargo executable injectable for tests.
 pub fn run_coverage_with(cargo: &str) -> ExitCode {
-    conclude(coverage_report(cargo).and_then(|report| verify(&report)))
+    let sources = source_files(&crate::project_root());
+    conclude(coverage_report(cargo).and_then(|report| verify(&report, &sources)))
 }
 
 #[cfg(test)]
@@ -176,12 +234,12 @@ mod tests {
     const REAL_SAMPLE: &str = r#"{"data":[{"files":[{"filename":"/home/neo/dev/mustum/crates/mpf-cli/src/main.rs","summary":{"branches":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"mcdc":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"functions":{"count":28,"covered":28,"percent":100.0},"instantiations":{"count":34,"covered":34,"percent":100.0},"lines":{"count":342,"covered":342,"percent":100.0},"regions":{"count":477,"covered":477,"notcovered":0,"percent":100.0}}},{"filename":"/home/neo/dev/mustum/crates/mpf-kernel32/src/lib.rs","summary":{"branches":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"mcdc":{"count":0,"covered":0,"notcovered":0,"percent":0.0},"functions":{"count":9,"covered":9,"percent":100.0},"instantiations":{"count":13,"covered":9,"percent":69.23076923076923},"lines":{"count":46,"covered":46,"percent":100.0},"regions":{"count":78,"covered":78,"notcovered":0,"percent":100.0}}}],"totals":{"branches":{"count":0,"covered":0,"notcovered":0,"percent":0},"functions":{"count":37,"covered":37,"percent":100},"instantiations":{"count":47,"covered":43,"percent":91.48936170212765},"lines":{"count":388,"covered":388,"percent":100},"mcdc":{"count":0,"covered":0,"notcovered":0,"percent":0},"regions":{"count":555,"covered":555,"notcovered":0,"percent":100}}}],"type":"llvm.coverage.json.export","version":"3.1.0","cargo_llvm_cov":{"version":"0.9.1","manifest_path":"/home/neo/dev/mustum/Cargo.toml"}}"#;
 
     fn failure(report: &str) -> String {
-        verify(report).unwrap_err()
+        verify(report, &[]).unwrap_err()
     }
 
     #[test]
     fn accepts_a_report_where_every_file_is_complete() {
-        let summary = verify(&report(&[complete("a.rs"), complete("b.rs")])).unwrap();
+        let summary = verify(&report(&[complete("a.rs"), complete("b.rs")]), &[]).unwrap();
         assert_eq!(
             summary,
             "coverage gate passed: 2 files, each at 100% of regions, lines, functions"
@@ -190,7 +248,7 @@ mod tests {
 
     #[test]
     fn accepts_the_real_report_format() {
-        assert!(verify(REAL_SAMPLE).unwrap().contains("2 files"));
+        assert!(verify(REAL_SAMPLE, &[]).unwrap().contains("2 files"));
     }
 
     #[test]
@@ -405,6 +463,59 @@ mod tests {
         assert_eq!(
             run_coverage_with("mpf-no-such-cargo-command"),
             ExitCode::FAILURE
+        );
+    }
+
+    #[test]
+    fn a_source_missing_from_the_report_is_a_failure() {
+        let sources = [PathBuf::from("a.rs"), PathBuf::from("b.rs")];
+        assert_eq!(
+            verify(&report(&[complete("a.rs")]), &sources).unwrap_err(),
+            "coverage is below 100% in 1 place(s):\n  b.rs: not in the coverage report"
+        );
+    }
+
+    #[test]
+    fn a_source_with_no_code_need_not_be_reported() {
+        let sources = [
+            PathBuf::from("a.rs"),
+            PathBuf::from("/repo/crates/mpf-nsi/src/oracle_data.rs"),
+        ];
+        assert!(verify(&report(&[complete("a.rs")]), &sources).is_ok());
+    }
+
+    #[test]
+    fn the_no_code_list_names_real_files() {
+        let root = crate::project_root();
+        for file in NO_CODE_FILES {
+            assert!(root.join(file).is_file(), "{file} is not a file");
+        }
+    }
+
+    #[test]
+    fn source_files_walks_nested_directories_and_keeps_rust_only() {
+        let root = std::env::temp_dir().join(format!("mpf-xtask-sources-{}", std::process::id()));
+        for dir in ["crates/mpf-a/src/nested", "xtask/src"] {
+            fs::create_dir_all(root.join(dir)).unwrap();
+        }
+        for file in [
+            "crates/mpf-a/src/lib.rs",
+            "crates/mpf-a/src/nested/deep.rs",
+            "crates/mpf-a/src/notes.txt",
+            "xtask/src/main.rs",
+        ] {
+            fs::write(root.join(file), "").unwrap();
+        }
+        let mut found = source_files(&root);
+        found.sort();
+        fs::remove_dir_all(&root).unwrap();
+        assert_eq!(
+            found,
+            [
+                root.join("crates/mpf-a/src/lib.rs"),
+                root.join("crates/mpf-a/src/nested/deep.rs"),
+                root.join("xtask/src/main.rs"),
+            ]
         );
     }
 

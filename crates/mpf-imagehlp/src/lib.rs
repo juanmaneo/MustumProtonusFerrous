@@ -288,7 +288,7 @@ fn word_sum(image: &[u8], length: usize) -> u32 {
 }
 
 #[cfg(test)]
-mod oracle_tests;
+mod oracle_checks;
 
 #[cfg(test)]
 mod tests {
