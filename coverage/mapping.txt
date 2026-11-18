@@ -93,3 +93,11 @@ dlls/wmphoto          mpf-wmphoto      partial  P3
 dlls/msvidc32         mpf-msvidc32     partial  P3
 dlls/winemapi         mpf-winemapi     partial  P3
 dlls/ncrypt           mpf-ncrypt       partial  P3
+dlls/msgsm32.acm      mpf-msgsm32_acm  partial  P3
+dlls/hidparse.sys     mpf-hidparse_sys partial  P3
+dlls/msadp32.acm      mpf-msadp32_acm  partial  P3
+dlls/colorcnv         mpf-colorcnv     partial  P3
+dlls/msg711.acm       mpf-msg711_acm   partial  P3
+dlls/imaadp32.acm     mpf-imaadp32_acm partial  P3
+dlls/resampledmo      mpf-resampledmo  partial  P3
+dlls/mscms            mpf-mscms        partial  P3

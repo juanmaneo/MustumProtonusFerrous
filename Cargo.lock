@@ -27,6 +27,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-colorcnv"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-compstui"
 version = "0.1.0"
 
@@ -79,11 +83,19 @@ name = "mpf-graphics"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-hidparse_sys"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-httpapi"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-iccvid"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-imaadp32_acm"
 version = "0.1.0"
 
 [[package]]
@@ -131,11 +143,27 @@ name = "mpf-localui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msadp32_acm"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msasn1"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mscms"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msdmo"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msg711_acm"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msgsm32_acm"
 version = "0.1.0"
 
 [[package]]
@@ -216,6 +244,10 @@ dependencies = [
 
 [[package]]
 name = "mpf-rasapi32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-resampledmo"
 version = "0.1.0"
 
 [[package]]
