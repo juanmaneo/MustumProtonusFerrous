@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wlanapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wlanapi subset for MPF: argument checks and buffer allocation"
+
+[dependencies]
