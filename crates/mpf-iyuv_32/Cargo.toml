@@ -1,0 +1,6 @@
+[package]
+name = "mpf-iyuv_32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "iyuv_32 subset for MPF: IYUV decoder header and frame-copy logic"
