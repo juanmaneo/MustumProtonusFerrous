@@ -116,6 +116,10 @@ name = "mpf-kernelbase"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-l3codeca_acm"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-loader"
 version = "0.1.0"
 dependencies = [
@@ -140,6 +144,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-msvcrt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvidc32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ncrypt"
 version = "0.1.0"
 
 [[package]]
@@ -280,6 +292,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-winemapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wing32"
 version = "0.1.0"
 
@@ -289,6 +305,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wlanapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wmphoto"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wtsapi32"
 version = "0.1.0"
 
 [[package]]

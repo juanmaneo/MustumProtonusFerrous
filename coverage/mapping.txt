@@ -87,3 +87,9 @@ dlls/rasapi32         mpf-rasapi32    partial  P3
 dlls/msdmo            mpf-msdmo       partial  P3
 dlls/sxs              mpf-sxs         partial  P3
 dlls/oledlg           mpf-oledlg      partial  P3
+dlls/l3codeca.acm     mpf-l3codeca_acm partial  P3
+dlls/wtsapi32         mpf-wtsapi32     partial  P3
+dlls/wmphoto          mpf-wmphoto      partial  P3
+dlls/msvidc32         mpf-msvidc32     partial  P3
+dlls/winemapi         mpf-winemapi     partial  P3
+dlls/ncrypt           mpf-ncrypt       partial  P3
