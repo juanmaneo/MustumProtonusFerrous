@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wineusb_sys"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wineusb.sys subset for MPF: USB ID strings, the event queue growth rule and USBD status mapping"
+
+[dependencies]
