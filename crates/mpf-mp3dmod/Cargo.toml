@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mp3dmod"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mp3dmod subset for MPF: MP3 decoder DMO and MF transform media type, frame and size logic"
+
+[dependencies]
