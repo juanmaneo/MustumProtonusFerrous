@@ -1,0 +1,8 @@
+[package]
+name = "mpf-dwmapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dwmapi subset for MPF: composition status and timing helpers"
+
+[dependencies]
