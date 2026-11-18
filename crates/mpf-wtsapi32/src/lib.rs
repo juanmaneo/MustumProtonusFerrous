@@ -7,7 +7,8 @@
 //! Skipped (each is a FIXME stub, or needs the OS, a session, a token or a handle):
 //! - The NtQuerySystemInformation buffer growth loop, OpenProcess, the token and SID copy, and the per-process user SID.
 //! - WTSEnumerateProcessesA and WTSEnumerateProcessesExA, and the other server and session exports (WTSOpenServer*, WTSLogoffSession, WTSConnectSession*, and the rest): FIXME stubs.
-//! - The WTSQuerySessionInformationW call, which goes to the session service, and the WCHAR to code page conversion.
+//! - WTSQuerySessionInformationW: its user, computer and session classes read OS state. Its ConnectState and ClientProtocolType results are constants and are not ported.
+//! - The WCHAR to code page conversion in the A exports.
 //! - WTSFreeMemory, which is free.
 
 pub mod process_list;
@@ -35,15 +36,20 @@ pub enum SessionInfoRouteA {
     Convert,
 }
 
-/// WTSEnumerateProcessesW rejects a non-zero reserved value and any version other than 1.
-pub fn check_enumerate_processes_w(reserved: u32, version: u32) -> Result<(), u32> {
+/// WTSEnumerateProcessesW rejects a non-zero reserved value and any version other than 1. It then runs the ExW checks at level 0, as the wrapper does.
+pub fn check_enumerate_processes_w(
+    reserved: u32,
+    version: u32,
+    has_info: bool,
+    has_count: bool,
+) -> Result<(), u32> {
     if reserved != 0 || version != 1 {
         return Err(ERROR_INVALID_PARAMETER);
     }
-    Ok(())
+    check_enumerate_processes_ex_w(has_info, has_count, 0)
 }
 
-/// WTSEnumerateProcessesExW rejects missing output pointers first, then any non-zero level.
+/// WTSEnumerateProcessesExW rejects missing output pointers first, then any non-zero level. Wine reads the level through its pointer only after the output checks, so the level is taken by value.
 pub fn check_enumerate_processes_ex_w(
     has_info: bool,
     has_count: bool,

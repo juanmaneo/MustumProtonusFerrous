@@ -2,10 +2,10 @@
 //!
 //! Each row is one call at Wine commit 9f8c4ae4d35c7ff4153267aba9618c026f5f5583. The functions are compiled
 //! verbatim with `gcc -fsanitize=address,undefined -fno-sanitize-recover=all -g`,
-//! one call per process. The 22 rows below ran clean and matched their
+//! one call per process. The 24 rows below ran clean and matched their
 //! expected results. Excluded vectors are not in this table:
 //! - P01: sanitizer: UBSan: null pointer passed as argument 2, which is declared to never be null
-//! - P10: odd name byte length; Rust rejects it by design (C: UBSan: store to misaligned address 0x7cb77c5e01bf for type 'WCHAR', which requires 2 byte alignment)
+//! - P10: odd name byte length; Rust rejects it by design (C: UBSan: store to misaligned address for type 'WCHAR', which requires 2 byte alignment)
 
 use super::*;
 use crate::process_list::*;
@@ -19,8 +19,14 @@ struct Proc {
 
 /// The call that produced an enumeration row.
 enum EnumCall {
-    /// `WTSEnumerateProcessesW(reserved, version)`, which calls the ExW form with level 0.
-    W { reserved: u32, version: u32 },
+    /// `WTSEnumerateProcessesW(reserved, version, ...)`, which calls the ExW form with level 0;
+    /// `has_info` and `has_count` say whether the output pointers are set.
+    W {
+        reserved: u32,
+        version: u32,
+        has_info: bool,
+        has_count: bool,
+    },
     /// `WTSEnumerateProcessesExW(level, ...)`; `has_info` and `has_count` say whether the output pointers are set.
     Ex {
         level: u32,
@@ -53,7 +59,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P02: one entry
     EnumRow {
         id: "P02",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -70,7 +76,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P03: two entries
     EnumRow {
         id: "P03",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x68\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -95,7 +101,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P04: gaps 24/8/0 move NextEntryOffset
     EnumRow {
         id: "P04",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -130,7 +136,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P05: pid keeps its low 32 bits
     EnumRow {
         id: "P05",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -147,7 +153,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P06: session 0xFFFFFFFF
     EnumRow {
         id: "P06",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -165,7 +171,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P07: non-ASCII name
     EnumRow {
         id: "P07",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -182,7 +188,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P08: empty name before a normal name
     EnumRow {
         id: "P08",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x68\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -206,7 +212,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // P09: 200-unit name
     EnumRow {
         id: "P09",
-        call: EnumCall::W { reserved: 0, version: 1 },
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: true },
         nt: b"\
 \x68\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
 \x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -306,7 +312,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // W01: reserved 1
     EnumRow {
         id: "W01",
-        call: EnumCall::W { reserved: 1, version: 1 },
+        call: EnumCall::W { reserved: 1, version: 1, has_info: true, has_count: true },
         nt: b"",
         expect: Err(87),
         entries: &[],
@@ -315,7 +321,7 @@ const ENUM_ROWS: &[EnumRow] = &[
     // W02: version 0
     EnumRow {
         id: "W02",
-        call: EnumCall::W { reserved: 0, version: 0 },
+        call: EnumCall::W { reserved: 0, version: 0, has_info: true, has_count: true },
         nt: b"",
         expect: Err(87),
         entries: &[],
@@ -324,7 +330,25 @@ const ENUM_ROWS: &[EnumRow] = &[
     // W03: version 2
     EnumRow {
         id: "W03",
-        call: EnumCall::W { reserved: 0, version: 2 },
+        call: EnumCall::W { reserved: 0, version: 2, has_info: true, has_count: true },
+        nt: b"",
+        expect: Err(87),
+        entries: &[],
+        size: 0,
+    },
+    // W04: NULL ret_info
+    EnumRow {
+        id: "W04",
+        call: EnumCall::W { reserved: 0, version: 1, has_info: false, has_count: true },
+        nt: b"",
+        expect: Err(87),
+        entries: &[],
+        size: 0,
+    },
+    // W05: NULL ret_count
+    EnumRow {
+        id: "W05",
+        call: EnumCall::W { reserved: 0, version: 1, has_info: true, has_count: false },
         nt: b"",
         expect: Err(87),
         entries: &[],
@@ -415,8 +439,12 @@ fn layout_matches_c_offsets() {
 fn enum_rows_match_wine() {
     for row in ENUM_ROWS {
         let checked = match row.call {
-            EnumCall::W { reserved, version } => check_enumerate_processes_w(reserved, version)
-                .and_then(|()| check_enumerate_processes_ex_w(true, true, 0)),
+            EnumCall::W {
+                reserved,
+                version,
+                has_info,
+                has_count,
+            } => check_enumerate_processes_w(reserved, version, has_info, has_count),
             EnumCall::Ex {
                 level,
                 has_info,

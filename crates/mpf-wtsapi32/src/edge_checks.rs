@@ -166,18 +166,30 @@ fn size_counts_the_terminator_and_the_sid_space() {
 #[test]
 fn enumerate_w_checks_run_in_wine_order() {
     assert_eq!(
-        check_enumerate_processes_w(1, 1),
+        check_enumerate_processes_w(1, 1, false, false),
         Err(ERROR_INVALID_PARAMETER)
     );
     assert_eq!(
-        check_enumerate_processes_w(0, 0),
+        check_enumerate_processes_w(0, 0, true, true),
         Err(ERROR_INVALID_PARAMETER)
     );
     assert_eq!(
-        check_enumerate_processes_w(0, 2),
+        check_enumerate_processes_w(0, 2, true, true),
         Err(ERROR_INVALID_PARAMETER)
     );
-    assert_eq!(check_enumerate_processes_w(0, 1), Ok(()));
+    assert_eq!(check_enumerate_processes_w(0, 1, true, true), Ok(()));
+}
+
+#[test]
+fn enumerate_w_rejects_either_missing_pointer() {
+    assert_eq!(
+        check_enumerate_processes_w(0, 1, false, true),
+        Err(ERROR_INVALID_PARAMETER)
+    );
+    assert_eq!(
+        check_enumerate_processes_w(0, 1, true, false),
+        Err(ERROR_INVALID_PARAMETER)
+    );
 }
 
 #[test]
