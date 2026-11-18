@@ -1,0 +1,8 @@
+[package]
+name = "mpf-compstui"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "compstui subset for MPF: property-sheet handle table and sheet request rules"
+
+[dependencies]
