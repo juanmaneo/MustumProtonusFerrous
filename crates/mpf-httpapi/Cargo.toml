@@ -1,0 +1,8 @@
+[package]
+name = "mpf-httpapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "httpapi subset for MPF: HTTP response message and entity body builders"
+
+[dependencies]
