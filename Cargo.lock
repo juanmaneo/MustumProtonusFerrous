@@ -11,6 +11,10 @@ name = "mpf-bcp47langs"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-bluetoothapis"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cli"
 version = "0.1.0"
 dependencies = [
@@ -44,6 +48,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-credui"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dssenh"
 version = "0.1.0"
 
@@ -68,6 +76,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-httpapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-iccvid"
 version = "0.1.0"
 
 [[package]]
@@ -111,11 +123,23 @@ name = "mpf-msvcrt"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-ninput"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-nsi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ntdll"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-ntdsapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ntprint"
 version = "0.1.0"
 
 [[package]]
@@ -174,6 +198,10 @@ name = "mpf-slc"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-snmpapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-t2embed"
 version = "0.1.0"
 
@@ -217,6 +245,10 @@ dependencies = [
 
 [[package]]
 name = "mpf-winnt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wlanapi"
 version = "0.1.0"
 
 [[package]]

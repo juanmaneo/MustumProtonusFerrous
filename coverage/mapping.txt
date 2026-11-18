@@ -69,3 +69,11 @@ dlls/pdh              mpf-pdh         partial  P3
 dlls/httpapi          mpf-httpapi     partial  P3
 dlls/odbccp32         mpf-odbccp32    partial  P3
 dlls/dwmapi           mpf-dwmapi      partial  P3
+dlls/iccvid           mpf-iccvid      partial  P3
+dlls/snmpapi          mpf-snmpapi     partial  P3
+dlls/ntprint          mpf-ntprint     partial  P3
+dlls/wlanapi          mpf-wlanapi     partial  P3
+dlls/nsi              mpf-nsi         partial  P3
+dlls/credui           mpf-credui      partial  P3
+dlls/ninput           mpf-ninput      partial  P3
+dlls/bluetoothapis    mpf-bluetoothapis partial  P3
