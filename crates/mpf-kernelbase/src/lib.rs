@@ -1862,6 +1862,51 @@ pub fn char_prev_w(start: usize, at: usize) -> usize {
     }
 }
 
+/// `CharUpperBuffW`: upper-cases the first `len` code units of `text` in place and
+/// returns how many were converted. A NULL buffer, a zero length, and a length that
+/// is negative as a Win32 `int` convert nothing and return 0, as `LCMapStringW`
+/// rejects them. A length beyond the slice is clamped to it. Case mapping is ASCII-only.
+pub fn char_upper_buff_w(text: Option<&mut [u16]>, len: u32) -> u32 {
+    map_buff(text, len, ascii_upper)
+}
+
+/// `CharLowerBuffW`: as [`char_upper_buff_w`], folding to lower case.
+pub fn char_lower_buff_w(text: Option<&mut [u16]>, len: u32) -> u32 {
+    map_buff(text, len, ascii_lower)
+}
+
+fn map_buff(text: Option<&mut [u16]>, len: u32, map: fn(u16) -> u16) -> u32 {
+    let Some(text) = text else {
+        return 0;
+    };
+    let len = len as i32;
+    if len <= 0 {
+        return 0;
+    }
+    let len = (len as usize).min(text.len());
+    map_units(&mut text[..len], map);
+    len as u32
+}
+
+/// `CharUpperW`: upper-cases `text` up to its first NUL. Resource-ID strings
+/// (`IS_INTRESOURCE`) are not modelled because a slice cannot carry an ID.
+pub fn char_upper_w(text: &mut [u16]) {
+    let len = wlen(text);
+    map_units(&mut text[..len], ascii_upper);
+}
+
+/// `CharLowerW`: as [`char_upper_w`], folding to lower case.
+pub fn char_lower_w(text: &mut [u16]) {
+    let len = wlen(text);
+    map_units(&mut text[..len], ascii_lower);
+}
+
+fn map_units(units: &mut [u16], map: fn(u16) -> u16) {
+    for unit in units {
+        *unit = map(*unit);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3893,5 +3938,92 @@ mod tests {
         assert_eq!(char_prev_w(0, 0), 0);
         assert_eq!(char_prev_w(0, 2), 1);
         assert_eq!(char_prev_w(1, 1), 1);
+    }
+
+    /// Mirrors the oracle buffer: `source` then NUL, with 'z' filler up to `cap`.
+    fn oracle_buffer(source: &str, cap: usize) -> Vec<u16> {
+        let mut buffer = vec![u16::from(b'z'); cap];
+        for (slot, byte) in buffer.iter_mut().zip(source.bytes()) {
+            *slot = u16::from(byte);
+        }
+        buffer[source.len()] = 0;
+        buffer
+    }
+
+    #[test]
+    fn char_upper_and_lower_buff_match_wine_oracle() {
+        let cases: [(bool, u32, Option<&str>, u32, &str); 20] = [
+            (true, 0, Some("@Az"), 0, "@Az~z"),
+            (true, 1, Some("az"), 1, "Az~zz"),
+            (true, 3, Some("a[`"), 3, "A[`~zzzz"),
+            (false, 3, Some("AZ["), 3, "az[~zzzz"),
+            (true, 4_294_967_295, Some("az"), 0, "az~z"),
+            (false, 4_294_967_295, Some("AZ"), 0, "AZ~z"),
+            (true, 2_147_483_648, Some("az"), 0, "az~z"),
+            (false, 2, Some("AZ"), 2, "az~zzz"),
+            (true, 3, Some("a"), 3, "A~Zzzz"),
+            (false, 4, Some("Z"), 4, "z~zzzzz"),
+            (true, 0, None, 0, ""),
+            (false, 3, None, 0, ""),
+            (true, 4, Some("@@"), 4, "@@~Zzzzz"),
+            (false, 2, Some("@["), 2, "@[~zzz"),
+            (true, 2, Some("{`"), 2, "{`~zzz"),
+            (false, 1, Some("ZZ"), 1, "zZ~zz"),
+            (true, 4, Some("a"), 4, "A~ZZzzz"),
+            (false, 2, Some("az{"), 2, "az{~zzz"),
+            (true, 2, Some(""), 2, "~Zzz"),
+            (false, 0, Some("AZ"), 0, "AZ~z"),
+        ];
+        for (upper, len, source, expected_ret, expected) in cases {
+            let Some(source) = source else {
+                let ret = if upper {
+                    char_upper_buff_w(None, len)
+                } else {
+                    char_lower_buff_w(None, len)
+                };
+                assert_eq!(ret, expected_ret, "upper={upper} len={len} NULL");
+                continue;
+            };
+            let cap = if len as i32 > 0 {
+                len as usize + source.len() + 2
+            } else {
+                source.len() + 2
+            };
+            let mut buffer = oracle_buffer(source, cap);
+            let ret = if upper {
+                char_upper_buff_w(Some(&mut buffer), len)
+            } else {
+                char_lower_buff_w(Some(&mut buffer), len)
+            };
+            assert_eq!(
+                ret, expected_ret,
+                "upper={upper} len={len} source={source:?}"
+            );
+            assert_eq!(
+                render(&buffer),
+                expected,
+                "upper={upper} len={len} source={source:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn char_upper_and_lower_w_match_wine_oracle() {
+        let cases: [(bool, &str, &str); 5] = [
+            (true, "az@", "AZ@~z"),
+            (false, "AZ[", "az[~z"),
+            (true, "a`", "A`~z"),
+            (false, "", "~z"),
+            (true, "zZ", "ZZ~z"),
+        ];
+        for (upper, source, expected) in cases {
+            let mut buffer = oracle_buffer(source, source.len() + 2);
+            if upper {
+                char_upper_w(&mut buffer);
+            } else {
+                char_lower_w(&mut buffer);
+            }
+            assert_eq!(render(&buffer), expected, "upper={upper} source={source:?}");
+        }
     }
 }
