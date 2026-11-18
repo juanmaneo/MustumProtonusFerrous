@@ -1,0 +1,6 @@
+[package]
+name = "mpf-msrle32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msrle32 RLE codec for MPF: headless run-length encoder and decoder"
