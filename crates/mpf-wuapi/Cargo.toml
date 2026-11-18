@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wuapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wuapi subset for MPF: COM class dispatch and interface checks"
+
+[dependencies]
