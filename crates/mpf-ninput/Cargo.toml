@@ -1,0 +1,8 @@
+[package]
+name = "mpf-ninput"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ninput subset for MPF: interaction context property and handle logic"
+
+[dependencies]
