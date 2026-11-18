@@ -64,3 +64,8 @@ dlls/dssenh           mpf-dssenh      partial  P3
 dlls/wer              mpf-wer         partial  P3
 dlls/slc              mpf-slc         partial  P3
 dlls/faultrep         mpf-faultrep    partial  P3
+dlls/imagehlp         mpf-imagehlp    partial  P3
+dlls/pdh              mpf-pdh         partial  P3
+dlls/httpapi          mpf-httpapi     partial  P3
+dlls/odbccp32         mpf-odbccp32    partial  P3
+dlls/dwmapi           mpf-dwmapi      partial  P3

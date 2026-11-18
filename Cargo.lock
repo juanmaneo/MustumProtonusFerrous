@@ -48,6 +48,10 @@ name = "mpf-dssenh"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dwmapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-faultrep"
 version = "0.1.0"
 
@@ -60,6 +64,14 @@ dependencies = [
 
 [[package]]
 name = "mpf-graphics"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-httpapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-imagehlp"
 version = "0.1.0"
 
 [[package]]
@@ -107,6 +119,10 @@ name = "mpf-ntdsapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-odbccp32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ole32"
 version = "0.1.0"
 dependencies = [
@@ -115,6 +131,10 @@ dependencies = [
 
 [[package]]
 name = "mpf-oleaut32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-pdh"
 version = "0.1.0"
 
 [[package]]
