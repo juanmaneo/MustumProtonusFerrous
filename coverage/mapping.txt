@@ -77,3 +77,13 @@ dlls/nsi              mpf-nsi         partial  P3
 dlls/credui           mpf-credui      partial  P3
 dlls/ninput           mpf-ninput      partial  P3
 dlls/bluetoothapis    mpf-bluetoothapis partial  P3
+dlls/wing32           mpf-wing32      partial  P3
+dlls/jsproxy          mpf-jsproxy     partial  P3
+dlls/serialui         mpf-serialui    partial  P3
+dlls/compstui         mpf-compstui    partial  P3
+dlls/localui          mpf-localui     partial  P3
+dlls/ir50_32          mpf-ir50_32     partial  P3
+dlls/rasapi32         mpf-rasapi32    partial  P3
+dlls/msdmo            mpf-msdmo       partial  P3
+dlls/sxs              mpf-sxs         partial  P3
+dlls/oledlg           mpf-oledlg      partial  P3
