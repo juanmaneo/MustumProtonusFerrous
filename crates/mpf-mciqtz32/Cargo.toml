@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mciqtz32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mciqtz32 subset for MPF: DirectShow MCI driver argument checks, state and replies"
+
+[dependencies]
