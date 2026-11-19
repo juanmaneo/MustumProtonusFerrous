@@ -38,8 +38,16 @@ mod edge_checks;
 #[cfg(test)]
 mod oracle_checks;
 
-pub use chars::{is_default_ignorable, is_whitespace, is_zero_width};
+pub use chars::{is_default_ignorable, is_whitespace};
 pub use container::{container_type, ContainerType};
 pub use gasp::gasp_flags;
 pub use table::Table;
 pub use vdmx::vdmx_size;
+
+/// `opentype_is_zero_width`: the code points that take no advance.
+pub fn is_zero_width(codepoint: u32) -> bool {
+    matches!(
+        codepoint,
+        0x034f | 0x061c | 0xfeff | 0x180b..=0x180e | 0x200b..=0x200f
+    )
+}

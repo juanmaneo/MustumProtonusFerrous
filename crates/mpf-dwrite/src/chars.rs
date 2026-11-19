@@ -1,14 +1,6 @@
 //! The code point classes that `opentype.c` uses when it shapes text. Each class is a fixed list of
 //! Unicode ranges, and the ranges below are the ones the C code lists in its comments.
 
-/// `opentype_is_zero_width`: the code points that take no advance.
-pub fn is_zero_width(codepoint: u32) -> bool {
-    matches!(
-        codepoint,
-        0x034f | 0x061c | 0xfeff | 0x180b..=0x180e | 0x200b..=0x200f
-    )
-}
-
 /// `opentype_is_default_ignorable`: the code points that a renderer skips when no font covers
 /// them. The C early return for code points below 0x80 is implied by the ranges, which all start
 /// above it.
