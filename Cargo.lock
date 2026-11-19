@@ -7,11 +7,19 @@ name = "mpf-advapi32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-appwiz_cpl"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-bcp47langs"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-bluetoothapis"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-browseui"
 version = "0.1.0"
 
 [[package]]
@@ -32,6 +40,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-compstui"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-concrt140"
 version = "0.1.0"
 
 [[package]]
@@ -60,11 +72,27 @@ name = "mpf-credui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-d3dx11_43"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dpwsockx"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dsdmo"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dssenh"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-dwmapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dxva2"
 version = "0.1.0"
 
 [[package]]
@@ -80,6 +108,14 @@ dependencies = [
 
 [[package]]
 name = "mpf-graphics"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-hid"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-hidclass_sys"
 version = "0.1.0"
 
 [[package]]
@@ -100,6 +136,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-imagehlp"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-inetcpl_cpl"
 version = "0.1.0"
 
 [[package]]
@@ -143,6 +183,30 @@ name = "mpf-localui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mcicda"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mciqtz32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mciseq"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mciwave"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-midimap"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mp3dmod"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msadp32_acm"
 version = "0.1.0"
 
@@ -176,6 +240,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-msvidc32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvproc"
 version = "0.1.0"
 
 [[package]]
@@ -219,6 +287,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-oledlg"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-opencl"
 version = "0.1.0"
 
 [[package]]
@@ -286,6 +358,10 @@ name = "mpf-t2embed"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-twinapi_appcore"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ucrtbase"
 version = "0.1.0"
 
@@ -328,6 +404,10 @@ name = "mpf-winemapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wineusb_sys"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wing32"
 version = "0.1.0"
 
@@ -336,7 +416,15 @@ name = "mpf-winnt"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wintab32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wlanapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wmiutils"
 version = "0.1.0"
 
 [[package]]
@@ -345,6 +433,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wtsapi32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wuapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-xactengine3_7"
 version = "0.1.0"
 
 [[package]]
