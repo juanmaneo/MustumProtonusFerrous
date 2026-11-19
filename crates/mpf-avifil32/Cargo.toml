@@ -1,0 +1,6 @@
+[package]
+name = "mpf-avifil32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "avifil32 AVI helpers for MPF: extra chunk storage, CLSID strings and stream time conversions"
