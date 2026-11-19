@@ -1,0 +1,8 @@
+[package]
+name = "mpf-comsvcs"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "comsvcs subset for MPF: GUID text parser and new: moniker display-name split"
+
+[dependencies]
