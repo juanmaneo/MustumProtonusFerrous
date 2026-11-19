@@ -125,3 +125,9 @@ dlls/mciqtz32         mpf-mciqtz32        partial  P3
 dlls/hid              mpf-hid             partial  P3
 dlls/dpwsockx         mpf-dpwsockx        partial  P3
 dlls/concrt140        mpf-concrt140       partial  P3
+dlls/comsvcs          mpf-comsvcs         partial  P3
+dlls/d2d1             mpf-d2d1            partial  P3
+dlls/msi              mpf-msi             partial  P3
+dlls/dwrite           mpf-dwrite          partial  P3
+dlls/avifil32         mpf-avifil32        partial  P3
+dlls/mfplat           mpf-mfplat          partial  P3

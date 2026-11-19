@@ -11,6 +11,10 @@ name = "mpf-appwiz_cpl"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-avifil32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-bcp47langs"
 version = "0.1.0"
 
@@ -43,6 +47,10 @@ name = "mpf-compstui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-comsvcs"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-concrt140"
 version = "0.1.0"
 
@@ -72,6 +80,10 @@ name = "mpf-credui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-d2d1"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d3dx11_43"
 version = "0.1.0"
 
@@ -89,6 +101,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-dwmapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dwrite"
 version = "0.1.0"
 
 [[package]]
@@ -199,6 +215,10 @@ name = "mpf-mciwave"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mfplat"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-midimap"
 version = "0.1.0"
 
@@ -228,6 +248,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-msgsm32_acm"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msi"
 version = "0.1.0"
 
 [[package]]
