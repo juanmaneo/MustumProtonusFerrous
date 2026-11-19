@@ -2,6 +2,8 @@
 
 use crate::abi::*;
 
+pub use crate::route;
+
 /// The device id of the session instance, which takes the messages no device owns.
 pub const SESSION_DEVICE: u32 = 0xFFFF_FFFF;
 
@@ -37,41 +39,6 @@ pub enum Route {
     Unrecognized,
     /// A message the driver does not handle. It goes to `DefDriverProc`.
     Default,
-}
-
-/// Routes a message to `MCIQTZ_DriverProc`. Driver-level messages come first, then the session
-/// instance, then the device commands.
-pub fn route(msg: u32, dev_id: u32) -> Route {
-    match msg {
-        DRV_LOAD | DRV_FREE | DRV_ENABLE | DRV_DISABLE | DRV_QUERYCONFIGURE => Route::Reply(1),
-        DRV_OPEN => Route::DrvOpen,
-        DRV_CLOSE => Route::DrvClose,
-        DRV_CONFIGURE => Route::DrvConfigure,
-        DRV_INSTALL | DRV_REMOVE => Route::Reply(DRVCNF_RESTART),
-        _ if dev_id == SESSION_DEVICE => Route::Reply(1),
-        MCI_OPEN_DRIVER => Route::Command(Command::Open),
-        MCI_CLOSE_DRIVER => Route::Command(Command::Close),
-        MCI_PLAY => Route::Command(Command::Play),
-        MCI_SEEK => Route::Command(Command::Seek),
-        MCI_STOP => Route::Command(Command::Stop),
-        MCI_PAUSE => Route::Command(Command::Pause),
-        MCI_RESUME => Route::Command(Command::Resume),
-        MCI_GETDEVCAPS => Route::Command(Command::GetDevCaps),
-        MCI_SET => Route::Command(Command::Set),
-        MCI_STATUS => Route::Command(Command::Status),
-        MCI_WHERE => Route::Command(Command::Where),
-        MCI_SETAUDIO => Route::Command(Command::SetAudio),
-        MCI_UPDATE => Route::Command(Command::Update),
-        MCI_WINDOW => Route::Command(Command::Window),
-        MCI_PUT => Route::Command(Command::Put),
-        MCI_RECORD | MCI_INFO | MCI_LOAD | MCI_SAVE | MCI_FREEZE | MCI_REALIZE | MCI_UNFREEZE
-        | MCI_STEP | MCI_COPY | MCI_CUT | MCI_DELETE | MCI_PASTE | MCI_CUE | MCI_CAPTURE
-        | MCI_MONITOR | MCI_RESERVE | MCI_SIGNAL | MCI_SETVIDEO | MCI_QUALITY | MCI_LIST
-        | MCI_UNDO | MCI_CONFIGURE | MCI_RESTORE | MCI_SPIN | MCI_ESCAPE | MCI_OPEN | MCI_CLOSE => {
-            Route::Unrecognized
-        }
-        _ => Route::Default,
-    }
 }
 
 /// The return value of `MCIQTZ_drvOpen`. The session instance gets [SESSION_DEVICE]. A failed
