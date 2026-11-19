@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3dx11_43"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d3dx11_43 subset for MPF: texture format mapping, image info and load-info defaults"
+
+[dependencies]
