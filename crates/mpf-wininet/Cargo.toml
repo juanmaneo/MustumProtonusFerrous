@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wininet"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wininet subset for MPF: HTTP date parsing, proxy bypass domain match, cookie domain legality and header token checks"
+
+[dependencies]
