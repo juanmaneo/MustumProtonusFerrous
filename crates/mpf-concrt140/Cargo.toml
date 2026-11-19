@@ -1,0 +1,8 @@
+[package]
+name = "mpf-concrt140"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "concrt140 subset for MPF: headless concurrency container index and sizing helpers"
+
+[dependencies]
