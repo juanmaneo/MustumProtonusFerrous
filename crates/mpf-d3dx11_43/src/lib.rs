@@ -37,9 +37,8 @@ pub use format::{
     D3dxPixelFormatId, DxgiFormat,
 };
 pub use image::{
-    d3dx11_image_file_format_from_d3dx_image_file_format, d3dx11_image_info_from_d3dx_image,
-    D3dx11ImageFileFormat, D3dxImage, D3dxImageFileFormat, D3dxResourceType, ImageInfo,
-    ResourceDimension,
+    d3dx11_image_file_format_from_d3dx_image_file_format, D3dx11ImageFileFormat, D3dxImage,
+    D3dxImageFileFormat, D3dxResourceType, ImageInfo, ResourceDimension,
 };
 pub use load_info::{init_load_info, ImageLoadInfo};
 
@@ -48,3 +47,49 @@ pub type HResult = i32;
 
 /// `E_FAIL`.
 pub const E_FAIL: HResult = 0x8000_4005_u32 as HResult;
+
+use crate::format::{DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN};
+
+/// `D3D11_RESOURCE_MISC_TEXTURECUBE`, from `include/d3d11.idl`.
+const D3D11_RESOURCE_MISC_TEXTURECUBE: u32 = 0x0000_0004;
+
+/// `d3dx11_image_info_from_d3dx_image`. Fails with `E_FAIL` for an image that has no
+/// `D3DX11_IFF` equivalent, a pixel format without a DXGI format, or an unsupported resource
+/// type. Wine leaves `info` partly written on failure, and callers discard it, so no partial
+/// value is returned here.
+pub fn d3dx11_image_info_from_d3dx_image(image: &D3dxImage) -> Result<ImageInfo, HResult> {
+    let image_file_format =
+        d3dx11_image_file_format_from_d3dx_image_file_format(image.image_file_format)
+            .ok_or(E_FAIL)?;
+
+    let format = match image.image_file_format {
+        D3dxImageFileFormat::DdsDxt10 => dxgi_format_from_d3dx_pixel_format_id(image.format),
+        D3dxImageFileFormat::Dds => dxgi_format_from_legacy_dds_d3dx_pixel_format_id(image.format),
+        _ => DXGI_FORMAT_R8G8B8A8_UNORM,
+    };
+    if format == DXGI_FORMAT_UNKNOWN {
+        return Err(E_FAIL);
+    }
+
+    let (resource_dimension, misc_flags) = match image.resource_type {
+        D3dxResourceType::Texture2d => (ResourceDimension::Texture2d, 0),
+        D3dxResourceType::CubeTexture => (
+            ResourceDimension::Texture2d,
+            D3D11_RESOURCE_MISC_TEXTURECUBE,
+        ),
+        D3dxResourceType::Texture3d => (ResourceDimension::Texture3d, 0),
+        D3dxResourceType::Unknown | D3dxResourceType::Texture1d => return Err(E_FAIL),
+    };
+
+    Ok(ImageInfo {
+        width: image.width,
+        height: image.height,
+        depth: image.depth,
+        array_size: image.layer_count,
+        mip_levels: image.mip_levels,
+        misc_flags,
+        format,
+        resource_dimension,
+        image_file_format,
+    })
+}

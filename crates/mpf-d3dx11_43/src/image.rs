@@ -1,14 +1,7 @@
-//! Image info from `texture.c`: `d3dx11_image_info_from_d3dx_image` and the image file format
-//! mapping it depends on.
+//! Image info types and the image file format mapping from `texture.c`. The image info
+//! derivation itself lives in the crate root.
 
-use crate::format::{
-    dxgi_format_from_d3dx_pixel_format_id, dxgi_format_from_legacy_dds_d3dx_pixel_format_id,
-    D3dxPixelFormatId, DxgiFormat, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_UNKNOWN,
-};
-use crate::{HResult, E_FAIL};
-
-/// `D3D11_RESOURCE_MISC_TEXTURECUBE`, from `include/d3d11.idl`.
-const D3D11_RESOURCE_MISC_TEXTURECUBE: u32 = 0x0000_0004;
+use crate::format::{D3dxPixelFormatId, DxgiFormat};
 
 /// `enum d3dx_image_file_format` of `dlls/d3dx9_36/d3dx_helpers.h`, without the `FORCE_DWORD`
 /// sentinel.
@@ -107,45 +100,4 @@ pub fn d3dx11_image_file_format_from_d3dx_image_file_format(
         | D3dxImageFileFormat::Hdr
         | D3dxImageFileFormat::Pfm => None,
     }
-}
-
-/// `d3dx11_image_info_from_d3dx_image`. Fails with `E_FAIL` for an image that has no
-/// `D3DX11_IFF` equivalent, a pixel format without a DXGI format, or an unsupported resource
-/// type. Wine leaves `info` partly written on failure, and callers discard it, so no partial
-/// value is returned here.
-pub fn d3dx11_image_info_from_d3dx_image(image: &D3dxImage) -> Result<ImageInfo, HResult> {
-    let image_file_format =
-        d3dx11_image_file_format_from_d3dx_image_file_format(image.image_file_format)
-            .ok_or(E_FAIL)?;
-
-    let format = match image.image_file_format {
-        D3dxImageFileFormat::DdsDxt10 => dxgi_format_from_d3dx_pixel_format_id(image.format),
-        D3dxImageFileFormat::Dds => dxgi_format_from_legacy_dds_d3dx_pixel_format_id(image.format),
-        _ => DXGI_FORMAT_R8G8B8A8_UNORM,
-    };
-    if format == DXGI_FORMAT_UNKNOWN {
-        return Err(E_FAIL);
-    }
-
-    let (resource_dimension, misc_flags) = match image.resource_type {
-        D3dxResourceType::Texture2d => (ResourceDimension::Texture2d, 0),
-        D3dxResourceType::CubeTexture => (
-            ResourceDimension::Texture2d,
-            D3D11_RESOURCE_MISC_TEXTURECUBE,
-        ),
-        D3dxResourceType::Texture3d => (ResourceDimension::Texture3d, 0),
-        D3dxResourceType::Unknown | D3dxResourceType::Texture1d => return Err(E_FAIL),
-    };
-
-    Ok(ImageInfo {
-        width: image.width,
-        height: image.height,
-        depth: image.depth,
-        array_size: image.layer_count,
-        mip_levels: image.mip_levels,
-        misc_flags,
-        format,
-        resource_dimension,
-        image_file_format,
-    })
 }
