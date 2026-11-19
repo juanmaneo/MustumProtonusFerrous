@@ -52,8 +52,8 @@ pub use color::{background_color, Ayuv16};
 pub use geometry::{intersect_rect, is_rect_empty, Rect};
 pub use handles::{DeviceHandles, Handle};
 pub use service::{
-    check_substreams, create_surfaces, device_guids, fourcc, processor_caps, render_target_formats,
-    service_caps, surface_count, D3dFormat, Device, ProcessorCaps, A8R8G8B8, NV12, X8R8G8B8, YUY2,
+    create_surfaces, device_guids, fourcc, processor_caps, render_target_formats, service_caps,
+    surface_count, D3dFormat, Device, ProcessorCaps, A8R8G8B8, NV12, X8R8G8B8, YUY2,
 };
 
 /// A Win32 `HRESULT`.
@@ -71,3 +71,13 @@ pub const E_INVALIDARG: HRESULT = 0x8007_0057u32 as i32;
 pub const DXVA2_E_NOT_INITIALIZED: HRESULT = 0x8004_1000u32 as i32;
 /// `DXVA2_E_NEW_VIDEO_DEVICE`.
 pub const DXVA2_E_NEW_VIDEO_DEVICE: HRESULT = 0x8004_1001u32 as i32;
+
+/// The substream limit in `CreateVideoProcessor`. The C body does not check the device GUID,
+/// so neither does this check.
+pub fn check_substreams(max_substreams: u32) -> Result<(), HRESULT> {
+    if max_substreams >= 16 {
+        Err(E_INVALIDARG)
+    } else {
+        Ok(())
+    }
+}

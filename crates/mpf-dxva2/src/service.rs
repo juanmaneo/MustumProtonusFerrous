@@ -146,13 +146,3 @@ pub fn create_surfaces<T>(
     let count = surface_count(backbuffers)?;
     (0..count).map(|_| create()).collect()
 }
-
-/// The substream limit in `CreateVideoProcessor`. The C body does not check the device GUID,
-/// so neither does this check.
-pub fn check_substreams(max_substreams: u32) -> Result<(), HRESULT> {
-    if max_substreams >= 16 {
-        Err(E_INVALIDARG)
-    } else {
-        Ok(())
-    }
-}
