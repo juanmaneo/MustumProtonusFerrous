@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d2d1"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d2d1 subset for MPF: exact orientation predicate, stroke hit tests, arc radius and Bezier distance helpers, bitmap format and option checks"
+
+[dependencies]
