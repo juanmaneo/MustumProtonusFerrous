@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wintab32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dlls/wintab32 subset for MPF: tablet context state, packet queue and axis scaling logic"
+
+[dependencies]
