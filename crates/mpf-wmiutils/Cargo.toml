@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wmiutils"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wmiutils subset for MPF: object path parsing and text, GetInfo and path state, status code text"
+
+[dependencies]
