@@ -1,0 +1,8 @@
+[package]
+name = "mpf-cryptnet"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "cryptnet subset for MPF: portable OID, path escape, and OCSP status mapping"
+
+[dependencies]
