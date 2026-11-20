@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msado15"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msado15 subset for MPF: the Find criteria parser that splits a column, operator and value"
+
+[dependencies]
