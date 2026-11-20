@@ -1,0 +1,8 @@
+[package]
+name = "mpf-crypt32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "crypt32 subset for MPF: CryptBinaryToStringA and CryptStringToBinaryA byte codecs (base64, PEM headers, binary, raw and string hex)"
+
+[dependencies]
