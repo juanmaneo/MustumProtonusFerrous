@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msvfw32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msvfw32 subset for MPF: DIB sizing and FOURCC comparison helpers"
+
+[dependencies]
