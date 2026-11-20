@@ -17,12 +17,16 @@ use std::process::{Child, Command, ExitCode, Stdio};
 /// Metrics that must be fully covered in every file.
 const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
-/// Source files that hold only constants or `mod` declarations, which
-/// llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 3] = [
+/// Source files that hold only constants, `mod` declarations or re-exports,
+/// which llvm-cov never lists because they contain no code.
+const NO_CODE_FILES: [&str; 7] = [
+    "crates/mpf-hhctrl_ocx/src/lib.rs",
     "crates/mpf-iccvid/src/oracle.rs",
-    "crates/mpf-nsi/src/oracle_data.rs",
+    "crates/mpf-mfsrcsnk/src/lib.rs",
+    "crates/mpf-mountmgr_sys/src/lib.rs",
+    "crates/mpf-msvfw32/src/lib.rs",
     "crates/mpf-ntdll/src/lib.rs",
+    "crates/mpf-nsi/src/oracle_data.rs",
 ];
 
 /// Runs the workspace tests under coverage and prints the usual table.
