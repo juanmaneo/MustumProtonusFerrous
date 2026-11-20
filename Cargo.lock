@@ -39,6 +39,10 @@ name = "mpf-cabinet"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-cards"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cli"
 version = "0.1.0"
 dependencies = [
@@ -696,6 +700,10 @@ name = "mpf-wmphoto"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wnaspi32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wow64"
 version = "0.1.0"
 
@@ -721,6 +729,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-xmllite"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-xtajit64"
 version = "0.1.0"
 
 [[package]]

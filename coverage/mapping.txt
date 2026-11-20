@@ -195,3 +195,5 @@ dlls/mmdevapi         mpf-mmdevapi        partial  P3
 dlls/taskschd         mpf-taskschd        partial  P3
 dlls/winebth.sys      mpf-winebth_sys     partial  P3
 dlls/amstream         mpf-amstream        partial  P3
+dlls/wnaspi32         mpf-wnaspi32        partial  P3
+dlls/xtajit64         mpf-xtajit64        partial  P3
