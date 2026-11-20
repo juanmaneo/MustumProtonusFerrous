@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wow64win"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wow64win subset for MPF: GDI handle-type extraction from 32-bit handle values"
+
+[dependencies]
