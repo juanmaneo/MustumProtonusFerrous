@@ -1,4 +1,4 @@
-> **⚠️ Work in progress.** MPF is in early development (Phases 0–4 done: loader, ntdll, kernel32/advapi32 subset, headless user32/gdi32, the dxvk/vkd3d config layer, and the Proton `proton` script + umu-launcher equivalents `mpf-proton`/`mpf-umu`; Phase 5 in progress: the `dlls/` inventory with Proton game-compatibility priorities and the continuous reference-vs-port comparison are in (`cargo xtask dlls`, `cargo xtask compare-all`), porting the 744 `dlls/` components remains — first P1 port `mpf-shlwapi` is in). APIs, crate layout, and behavior will change without notice, and it cannot run Windows applications yet. Do not use it for anything that needs to work.
+> **⚠️ Work in progress.** MPF is in early development and cannot run Windows applications yet. Phases 0–4 are done: the PE loader, a subset of ntdll, kernel32 and advapi32, headless user32 and gdi32, the dxvk/vkd3d configuration layer, and Rust versions of Proton's `proton` script and umu-launcher (`mpf-proton`, `mpf-umu`). Phase 5 is in progress: 166 of the 744 `dlls/` components have a partial port crate, 8 stay native, 5 are todo, and the rest are not ported yet (see `coverage/mapping.txt`). APIs, crate layout, and behavior will change without notice. Do not use it for anything that needs to work.
 
 # Mustum Protonus Ferrous (MPF)
 
@@ -15,7 +15,7 @@ A Rust port of Wine (Proton flavour), built incrementally, one component at a ti
 cargo test --workspace
 cargo xtask compare dlls/kernel32 mpf-kernel32   # diff one reference dir vs its port
 cargo xtask compare-all [--watch SECONDS]         # every mapped component, report in target/compare/report.txt
-cargo xtask dlls                                  # the reference dlls/ inventory with priorities
+cargo xtask dlls                                  # the reference dlls/ inventory with port status
 cargo xtask coverage
 ```
 

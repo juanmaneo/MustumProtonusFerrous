@@ -35,15 +35,15 @@ raw diffs, and ends with totals. Rows whose reference dir or port crate is
 missing are listed as skipped; a `diff` that itself fails (exit above 1)
 makes the command exit 1 after writing the report.
 
-## The dlls inventory and priorities
+## The dlls inventory
 
 ```sh
 cargo xtask dlls
 ```
 
 Lists every component of `repos/wine/dlls` with its port status
-(`ported`/`partial`/`planned`/`native`/`todo`) and its Proton
-game-compatibility priority, sorted P1 first, plus a per-status summary.
+(`ported`/`partial`/`planned`/`native`/`todo`), sorted by name, plus a
+per-status summary.
 The classification comes from `coverage/mapping.txt` (format in the file
 header); components with no mapping row show as `todo` / `-`.
 

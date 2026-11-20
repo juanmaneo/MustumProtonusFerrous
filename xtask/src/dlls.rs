@@ -1,8 +1,7 @@
 //! The `dlls` command: the inventory of the reference Wine `dlls/` components
-//! with their port status and Proton game-compatibility priority. The
-//! classification comes from `coverage/mapping.txt` (see its header for the
-//! format); components of the reference tree with no mapping row are `todo`
-//! and unranked.
+//! with their port status. The classification comes from `coverage/mapping.txt`
+//! (see its header for the format); components of the reference tree with no
+//! mapping row are `todo`.
 
 use std::fmt;
 use std::fs;
@@ -57,50 +56,6 @@ impl fmt::Display for Status {
     }
 }
 
-/// The Proton game-compatibility priority: P1 is ported first. Declared in
-/// this order so the derived `Ord` sorts P1 before P2 before P3 before
-/// unranked.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Priority {
-    /// Loaded by virtually every game run under Proton.
-    P1,
-    /// Common.
-    P2,
-    /// Rare or specialized.
-    P3,
-    /// Not ranked yet.
-    Unranked,
-}
-
-impl Priority {
-    /// Parses the `priority` field of a mapping row (`-` means unranked).
-    fn parse(text: &str) -> Result<Self, String> {
-        match text {
-            "P1" => Ok(Priority::P1),
-            "P2" => Ok(Priority::P2),
-            "P3" => Ok(Priority::P3),
-            "-" => Ok(Priority::Unranked),
-            other => Err(format!("unknown priority `{other}` (P1 | P2 | P3 | -)")),
-        }
-    }
-
-    /// The `priority` field of a mapping row.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Priority::P1 => "P1",
-            Priority::P2 => "P2",
-            Priority::P3 => "P3",
-            Priority::Unranked => "-",
-        }
-    }
-}
-
-impl fmt::Display for Priority {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
 /// One row of `coverage/mapping.txt`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Row {
@@ -110,13 +65,11 @@ pub struct Row {
     pub krate: String,
     /// Port status.
     pub status: Status,
-    /// Proton game-compatibility priority.
-    pub priority: Priority,
 }
 
-/// Parses a whole `coverage/mapping.txt`: one `wine-subdir crate status
-/// priority` row per line, `#` comments and blank lines ignored. Errors name
-/// the 1-based line.
+/// Parses a whole `coverage/mapping.txt`: one `wine-subdir crate status` row
+/// per line, `#` comments and blank lines ignored. Errors name the 1-based
+/// line.
 pub fn parse_mapping(text: &str) -> Result<Vec<Row>, String> {
     let mut rows = Vec::new();
     for (index, line) in text.lines().enumerate() {
@@ -126,21 +79,19 @@ pub fn parse_mapping(text: &str) -> Result<Vec<Row>, String> {
         }
         let at = |what: String| format!("mapping line {}: {what}", index + 1);
         let fields: Vec<&str> = line.split_whitespace().collect();
-        let [wine_dir, krate, status, priority] = match fields.as_slice() {
-            [wine_dir, krate, status, priority] => [*wine_dir, *krate, *status, *priority],
+        let [wine_dir, krate, status] = match fields.as_slice() {
+            [wine_dir, krate, status] => [*wine_dir, *krate, *status],
             _ => {
                 return Err(at(
-                    "expected 4 fields: <wine-subdir> <crate> <status> <priority>".to_string(),
+                    "expected 3 fields: <wine-subdir> <crate> <status>".to_string()
                 ))
             }
         };
         let status = Status::parse(status).map_err(at)?;
-        let priority = Priority::parse(priority).map_err(at)?;
         rows.push(Row {
             wine_dir: wine_dir.to_string(),
             krate: krate.to_string(),
             status,
-            priority,
         });
     }
     Ok(rows)
@@ -155,8 +106,6 @@ pub struct Component {
     pub krate: String,
     /// Port status.
     pub status: Status,
-    /// Priority.
-    pub priority: Priority,
     /// Whether the component exists in the reference tree (a mapping row can
     /// name a directory the pinned reference no longer has).
     pub in_reference: bool,
@@ -164,7 +113,7 @@ pub struct Component {
 
 /// The inventory: every directory of `dlls_dir`, classified by `mapping`,
 /// plus mapping rows under `dlls/` with no matching directory (marked
-/// `in_reference: false`). Sorted by priority, then name.
+/// `in_reference: false`). Sorted by name.
 pub fn inventory(dlls_dir: &Path, mapping: &[Row]) -> Result<Vec<Component>, String> {
     // A directory entry that fails to read is skipped, not fatal: the
     // inventory is a best-effort listing of the reference tree.
@@ -184,14 +133,12 @@ pub fn inventory(dlls_dir: &Path, mapping: &[Row]) -> Result<Vec<Component>, Str
                     name: wine_dir,
                     krate: row.krate.clone(),
                     status: row.status,
-                    priority: row.priority,
                     in_reference: true,
                 },
                 None => Component {
                     name: wine_dir,
                     krate: "-".to_string(),
                     status: Status::Todo,
-                    priority: Priority::Unranked,
                     in_reference: true,
                 },
             }
@@ -206,12 +153,11 @@ pub fn inventory(dlls_dir: &Path, mapping: &[Row]) -> Result<Vec<Component>, Str
                 name: row.wine_dir.clone(),
                 krate: row.krate.clone(),
                 status: row.status,
-                priority: row.priority,
                 in_reference: false,
             });
         }
     }
-    components.sort_by(|a, b| (a.priority, &a.name).cmp(&(b.priority, &b.name)));
+    components.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(components)
 }
 
@@ -225,8 +171,8 @@ pub fn render(dlls_dir: &Path, components: &[Component]) -> String {
             "  (not in the reference tree)".to_string()
         };
         out.push_str(&format!(
-            "{:24} {:8} {:2} {}{}\n",
-            component.name, component.status, component.priority, component.krate, note
+            "{:24} {:8} {}{}\n",
+            component.name, component.status, component.krate, note
         ));
     }
     let count = |status: Status| components.iter().filter(|c| c.status == status).count();
@@ -299,27 +245,8 @@ mod tests {
     }
 
     #[test]
-    fn priorities_parse_display_and_sort() {
-        for (text, priority) in [
-            ("P1", Priority::P1),
-            ("P2", Priority::P2),
-            ("P3", Priority::P3),
-            ("-", Priority::Unranked),
-        ] {
-            assert_eq!(Priority::parse(text), Ok(priority));
-            assert_eq!(priority.to_string(), text);
-        }
-        assert!(Priority::parse("p1")
-            .unwrap_err()
-            .contains("unknown priority `p1`"));
-        assert!(Priority::P1 < Priority::P2);
-        assert!(Priority::P2 < Priority::P3);
-        assert!(Priority::P3 < Priority::Unranked);
-    }
-
-    #[test]
     fn mapping_parses_rows_and_ignores_comments_and_blanks() {
-        let text = "# comment\n\n  \ndlls/a mpf-a ported P1\n  loader mpf-loader ported P1  \n";
+        let text = "# comment\n\n  \ndlls/a mpf-a ported\n  loader mpf-loader ported  \n";
         let rows = parse_mapping(text).unwrap();
         assert_eq!(
             rows,
@@ -328,13 +255,11 @@ mod tests {
                     wine_dir: "dlls/a".into(),
                     krate: "mpf-a".into(),
                     status: Status::Ported,
-                    priority: Priority::P1
                 },
                 Row {
                     wine_dir: "loader".into(),
                     krate: "mpf-loader".into(),
                     status: Status::Ported,
-                    priority: Priority::P1
                 },
             ]
         );
@@ -344,19 +269,19 @@ mod tests {
 
     #[test]
     fn mapping_errors_name_the_line() {
-        let error = parse_mapping("dlls/a mpf-a ported P1\ndlls/b mpf-b\n").unwrap_err();
+        let error = parse_mapping("dlls/a mpf-a ported\ndlls/b mpf-b\n").unwrap_err();
         assert_eq!(
             error,
-            "mapping line 2: expected 4 fields: <wine-subdir> <crate> <status> <priority>"
+            "mapping line 2: expected 3 fields: <wine-subdir> <crate> <status>"
         );
-        let error = parse_mapping("dlls/a mpf-a weird P1").unwrap_err();
+        let error = parse_mapping("dlls/a mpf-a ported P1\n").unwrap_err();
+        assert_eq!(
+            error,
+            "mapping line 1: expected 3 fields: <wine-subdir> <crate> <status>"
+        );
+        let error = parse_mapping("dlls/a mpf-a weird").unwrap_err();
         assert!(
             error.starts_with("mapping line 1: unknown status `weird`"),
-            "{error}"
-        );
-        let error = parse_mapping("dlls/a mpf-a ported P9").unwrap_err();
-        assert!(
-            error.starts_with("mapping line 1: unknown priority `P9`"),
             "{error}"
         );
     }
@@ -375,29 +300,28 @@ mod tests {
     }
 
     #[test]
-    fn inventory_classifies_scanned_components_and_sorts_by_priority() {
+    fn inventory_classifies_scanned_components_and_sorts_by_name() {
         let (_tmp, _root, refs) = fixture(&["c", "a", "b"]);
         let mapping = parse_mapping(
-            "dlls/b mpf-b partial P2\ndlls/a mpf-a ported P1\ndlls/ghost mpf-ghost planned P3\nloader mpf-loader ported P1\n",
+            "dlls/b mpf-b partial\ndlls/a mpf-a ported\ndlls/ghost mpf-ghost planned\nloader mpf-loader ported\n",
         )
         .unwrap();
         let dlls_dir = refs.join("wine").join("dlls");
         let components = inventory(&dlls_dir, &mapping).unwrap();
         let names: Vec<&str> = components.iter().map(|c| c.name.as_str()).collect();
-        // P1 first, then P2, then P3, then the unranked, each by name; the
-        // `loader` row is not under dlls/ and does not join the inventory.
-        assert_eq!(names, ["dlls/a", "dlls/b", "dlls/ghost", "dlls/c"]);
+        // Sorted by name; the `loader` row is not under dlls/ and does not
+        // join the inventory.
+        assert_eq!(names, ["dlls/a", "dlls/b", "dlls/c", "dlls/ghost"]);
         assert_eq!(components[0].krate, "mpf-a");
         assert_eq!(components[0].status, Status::Ported);
         assert!(
-            !components[2].in_reference,
+            !components[3].in_reference,
             "the ghost row is not in the reference tree"
         );
-        let unranked = &components[3];
-        assert_eq!(unranked.krate, "-");
-        assert_eq!(unranked.status, Status::Todo);
-        assert_eq!(unranked.priority, Priority::Unranked);
-        assert!(unranked.in_reference);
+        let unmapped = &components[2];
+        assert_eq!(unmapped.krate, "-");
+        assert_eq!(unmapped.status, Status::Todo);
+        assert!(unmapped.in_reference);
     }
 
     #[test]
@@ -427,7 +351,7 @@ mod tests {
     #[test]
     fn render_lists_every_component_and_the_summary() {
         let (_tmp, _root, refs) = fixture(&["a", "b"]);
-        let mapping = parse_mapping("dlls/a mpf-a ported P1\ndlls/ghost - todo P2\n").unwrap();
+        let mapping = parse_mapping("dlls/a mpf-a ported\ndlls/ghost - todo\n").unwrap();
         let dlls_dir = refs.join("wine").join("dlls");
         let text = render(&dlls_dir, &inventory(&dlls_dir, &mapping).unwrap());
         assert!(text.starts_with("== dlls inventory: "), "{text}");
@@ -446,11 +370,7 @@ mod tests {
     fn run_prints_the_inventory_and_succeeds() {
         let (tmp, root, refs) = fixture(&["a"]);
         fs::create_dir_all(root.join("coverage")).unwrap();
-        fs::write(
-            root.join("coverage/mapping.txt"),
-            "dlls/a mpf-a partial P1\n",
-        )
-        .unwrap();
+        fs::write(root.join("coverage/mapping.txt"), "dlls/a mpf-a partial\n").unwrap();
         assert_eq!(run(&root, &refs), ExitCode::SUCCESS);
         drop(tmp);
     }
@@ -462,11 +382,7 @@ mod tests {
         assert_eq!(run(&root, &refs), ExitCode::FAILURE);
         // Mapping present, reference tree missing.
         fs::create_dir_all(root.join("coverage")).unwrap();
-        fs::write(
-            root.join("coverage/mapping.txt"),
-            "dlls/a mpf-a ported P1\n",
-        )
-        .unwrap();
+        fs::write(root.join("coverage/mapping.txt"), "dlls/a mpf-a ported\n").unwrap();
         assert_eq!(run(&root, &tmp.0.join("empty-refs")), ExitCode::FAILURE);
         // Mapping present, wine tree present but no dlls/ dir.
         let no_dlls = tmp.0.join("refs-without-dlls");

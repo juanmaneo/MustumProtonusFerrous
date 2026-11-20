@@ -10,8 +10,7 @@
 //!                                   every SECONDS, for the continuous
 //!                                   comparison of the dev container
 //!   dlls                            inventory of the reference `dlls/`
-//!                                   components with port status and Proton
-//!                                   game-compatibility priority
+//!                                   components with port status
 //!   coverage                        run the tests under cargo-llvm-cov and fail
 //!                                   unless every file is at 100% of regions,
 //!                                   lines and functions
@@ -33,7 +32,7 @@ const USAGE: &str = "usage: cargo xtask <command>
                                   target/compare/report.txt; --watch re-runs
                                   every SECONDS (continuous, dev container)
   dlls                            inventory of the reference dlls/ components
-                                  with port status and priority
+                                  with port status
   coverage                        cargo-llvm-cov; fails unless every file is at
                                   100% of regions, lines and functions
 
@@ -273,7 +272,6 @@ mod tests {
         assert!(USAGE.contains("--watch"));
         assert!(USAGE.contains("report.txt"));
         assert!(USAGE.contains("dlls"));
-        assert!(USAGE.contains("priority"));
     }
 
     #[test]

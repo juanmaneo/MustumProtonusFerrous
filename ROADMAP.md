@@ -63,15 +63,14 @@ in the dev container for direct comparison.
 
 ## Phase 5 — coverage (current)
 
-- [x] the inventory and the priorities: `coverage/mapping.txt` maps every
-      tracked reference component to its port crate with a status and a
-      Proton game-compatibility priority (P1 first); `cargo xtask dlls`
-      prints the whole `dlls/` inventory classified by it
+- [x] the inventory: `coverage/mapping.txt` maps every tracked reference
+      component to its port crate with a status; `cargo xtask dlls` prints
+      the whole `dlls/` inventory classified by it
 - [x] continuous reference-vs-port comparison in the dev container:
       `cargo xtask compare-all [--watch SECONDS]` diffs every mapped
       component into `target/compare/report.txt`, re-running on a timer
       with `--watch`
-- [x] first P1 port: `dlls/shlwapi` path helpers as `mpf-shlwapi`
+- [x] first port: `dlls/shlwapi` path helpers as `mpf-shlwapi`
       (string-only subset, conformance case seeded from `dlls/shlwapi/tests`)
-- [ ] all 744 `dlls/` components ported, P1 first, each with conformance
-      cases seeded from its `dlls/<dll>/tests`
+- [ ] all 744 `dlls/` components ported, each with conformance cases
+      seeded from its `dlls/<dll>/tests`

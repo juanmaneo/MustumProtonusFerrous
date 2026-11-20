@@ -1,16 +1,12 @@
 # MPF port mapping: reference Wine tree (repos/wine) -> port crates (crates/).
 #
 # One row per line, whitespace-separated:
-#   <wine-subdir> <mpf-crate> <status> <priority>
+#   <wine-subdir> <mpf-crate> <status>
 #
 #   wine-subdir  path under repos/wine, e.g. dlls/kernel32
 #   mpf-crate    the port crate under crates/, or "-" when there is none yet
 #   status       ported | partial | planned | native | todo
 #                native = stays a native companion in Proton (dxvk, vkd3d-proton)
-#   priority     P1 | P2 | P3 | "-", the Proton game-compatibility order:
-#                P1 is loaded by virtually every game run under Proton
-#                (core runtime + graphics entry points), P2 common,
-#                P3 rare or specialized, "-" not yet ranked
 #
 # Blank lines and lines starting with # are ignored.
 #
@@ -22,186 +18,186 @@
 #   mpf-proton/mpf-umu  Proton's `proton` script / umu-launcher live in
 #                       repos/proton and repos/umu-launcher, not in the wine tree
 
-loader                mpf-loader      ported   P1
-programs/wineboot     mpf-wineboot    ported   P1
-include               mpf-winnt       partial  P1
-dlls/ntdll            mpf-ntdll       partial  P1
-dlls/kernel32         mpf-kernel32    partial  P1
-dlls/kernelbase          mpf-kernelbase  partial  P1
-dlls/advapi32         mpf-advapi32    partial  P1
-dlls/user32           mpf-user32      partial  P1
-dlls/gdi32            mpf-gdi32       partial  P1
-dlls/winex11.drv      mpf-graphics    native   P1
+loader                mpf-loader      ported
+programs/wineboot     mpf-wineboot    ported
+include               mpf-winnt       partial
+dlls/ntdll            mpf-ntdll       partial
+dlls/kernel32         mpf-kernel32    partial
+dlls/kernelbase          mpf-kernelbase  partial
+dlls/advapi32         mpf-advapi32    partial
+dlls/user32           mpf-user32      partial
+dlls/gdi32            mpf-gdi32       partial
+dlls/winex11.drv      mpf-graphics    native
 
-dlls/msvcrt           mpf-msvcrt      partial  P1
-dlls/ucrtbase         mpf-ucrtbase    partial  P1
-dlls/ole32            mpf-ole32       partial  P1
-dlls/oleaut32         mpf-oleaut32    partial  P1
-dlls/rpcrt4           mpf-rpcrt4      partial  P1
-dlls/shell32          mpf-shell32     partial  P1
-dlls/shlwapi          mpf-shlwapi     partial  P1
-dlls/d3d8             -               native   P1
-dlls/d3d9             -               native   P1
-dlls/d3d10            -               native   P1
-dlls/d3d10_1          -               native   P1
-dlls/d3d11            -               native   P1
-dlls/d3d12            -               native   P1
-dlls/dxgi             -               native   P1
-dlls/comctl32         -               todo     P2
-dlls/winmm            -               todo     P2
-dlls/dsound           -               todo     P2
-dlls/gdiplus          -               todo     P2
-dlls/version          mpf-version     partial  P2
-dlls/setupapi         -               todo     P2
-dlls/iyuv_32          mpf-iyuv_32     partial  P3
-dlls/msrle32          mpf-msrle32     partial  P3
-dlls/msasn1           mpf-msasn1      partial  P3
-dlls/ntdsapi          mpf-ntdsapi     partial  P3
-dlls/userenv          mpf-userenv     partial  P3
-dlls/bcp47langs       mpf-bcp47langs  partial  P3
-dlls/t2embed          mpf-t2embed     partial  P3
-dlls/dssenh           mpf-dssenh      partial  P3
-dlls/wer              mpf-wer         partial  P3
-dlls/slc              mpf-slc         partial  P3
-dlls/faultrep         mpf-faultrep    partial  P3
-dlls/imagehlp         mpf-imagehlp    partial  P3
-dlls/pdh              mpf-pdh         partial  P3
-dlls/httpapi          mpf-httpapi     partial  P3
-dlls/odbccp32         mpf-odbccp32    partial  P3
-dlls/dwmapi           mpf-dwmapi      partial  P3
-dlls/iccvid           mpf-iccvid      partial  P3
-dlls/snmpapi          mpf-snmpapi     partial  P3
-dlls/ntprint          mpf-ntprint     partial  P3
-dlls/wlanapi          mpf-wlanapi     partial  P3
-dlls/nsi              mpf-nsi         partial  P3
-dlls/credui           mpf-credui      partial  P3
-dlls/ninput           mpf-ninput      partial  P3
-dlls/bluetoothapis    mpf-bluetoothapis partial  P3
-dlls/wing32           mpf-wing32      partial  P3
-dlls/jsproxy          mpf-jsproxy     partial  P3
-dlls/serialui         mpf-serialui    partial  P3
-dlls/compstui         mpf-compstui    partial  P3
-dlls/localui          mpf-localui     partial  P3
-dlls/ir50_32          mpf-ir50_32     partial  P3
-dlls/rasapi32         mpf-rasapi32    partial  P3
-dlls/msdmo            mpf-msdmo       partial  P3
-dlls/sxs              mpf-sxs         partial  P3
-dlls/oledlg           mpf-oledlg      partial  P3
-dlls/l3codeca.acm     mpf-l3codeca_acm partial  P3
-dlls/wtsapi32         mpf-wtsapi32     partial  P3
-dlls/wmphoto          mpf-wmphoto      partial  P3
-dlls/msvidc32         mpf-msvidc32     partial  P3
-dlls/winemapi         mpf-winemapi     partial  P3
-dlls/ncrypt           mpf-ncrypt       partial  P3
-dlls/msgsm32.acm      mpf-msgsm32_acm  partial  P3
-dlls/hidparse.sys     mpf-hidparse_sys partial  P3
-dlls/msadp32.acm      mpf-msadp32_acm  partial  P3
-dlls/colorcnv         mpf-colorcnv     partial  P3
-dlls/msg711.acm       mpf-msg711_acm   partial  P3
-dlls/imaadp32.acm     mpf-imaadp32_acm partial  P3
-dlls/resampledmo      mpf-resampledmo  partial  P3
-dlls/mscms            mpf-mscms        partial  P3
-dlls/midimap          mpf-midimap         partial  P3
-dlls/appwiz.cpl       mpf-appwiz_cpl      partial  P3
-dlls/mciwave          mpf-mciwave         partial  P3
-dlls/xactengine3_7    mpf-xactengine3_7   partial  P3
-dlls/wuapi            mpf-wuapi           partial  P3
-dlls/opencl           mpf-opencl          partial  P3
-dlls/dsdmo            mpf-dsdmo           partial  P3
-dlls/mciseq           mpf-mciseq          partial  P3
-dlls/wmiutils         mpf-wmiutils        partial  P3
-dlls/wintab32         mpf-wintab32        partial  P3
-dlls/browseui         mpf-browseui        partial  P3
-dlls/hidclass.sys     mpf-hidclass_sys    partial  P3
-dlls/msvproc          mpf-msvproc         partial  P3
-dlls/dxva2            mpf-dxva2           partial  P3
-dlls/wineusb.sys      mpf-wineusb_sys     partial  P3
-dlls/mcicda           mpf-mcicda          partial  P3
-dlls/twinapi.appcore  mpf-twinapi_appcore partial  P3
-dlls/mp3dmod          mpf-mp3dmod         partial  P3
-dlls/d3dx11_43        mpf-d3dx11_43       partial  P3
-dlls/inetcpl.cpl      mpf-inetcpl_cpl     partial  P3
-dlls/mciqtz32         mpf-mciqtz32        partial  P3
-dlls/hid              mpf-hid             partial  P3
-dlls/dpwsockx         mpf-dpwsockx        partial  P3
-dlls/concrt140        mpf-concrt140       partial  P3
-dlls/comsvcs          mpf-comsvcs         partial  P3
-dlls/d2d1             mpf-d2d1            partial  P3
-dlls/msi              mpf-msi             partial  P3
-dlls/dwrite           mpf-dwrite          partial  P3
-dlls/avifil32         mpf-avifil32        partial  P3
-dlls/mfplat           mpf-mfplat          partial  P3
-dlls/rsaenh           mpf-rsaenh          partial  P3
-dlls/cabinet          mpf-cabinet         partial  P3
-dlls/itss             mpf-itss            partial  P3
-dlls/xmllite          mpf-xmllite         partial  P3
-dlls/d3dxof           mpf-d3dxof          partial  P3
-dlls/d3dcompiler_43   mpf-d3dcompiler_43  partial  P3
-dlls/d3dx9_36         mpf-d3dx9_36        partial  P3
-dlls/d3dx10_43        mpf-d3dx10_43       partial  P3
-dlls/msacm32          mpf-msacm32         partial  P3
-dlls/mlang            mpf-mlang           partial  P3
-dlls/dmusic           mpf-dmusic          partial  P3
-dlls/dmsynth          mpf-dmsynth         partial  P3
-dlls/wininet          mpf-wininet         partial  P3
-dlls/urlmon           mpf-urlmon          partial  P3
-dlls/winhttp          mpf-winhttp         partial  P3
-dlls/crypt32          mpf-crypt32         partial  P3
-dlls/windowscodecs    mpf-windowscodecs   partial  P3
-dlls/quartz           mpf-quartz          partial  P3
-dlls/wbemprox         mpf-wbemprox        partial  P3
-dlls/glu32            mpf-glu32           partial  P3
-dlls/inetcomm         mpf-inetcomm        partial  P3
-dlls/iertutil         mpf-iertutil        partial  P3
-dlls/wldap32          mpf-wldap32         partial  P3
-dlls/dnsapi           mpf-dnsapi          partial  P3
-dlls/msv1_0           mpf-msv1_0          partial  P3
-dlls/bcrypt           mpf-bcrypt          partial  P3
-dlls/dbghelp          mpf-dbghelp         partial  P3
-dlls/webservices      mpf-webservices     partial  P3
-dlls/d3drm            mpf-d3drm           partial  P3
-dlls/msvcp60          mpf-msvcp60         partial  P3
-dlls/combase          mpf-combase         partial  P3
-dlls/evr              mpf-evr             partial  P3
-dlls/netapi32         mpf-netapi32        partial  P3
-dlls/mf               mpf-mf              partial  P3
-dlls/vbscript         mpf-vbscript        partial  P3
-dlls/odbc32           mpf-odbc32          partial  P3
-dlls/imm32            mpf-imm32           partial  P3
-dlls/dinput           mpf-dinput          partial  P3
-dlls/wintrust         mpf-wintrust        partial  P3
-dlls/shcore           mpf-shcore          partial  P3
-dlls/dmime            mpf-dmime           partial  P3
-dlls/propsys          mpf-propsys         partial  P3
-dlls/riched20         mpf-riched20        partial  P3
-dlls/ddraw            mpf-ddraw           partial  P3
-dlls/winegstreamer    mpf-winegstreamer   partial  P3
-dlls/comdlg32         mpf-comdlg32        partial  P3
-dlls/comctl32_v6      mpf-comctl32_v6     partial  P3
-dlls/uiautomationcore mpf-uiautomationcore partial  P3
-dlls/ieframe          mpf-ieframe         partial  P3
-dlls/dplayx           mpf-dplayx          partial  P3
-dlls/ntoskrnl.exe     mpf-ntoskrnl_exe    partial  P3
-dlls/msado15          mpf-msado15         partial  P3
-dlls/ws2_32           mpf-ws2_32          partial  P3
-dlls/wow64            mpf-wow64           partial  P3
-dlls/wow64win         mpf-wow64win        partial  P3
-dlls/secur32          mpf-secur32         partial  P3
-dlls/winspool.drv     mpf-winspool_drv    partial  P3
-dlls/mscoree          mpf-mscoree         partial  P3
-dlls/qcap             mpf-qcap            partial  P3
-dlls/sapi             mpf-sapi            partial  P3
-dlls/mmdevapi         mpf-mmdevapi        partial  P3
-dlls/taskschd         mpf-taskschd        partial  P3
-dlls/winebth.sys      mpf-winebth_sys     partial  P3
-dlls/amstream         mpf-amstream        partial  P3
-dlls/wnaspi32         mpf-wnaspi32        partial  P3
-dlls/xtajit64         mpf-xtajit64        partial  P3
-dlls/capi2032         mpf-capi2032        partial  P3
-dlls/cryptnet         mpf-cryptnet        partial  P3
-dlls/dxdiagn          mpf-dxdiagn         partial  P3
-dlls/schannel         mpf-schannel        partial  P3
-dlls/usbd.sys         mpf-usbd_sys        partial  P3
-dlls/mfplay           mpf-mfplay          partial  P3
-dlls/oleacc           mpf-oleacc          partial  P3
-dlls/vccorlib140      mpf-vccorlib140     partial  P3
+dlls/msvcrt           mpf-msvcrt      partial
+dlls/ucrtbase         mpf-ucrtbase    partial
+dlls/ole32            mpf-ole32       partial
+dlls/oleaut32         mpf-oleaut32    partial
+dlls/rpcrt4           mpf-rpcrt4      partial
+dlls/shell32          mpf-shell32     partial
+dlls/shlwapi          mpf-shlwapi     partial
+dlls/d3d8             -               native
+dlls/d3d9             -               native
+dlls/d3d10            -               native
+dlls/d3d10_1          -               native
+dlls/d3d11            -               native
+dlls/d3d12            -               native
+dlls/dxgi             -               native
+dlls/comctl32         -               todo
+dlls/winmm            -               todo
+dlls/dsound           -               todo
+dlls/gdiplus          -               todo
+dlls/version          mpf-version     partial
+dlls/setupapi         -               todo
+dlls/iyuv_32          mpf-iyuv_32     partial
+dlls/msrle32          mpf-msrle32     partial
+dlls/msasn1           mpf-msasn1      partial
+dlls/ntdsapi          mpf-ntdsapi     partial
+dlls/userenv          mpf-userenv     partial
+dlls/bcp47langs       mpf-bcp47langs  partial
+dlls/t2embed          mpf-t2embed     partial
+dlls/dssenh           mpf-dssenh      partial
+dlls/wer              mpf-wer         partial
+dlls/slc              mpf-slc         partial
+dlls/faultrep         mpf-faultrep    partial
+dlls/imagehlp         mpf-imagehlp    partial
+dlls/pdh              mpf-pdh         partial
+dlls/httpapi          mpf-httpapi     partial
+dlls/odbccp32         mpf-odbccp32    partial
+dlls/dwmapi           mpf-dwmapi      partial
+dlls/iccvid           mpf-iccvid      partial
+dlls/snmpapi          mpf-snmpapi     partial
+dlls/ntprint          mpf-ntprint     partial
+dlls/wlanapi          mpf-wlanapi     partial
+dlls/nsi              mpf-nsi         partial
+dlls/credui           mpf-credui      partial
+dlls/ninput           mpf-ninput      partial
+dlls/bluetoothapis    mpf-bluetoothapis partial
+dlls/wing32           mpf-wing32      partial
+dlls/jsproxy          mpf-jsproxy     partial
+dlls/serialui         mpf-serialui    partial
+dlls/compstui         mpf-compstui    partial
+dlls/localui          mpf-localui     partial
+dlls/ir50_32          mpf-ir50_32     partial
+dlls/rasapi32         mpf-rasapi32    partial
+dlls/msdmo            mpf-msdmo       partial
+dlls/sxs              mpf-sxs         partial
+dlls/oledlg           mpf-oledlg      partial
+dlls/l3codeca.acm     mpf-l3codeca_acm partial
+dlls/wtsapi32         mpf-wtsapi32     partial
+dlls/wmphoto          mpf-wmphoto      partial
+dlls/msvidc32         mpf-msvidc32     partial
+dlls/winemapi         mpf-winemapi     partial
+dlls/ncrypt           mpf-ncrypt       partial
+dlls/msgsm32.acm      mpf-msgsm32_acm  partial
+dlls/hidparse.sys     mpf-hidparse_sys partial
+dlls/msadp32.acm      mpf-msadp32_acm  partial
+dlls/colorcnv         mpf-colorcnv     partial
+dlls/msg711.acm       mpf-msg711_acm   partial
+dlls/imaadp32.acm     mpf-imaadp32_acm partial
+dlls/resampledmo      mpf-resampledmo  partial
+dlls/mscms            mpf-mscms        partial
+dlls/midimap          mpf-midimap         partial
+dlls/appwiz.cpl       mpf-appwiz_cpl      partial
+dlls/mciwave          mpf-mciwave         partial
+dlls/xactengine3_7    mpf-xactengine3_7   partial
+dlls/wuapi            mpf-wuapi           partial
+dlls/opencl           mpf-opencl          partial
+dlls/dsdmo            mpf-dsdmo           partial
+dlls/mciseq           mpf-mciseq          partial
+dlls/wmiutils         mpf-wmiutils        partial
+dlls/wintab32         mpf-wintab32        partial
+dlls/browseui         mpf-browseui        partial
+dlls/hidclass.sys     mpf-hidclass_sys    partial
+dlls/msvproc          mpf-msvproc         partial
+dlls/dxva2            mpf-dxva2           partial
+dlls/wineusb.sys      mpf-wineusb_sys     partial
+dlls/mcicda           mpf-mcicda          partial
+dlls/twinapi.appcore  mpf-twinapi_appcore partial
+dlls/mp3dmod          mpf-mp3dmod         partial
+dlls/d3dx11_43        mpf-d3dx11_43       partial
+dlls/inetcpl.cpl      mpf-inetcpl_cpl     partial
+dlls/mciqtz32         mpf-mciqtz32        partial
+dlls/hid              mpf-hid             partial
+dlls/dpwsockx         mpf-dpwsockx        partial
+dlls/concrt140        mpf-concrt140       partial
+dlls/comsvcs          mpf-comsvcs         partial
+dlls/d2d1             mpf-d2d1            partial
+dlls/msi              mpf-msi             partial
+dlls/dwrite           mpf-dwrite          partial
+dlls/avifil32         mpf-avifil32        partial
+dlls/mfplat           mpf-mfplat          partial
+dlls/rsaenh           mpf-rsaenh          partial
+dlls/cabinet          mpf-cabinet         partial
+dlls/itss             mpf-itss            partial
+dlls/xmllite          mpf-xmllite         partial
+dlls/d3dxof           mpf-d3dxof          partial
+dlls/d3dcompiler_43   mpf-d3dcompiler_43  partial
+dlls/d3dx9_36         mpf-d3dx9_36        partial
+dlls/d3dx10_43        mpf-d3dx10_43       partial
+dlls/msacm32          mpf-msacm32         partial
+dlls/mlang            mpf-mlang           partial
+dlls/dmusic           mpf-dmusic          partial
+dlls/dmsynth          mpf-dmsynth         partial
+dlls/wininet          mpf-wininet         partial
+dlls/urlmon           mpf-urlmon          partial
+dlls/winhttp          mpf-winhttp         partial
+dlls/crypt32          mpf-crypt32         partial
+dlls/windowscodecs    mpf-windowscodecs   partial
+dlls/quartz           mpf-quartz          partial
+dlls/wbemprox         mpf-wbemprox        partial
+dlls/glu32            mpf-glu32           partial
+dlls/inetcomm         mpf-inetcomm        partial
+dlls/iertutil         mpf-iertutil        partial
+dlls/wldap32          mpf-wldap32         partial
+dlls/dnsapi           mpf-dnsapi          partial
+dlls/msv1_0           mpf-msv1_0          partial
+dlls/bcrypt           mpf-bcrypt          partial
+dlls/dbghelp          mpf-dbghelp         partial
+dlls/webservices      mpf-webservices     partial
+dlls/d3drm            mpf-d3drm           partial
+dlls/msvcp60          mpf-msvcp60         partial
+dlls/combase          mpf-combase         partial
+dlls/evr              mpf-evr             partial
+dlls/netapi32         mpf-netapi32        partial
+dlls/mf               mpf-mf              partial
+dlls/vbscript         mpf-vbscript        partial
+dlls/odbc32           mpf-odbc32          partial
+dlls/imm32            mpf-imm32           partial
+dlls/dinput           mpf-dinput          partial
+dlls/wintrust         mpf-wintrust        partial
+dlls/shcore           mpf-shcore          partial
+dlls/dmime            mpf-dmime           partial
+dlls/propsys          mpf-propsys         partial
+dlls/riched20         mpf-riched20        partial
+dlls/ddraw            mpf-ddraw           partial
+dlls/winegstreamer    mpf-winegstreamer   partial
+dlls/comdlg32         mpf-comdlg32        partial
+dlls/comctl32_v6      mpf-comctl32_v6     partial
+dlls/uiautomationcore mpf-uiautomationcore partial
+dlls/ieframe          mpf-ieframe         partial
+dlls/dplayx           mpf-dplayx          partial
+dlls/ntoskrnl.exe     mpf-ntoskrnl_exe    partial
+dlls/msado15          mpf-msado15         partial
+dlls/ws2_32           mpf-ws2_32          partial
+dlls/wow64            mpf-wow64           partial
+dlls/wow64win         mpf-wow64win        partial
+dlls/secur32          mpf-secur32         partial
+dlls/winspool.drv     mpf-winspool_drv    partial
+dlls/mscoree          mpf-mscoree         partial
+dlls/qcap             mpf-qcap            partial
+dlls/sapi             mpf-sapi            partial
+dlls/mmdevapi         mpf-mmdevapi        partial
+dlls/taskschd         mpf-taskschd        partial
+dlls/winebth.sys      mpf-winebth_sys     partial
+dlls/amstream         mpf-amstream        partial
+dlls/wnaspi32         mpf-wnaspi32        partial
+dlls/xtajit64         mpf-xtajit64        partial
+dlls/capi2032         mpf-capi2032        partial
+dlls/cryptnet         mpf-cryptnet        partial
+dlls/dxdiagn          mpf-dxdiagn         partial
+dlls/schannel         mpf-schannel        partial
+dlls/usbd.sys         mpf-usbd_sys        partial
+dlls/mfplay           mpf-mfplay          partial
+dlls/oleacc           mpf-oleacc          partial
+dlls/vccorlib140      mpf-vccorlib140     partial

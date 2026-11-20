@@ -241,7 +241,7 @@ pub fn run(root: &Path, refs: &Path, watch: Option<u64>, diff: &str) -> ExitCode
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dlls::{Priority, Status};
+    use crate::dlls::Status;
     use crate::testing::TempDir;
     use std::path::PathBuf;
 
@@ -318,7 +318,7 @@ mod tests {
     #[test]
     fn compare_all_diffs_every_mapped_row_and_counts() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\ndlls/b mpf-b ported P1\ndlls/ghost mpf-ghost ported P1\ndlls/noport - todo P2\n",
+            "dlls/a mpf-a ported\ndlls/b mpf-b ported\ndlls/ghost mpf-ghost ported\ndlls/noport - todo\n",
             &[("dlls/a", &["lib.rs"]), ("dlls/b", &["lib.rs", "sub/mod.rs"])],
             &[("mpf-a", &["lib.rs"]), ("mpf-b", &["lib.rs"])],
         );
@@ -357,14 +357,14 @@ mod tests {
     #[test]
     fn compare_all_skips_rows_without_a_port_src() {
         let f = fixture(
-            "dlls/a mpf-missing ported P1\n",
+            "dlls/a mpf-missing ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[],
         );
         let (outcomes, had_error) = compare_all(
             &f.root,
             &f.refs,
-            &rows("dlls/a mpf-missing ported P1\n"),
+            &rows("dlls/a mpf-missing ported\n"),
             "diff",
         )
         .unwrap();
@@ -375,14 +375,14 @@ mod tests {
     #[test]
     fn compare_all_reports_identical_trees_as_zero_differing() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
         // Make the trees identical.
         fs::write(f.root.join("crates/mpf-a/src/lib.rs"), "reference\n").unwrap();
         let (outcomes, had_error) =
-            compare_all(&f.root, &f.refs, &rows("dlls/a mpf-a ported P1\n"), "diff").unwrap();
+            compare_all(&f.root, &f.refs, &rows("dlls/a mpf-a ported\n"), "diff").unwrap();
         assert!(!had_error);
         assert_eq!(outcomes[0].differing, 0);
         assert!(outcomes[0].diff.is_empty());
@@ -391,11 +391,11 @@ mod tests {
 
     #[test]
     fn compare_all_fails_without_the_reference_tree() {
-        let f = fixture("dlls/a mpf-a ported P1\n", &[], &[("mpf-a", &["lib.rs"])]);
+        let f = fixture("dlls/a mpf-a ported\n", &[], &[("mpf-a", &["lib.rs"])]);
         let error = compare_all(
             &f.root,
             &f.tmp.0.join("empty"),
-            &rows("dlls/a mpf-a ported P1\n"),
+            &rows("dlls/a mpf-a ported\n"),
             "diff",
         )
         .unwrap_err();
@@ -409,14 +409,14 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
         // Unreadable reference subdir: counting the reference fails.
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs", "locked/x.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
         let locked = f.refs.join("wine/dlls/a/locked");
         fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
         let error =
-            compare_all(&f.root, &f.refs, &rows("dlls/a mpf-a ported P1\n"), "diff").unwrap_err();
+            compare_all(&f.root, &f.refs, &rows("dlls/a mpf-a ported\n"), "diff").unwrap_err();
         assert!(error.contains("locked"), "{error}");
         fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
         // Unreadable port subdir: counting the port fails.
@@ -424,14 +424,14 @@ mod tests {
         fs::create_dir_all(&locked).unwrap();
         fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
         let error =
-            compare_all(&f.root, &f.refs, &rows("dlls/a mpf-a ported P1\n"), "diff").unwrap_err();
+            compare_all(&f.root, &f.refs, &rows("dlls/a mpf-a ported\n"), "diff").unwrap_err();
         assert!(error.contains("locked"), "{error}");
     }
 
     #[test]
     fn compare_all_marks_a_failing_diff_and_reports_it() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
@@ -446,7 +446,7 @@ mod tests {
         let (outcomes, had_error) = compare_all(
             &f.root,
             &f.refs,
-            &rows("dlls/a mpf-a ported P1\n"),
+            &rows("dlls/a mpf-a ported\n"),
             fake.to_str().unwrap(),
         )
         .unwrap();
@@ -460,7 +460,7 @@ mod tests {
         let error = compare_all(
             &f.root,
             &f.refs,
-            &rows("dlls/a mpf-a ported P1\n"),
+            &rows("dlls/a mpf-a ported\n"),
             "mpf-no-such-diff",
         )
         .unwrap_err();
@@ -517,7 +517,7 @@ mod tests {
     #[test]
     fn run_once_writes_and_prints_the_report() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
@@ -533,7 +533,7 @@ mod tests {
     #[test]
     fn run_once_propagates_setup_errors() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
@@ -557,7 +557,7 @@ mod tests {
     #[test]
     fn run_once_reports_an_unwritable_report_path() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
@@ -580,7 +580,7 @@ mod tests {
     #[test]
     fn run_without_watch_is_a_single_pass() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
@@ -593,7 +593,7 @@ mod tests {
 
     #[test]
     fn watch_stops_immediately_on_a_setup_error() {
-        let f = fixture("dlls/a mpf-a ported P1\n", &[], &[("mpf-a", &["lib.rs"])]);
+        let f = fixture("dlls/a mpf-a ported\n", &[], &[("mpf-a", &["lib.rs"])]);
         // No reference tree: the first pass errors and the loop must not spin.
         assert_eq!(
             run(&f.root, &f.tmp.0.join("empty"), Some(0), "diff"),
@@ -604,7 +604,7 @@ mod tests {
     #[test]
     fn watch_loops_until_the_setup_breaks() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
@@ -636,7 +636,7 @@ mod tests {
     #[test]
     fn watch_stops_on_a_failing_diff() {
         let f = fixture(
-            "dlls/a mpf-a ported P1\n",
+            "dlls/a mpf-a ported\n",
             &[("dlls/a", &["lib.rs"])],
             &[("mpf-a", &["lib.rs"])],
         );
@@ -654,15 +654,13 @@ mod tests {
     }
 
     #[test]
-    fn row_statuses_and_priorities_are_reachable_for_the_report() {
+    fn row_statuses_are_reachable_for_the_report() {
         // Keep the imports used: the report renders mapping data.
         let row = Row {
             wine_dir: "dlls/x".into(),
             krate: "mpf-x".into(),
             status: Status::Partial,
-            priority: Priority::P1,
         };
         assert_eq!(row.status.as_str(), "partial");
-        assert_eq!(row.priority.as_str(), "P1");
     }
 }
