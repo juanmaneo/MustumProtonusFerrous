@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wintypes"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wintypes subset for MPF: RoParseTypeName parser, API contract presence, buffer length check, sorted-map lower bound"
+
+[dependencies]
