@@ -1,0 +1,108 @@
+//! Trust-status mappings from `dlls/wintrust/softpub.c`: `WINTRUST_TrustStatusToConfidence` and
+//! `WINTRUST_TrustStatusToError`. Both take a `CERT_TRUST_*` status word.
+
+pub const S_OK: u32 = 0;
+pub const TRUST_E_SYSTEM_ERROR: u32 = 0x8009_6001;
+pub const TRUST_E_CERT_SIGNATURE: u32 = 0x8009_6004;
+pub const TRUST_E_BASIC_CONSTRAINTS: u32 = 0x8009_6019;
+pub const CERT_E_EXPIRED: u32 = 0x800b_0101;
+pub const CERT_E_VALIDITYPERIODNESTING: u32 = 0x800b_0102;
+pub const CERT_E_CRITICAL: u32 = 0x800b_0105;
+pub const CERT_E_CHAINING: u32 = 0x800b_010a;
+pub const CERT_E_UNTRUSTEDROOT: u32 = 0x800b_0109;
+pub const CERT_E_REVOKED: u32 = 0x800b_010c;
+pub const CERT_E_REVOCATION_FAILURE: u32 = 0x800b_010e;
+pub const CERT_E_WRONG_USAGE: u32 = 0x800b_0110;
+pub const CERT_E_INVALID_POLICY: u32 = 0x800b_0113;
+pub const CERT_E_INVALID_NAME: u32 = 0x800b_0114;
+
+pub const CERT_CONFIDENCE_SIG: u32 = 0x1000_0000;
+pub const CERT_CONFIDENCE_TIME: u32 = 0x0100_0000;
+pub const CERT_CONFIDENCE_TIMENEST: u32 = 0x0010_0000;
+
+pub const CERT_TRUST_IS_NOT_TIME_VALID: u32 = 0x0000_0001;
+pub const CERT_TRUST_IS_NOT_TIME_NESTED: u32 = 0x0000_0002;
+pub const CERT_TRUST_IS_REVOKED: u32 = 0x0000_0004;
+pub const CERT_TRUST_IS_NOT_SIGNATURE_VALID: u32 = 0x0000_0008;
+pub const CERT_TRUST_IS_NOT_VALID_FOR_USAGE: u32 = 0x0000_0010;
+pub const CERT_TRUST_IS_UNTRUSTED_ROOT: u32 = 0x0000_0020;
+pub const CERT_TRUST_REVOCATION_STATUS_UNKNOWN: u32 = 0x0000_0040;
+pub const CERT_TRUST_IS_CYCLIC: u32 = 0x0000_0080;
+pub const CERT_TRUST_INVALID_EXTENSION: u32 = 0x0000_0100;
+pub const CERT_TRUST_INVALID_POLICY_CONSTRAINTS: u32 = 0x0000_0200;
+pub const CERT_TRUST_INVALID_BASIC_CONSTRAINTS: u32 = 0x0000_0400;
+pub const CERT_TRUST_INVALID_NAME_CONSTRAINTS: u32 = 0x0000_0800;
+pub const CERT_TRUST_HAS_NOT_SUPPORTED_NAME_CONSTRAINT: u32 = 0x0000_1000;
+pub const CERT_TRUST_HAS_NOT_DEFINED_NAME_CONSTRAINT: u32 = 0x0000_2000;
+pub const CERT_TRUST_HAS_NOT_PERMITTED_NAME_CONSTRAINT: u32 = 0x0000_4000;
+pub const CERT_TRUST_HAS_EXCLUDED_NAME_CONSTRAINT: u32 = 0x0000_8000;
+pub const CERT_TRUST_IS_OFFLINE_REVOCATION: u32 = 0x0100_0000;
+pub const CERT_TRUST_NO_ISSUANCE_CHAIN_POLICY: u32 = 0x0200_0000;
+
+/// The `(status mask, error)` rows of `WINTRUST_TrustStatusToError`, in Wine's test order. The
+/// first row whose mask intersects the status gives the error.
+const ERROR_TABLE: &[(u32, u32)] = &[
+    (CERT_TRUST_IS_NOT_SIGNATURE_VALID, TRUST_E_CERT_SIGNATURE),
+    (CERT_TRUST_IS_UNTRUSTED_ROOT, CERT_E_UNTRUSTEDROOT),
+    (CERT_TRUST_IS_NOT_TIME_VALID, CERT_E_EXPIRED),
+    (CERT_TRUST_IS_NOT_TIME_NESTED, CERT_E_VALIDITYPERIODNESTING),
+    (CERT_TRUST_IS_REVOKED, CERT_E_REVOKED),
+    (CERT_TRUST_IS_OFFLINE_REVOCATION, CERT_E_REVOCATION_FAILURE),
+    (
+        CERT_TRUST_REVOCATION_STATUS_UNKNOWN,
+        CERT_E_REVOCATION_FAILURE,
+    ),
+    (CERT_TRUST_IS_NOT_VALID_FOR_USAGE, CERT_E_WRONG_USAGE),
+    (CERT_TRUST_IS_CYCLIC, CERT_E_CHAINING),
+    (CERT_TRUST_INVALID_EXTENSION, CERT_E_CRITICAL),
+    (CERT_TRUST_INVALID_POLICY_CONSTRAINTS, CERT_E_INVALID_POLICY),
+    (
+        CERT_TRUST_INVALID_BASIC_CONSTRAINTS,
+        TRUST_E_BASIC_CONSTRAINTS,
+    ),
+    (CERT_TRUST_INVALID_NAME_CONSTRAINTS, CERT_E_INVALID_NAME),
+    (
+        CERT_TRUST_HAS_NOT_SUPPORTED_NAME_CONSTRAINT,
+        CERT_E_INVALID_NAME,
+    ),
+    (
+        CERT_TRUST_HAS_NOT_DEFINED_NAME_CONSTRAINT,
+        CERT_E_INVALID_NAME,
+    ),
+    (
+        CERT_TRUST_HAS_NOT_PERMITTED_NAME_CONSTRAINT,
+        CERT_E_INVALID_NAME,
+    ),
+    (CERT_TRUST_HAS_EXCLUDED_NAME_CONSTRAINT, CERT_E_INVALID_NAME),
+    (CERT_TRUST_NO_ISSUANCE_CHAIN_POLICY, CERT_E_INVALID_POLICY),
+];
+
+/// `WINTRUST_TrustStatusToConfidence`: the `CERT_CONFIDENCE_*` bits that a status leaves set.
+pub fn status_to_confidence(status: u32) -> u32 {
+    let mut confidence = 0;
+    if (status & CERT_TRUST_IS_NOT_SIGNATURE_VALID) == 0 {
+        confidence |= CERT_CONFIDENCE_SIG;
+    }
+    if (status & CERT_TRUST_IS_NOT_TIME_VALID) == 0 {
+        confidence |= CERT_CONFIDENCE_TIME;
+    }
+    if (status & CERT_TRUST_IS_NOT_TIME_NESTED) == 0 {
+        confidence |= CERT_CONFIDENCE_TIMENEST;
+    }
+    confidence
+}
+
+/// `WINTRUST_TrustStatusToError`: the error of the first row of `ERROR_TABLE` that the status
+/// intersects. A nonzero status with no mapped bit is `TRUST_E_SYSTEM_ERROR`, and zero is `S_OK`.
+pub fn status_to_error(status: u32) -> u32 {
+    for &(mask, error) in ERROR_TABLE {
+        if (status & mask) != 0 {
+            return error;
+        }
+    }
+    if status == 0 {
+        S_OK
+    } else {
+        TRUST_E_SYSTEM_ERROR
+    }
+}
