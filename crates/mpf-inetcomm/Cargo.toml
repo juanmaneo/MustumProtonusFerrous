@@ -1,0 +1,8 @@
+[package]
+name = "mpf-inetcomm"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "inetcomm subset for MPF: mhtml URL split, SMTP status line, MIME header fields and parameters, and base64 and quoted-printable decoding of Wine's dlls/inetcomm"
+
+[dependencies]
