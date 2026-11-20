@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mspatcha"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "PA19 variable-length integer decoding logic from Wine's mspatcha"
+
+[dependencies]
