@@ -1,0 +1,8 @@
+[package]
+name = "mpf-dnsapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dnsapi subset for MPF: name validation and comparison and the DNS message record parser of Wine's dlls/dnsapi"
+
+[dependencies]
