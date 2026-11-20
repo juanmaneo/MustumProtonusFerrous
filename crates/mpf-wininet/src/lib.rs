@@ -7,7 +7,7 @@
 //!   The result is FILETIME ticks.
 //! - `HTTP_DomainMatches`: [`proxy_bypass::domain_matches`].
 //! - `is_domain_legal_for_cookie`: [`cookie::is_domain_legal`].
-//! - `has_keep_alive` and its `has_token` helper: [`header::has_keep_alive`].
+//! - `has_keep_alive` and its `has_token` helper: [`has_keep_alive`].
 //!
 //! Skipped:
 //! - The URL API (`InternetCrackUrl`, `InternetCanonicalizeUrl`, `InternetCombineUrl`).
@@ -31,9 +31,29 @@
 
 pub mod cookie;
 pub mod date;
-pub mod header;
 pub mod proxy_bypass;
 mod wide;
+
+use wide::{eq_ci, until_nul};
+
+/// `has_keep_alive`: whether the connection stays open after a response of HTTP version
+/// `version`, given the `Connection` header value `connection`. HTTP/1.1 is persistent unless the
+/// header lists `Close`. Any other version is persistent only when the header lists `Keep-Alive`.
+pub fn has_keep_alive(version: &[u16], connection: &[u16]) -> bool {
+    if eq_ci(until_nul(version), "HTTP/1.1") {
+        !has_token(connection, "Close")
+    } else {
+        has_token(connection, "Keep-Alive")
+    }
+}
+
+/// `has_token`: whether `token` is one of the words of `list`. Words are separated by spaces or
+/// commas, and the comparison ignores case.
+fn has_token(list: &[u16], token: &str) -> bool {
+    until_nul(list)
+        .split(|&c| c == u16::from(b' ') || c == u16::from(b','))
+        .any(|word| eq_ci(word, token))
+}
 
 #[cfg(test)]
 mod edge_checks;

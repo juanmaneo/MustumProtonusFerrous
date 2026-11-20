@@ -10,7 +10,7 @@
 //!   [surface::adjust_surface_size].
 //! - `get_bitmap_info_size`, `AVIDec_DropSample`, `is_nontrivial_rect`, `needs_decompressex` and
 //!   the `biSizeImage` formula in `avidec.c`: [avi::bitmap_info_size], [avi::drop_sample],
-//!   [avi::is_nontrivial_rect], [avi::needs_decompressex], [avi::size_image].
+//!   [avi::is_nontrivial_rect], [avi::needs_decompressex], [size_image].
 //! - `time_from_pos` and `pos_from_time` in `dsoundrender.c`: [dsound::time_from_pos],
 //!   [dsound::pos_from_time].
 //! - `MatchTypes` in `filtermapper.c`: [pin_types::match_types].
@@ -29,7 +29,7 @@
 //!   returns `None` for a height of `i32::MIN`, where C's `-src_height` overflows.
 //! - [surface::adjust_surface_size] returns `None` when the power of two above a dimension does
 //!   not fit in 32 bits. C loops forever there.
-//! - [avi::size_image] and [avi::is_nontrivial_rect] wrap signed overflow, and `abs` of
+//! - [size_image] and [avi::is_nontrivial_rect] wrap signed overflow, and `abs` of
 //!   `i32::MIN` stays `i32::MIN`, as the C `int` code does in practice.
 //! - [dsound::time_from_pos] and [dsound::pos_from_time] return `None` for a zero rate or
 //!   alignment, and for a product that overflows. C divides by zero or overflows there.
@@ -63,6 +63,13 @@ pub mod dsound;
 pub mod pin_types;
 pub mod plane;
 pub mod surface;
+
+/// The `biSizeImage` formula of `avi_decompressor_source_get_media_type`. Each row is padded to
+/// four bytes. A negative height gives a negative size, which is returned as the `DWORD` it is.
+pub fn size_image(width: i32, height: i32, bit_count: u16) -> u32 {
+    let row = (width.wrapping_mul(i32::from(bit_count)).wrapping_add(31) / 8) & !3;
+    height.wrapping_mul(row) as u32
+}
 
 #[cfg(test)]
 mod edge_checks;

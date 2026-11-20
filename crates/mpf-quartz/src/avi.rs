@@ -1,5 +1,5 @@
-//! Helpers of `dlls/quartz/avidec.c`: the bitmap info size, the late-sample drop test, the
-//! rectangle test that selects `ICDecompressEx`, and the `biSizeImage` formula.
+//! Helpers of `dlls/quartz/avidec.c`: the bitmap info size, the late-sample drop test and the
+//! rectangle test that selects `ICDecompressEx`.
 
 use crate::{BitmapInfoHeader, Rect};
 
@@ -44,11 +44,4 @@ pub fn is_nontrivial_rect(header: &BitmapInfoHeader, rect: &Rect) -> bool {
 /// the same three fields, so one function covers both.
 pub fn needs_decompressex(header: &BitmapInfoHeader, source: &Rect, target: &Rect) -> bool {
     is_nontrivial_rect(header, source) || is_nontrivial_rect(header, target)
-}
-
-/// The `biSizeImage` formula of `avi_decompressor_source_get_media_type`. Each row is padded to
-/// four bytes. A negative height gives a negative size, which is returned as the `DWORD` it is.
-pub fn size_image(width: i32, height: i32, bit_count: u16) -> u32 {
-    let row = (width.wrapping_mul(i32::from(bit_count)).wrapping_add(31) / 8) & !3;
-    height.wrapping_mul(row) as u32
 }

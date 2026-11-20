@@ -8,7 +8,7 @@
 
 use crate::cookie::{is_domain_legal, CookieDomainError};
 use crate::date::parse_http_date;
-use crate::header::has_keep_alive;
+use crate::has_keep_alive;
 use crate::proxy_bypass::domain_matches;
 use crate::wide::{until_nul, wcstoul_dec};
 

@@ -6,13 +6,10 @@
 //! reads one bit at a time and stops at the first bit that is missing.
 
 use crate::huffman::Code;
-use crate::InflateError;
+use crate::{check_room, InflateError, WINDOW_SIZE};
 
 /// `CAB_INPUTMAX`: the largest chunk that `mszip_decompress` accepts.
 const INPUT_MAX: usize = 32768 + 6144;
-
-/// `ZIPWSIZE`: the window, which bounds the output.
-const WINDOW_SIZE: usize = 0x8000;
 
 /// The order in which a dynamic block stores the code-length code lengths (`Zipborder`).
 const BORDER: [usize; 19] = [
@@ -167,14 +164,6 @@ fn codes(
             _ => return Err(InflateError::IllegalData),
         }
     }
-}
-
-/// Refuses output past the window. Wine writes past its buffer here.
-fn check_room(out: &[u8], count: usize) -> Result<(), InflateError> {
-    if out.len() + count > WINDOW_SIZE {
-        return Err(InflateError::IllegalData);
-    }
-    Ok(())
 }
 
 /// Reads the deflate bit stream: bits come least significant first from each byte.

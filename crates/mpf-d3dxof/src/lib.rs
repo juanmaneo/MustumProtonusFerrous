@@ -36,3 +36,14 @@ pub enum InflateError {
     /// `DECR_OUTPUT`: the stream expands to fewer bytes than requested. Wine does not report this.
     OutputShort = 6,
 }
+
+/// `ZIPWSIZE`: the window, which bounds the output.
+pub(crate) const WINDOW_SIZE: usize = 0x8000;
+
+/// Refuses output past the window. Wine writes past its buffer here.
+pub(crate) fn check_room(out: &[u8], count: usize) -> Result<(), InflateError> {
+    if out.len() + count > WINDOW_SIZE {
+        return Err(InflateError::IllegalData);
+    }
+    Ok(())
+}

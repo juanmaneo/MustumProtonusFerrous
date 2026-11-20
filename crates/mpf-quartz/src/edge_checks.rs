@@ -7,7 +7,7 @@ use crate::dsound::*;
 use crate::pin_types::*;
 use crate::plane::*;
 use crate::surface::*;
-use crate::{BitmapInfoHeader, Guid, Rect, GUID_NULL};
+use crate::{size_image, BitmapInfoHeader, Guid, Rect, GUID_NULL};
 
 const GUID_A: Guid = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 const GUID_B: Guid = [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
