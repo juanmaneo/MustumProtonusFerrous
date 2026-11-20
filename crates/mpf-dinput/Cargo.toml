@@ -1,0 +1,8 @@
+[package]
+name = "mpf-dinput"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dinput subset for MPF: the pure value and mapping logic of dlls/dinput"
+
+[dependencies]
