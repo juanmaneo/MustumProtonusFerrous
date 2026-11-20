@@ -1,0 +1,6 @@
+[package]
+name = "mpf-vccorlib140"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "vccorlib140 subset for MPF: pure formatting and type-code helpers"
