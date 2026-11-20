@@ -1,0 +1,8 @@
+[package]
+name = "mpf-shcore"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "shcore subset for MPF: command-line splitting, string copy, memory streams, stream flags, IsOS and registry integers"
+
+[dependencies]
