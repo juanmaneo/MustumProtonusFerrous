@@ -1,0 +1,8 @@
+[package]
+name = "mpf-schannel"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "SChannel security provider for MPF: deterministic package-info and initialization logic of Wine's dlls/schannel"
+
+[dependencies]
