@@ -1,6 +1,8 @@
-> **⚠️ Work in progress.** MPF is in early development and cannot run Windows applications yet. Phases 0–4 are done: the PE loader, a subset of ntdll, kernel32 and advapi32, headless user32 and gdi32, the dxvk/vkd3d configuration layer, and Rust versions of Proton's `proton` script and umu-launcher (`mpf-proton`, `mpf-umu`). Phase 5 is in progress: 166 of the 744 `dlls/` components have a partial port crate, 8 stay native, 5 are todo, and the rest are not ported yet (see `coverage/mapping.txt`). APIs, crate layout, and behavior will change without notice. Do not use it for anything that needs to work.
+> **⚠️ Work in progress.** MPF is in early development and cannot run Windows applications yet. Phases 0–4 are done: the PE loader, a subset of ntdll, kernel32 and advapi32, headless user32 and gdi32, the dxvk/vkd3d configuration layer, and Rust versions of Proton's `proton` script and umu-launcher (`mpf-proton`, `mpf-umu`). Phase 5 is in progress: 183 of the 744 `dlls/` components have a partial port crate, 8 stay native, 5 are todo, and the rest are not ported yet (see `coverage/mapping.txt`). APIs, crate layout, and behavior will change without notice. Do not use it for anything that needs to work.
 
 # Mustum Protonus Ferrous (MPF)
+
+The full name is a joke. **Mustum** is Latin for young wine (must), so the project is the younger Wine. **Protonus** gives it a Latin ending to match Valve's Proton, the flavour it follows. **Ferrous** (iron) is for the Rust implementation. In short, the project is just called Mustum, since it is the younger Wine.
 
 A Rust port of Wine (Proton flavour), built incrementally, one component at a time.
 
