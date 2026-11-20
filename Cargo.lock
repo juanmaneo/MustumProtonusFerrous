@@ -7,6 +7,10 @@ name = "mpf-advapi32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-amstream"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-appwiz_cpl"
 version = "0.1.0"
 

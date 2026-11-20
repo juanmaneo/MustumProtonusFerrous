@@ -194,3 +194,4 @@ dlls/sapi             mpf-sapi            partial  P3
 dlls/mmdevapi         mpf-mmdevapi        partial  P3
 dlls/taskschd         mpf-taskschd        partial  P3
 dlls/winebth.sys      mpf-winebth_sys     partial  P3
+dlls/amstream         mpf-amstream        partial  P3
