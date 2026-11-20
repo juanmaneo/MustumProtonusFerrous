@@ -1,0 +1,8 @@
+[package]
+name = "mpf-comdlg32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Deterministic color conversion helpers from Wine's comdlg32"
+
+[dependencies]
