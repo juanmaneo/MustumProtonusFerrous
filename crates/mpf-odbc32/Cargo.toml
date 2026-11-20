@@ -1,0 +1,8 @@
+[package]
+name = "mpf-odbc32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "odbc32 subset for MPF: connection strings, type mapping and length copies"
+
+[dependencies]
