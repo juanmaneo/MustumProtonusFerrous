@@ -1,0 +1,8 @@
+[package]
+name = "mpf-cryptbase"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "cryptbase subset for MPF: the DES block functions and the ECB stream helpers behind SystemFunction001 to SystemFunction005 of Wine's dlls/cryptbase"
+
+[dependencies]
