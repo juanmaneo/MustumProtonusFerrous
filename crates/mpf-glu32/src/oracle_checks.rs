@@ -7,7 +7,8 @@ use crate::geom::{
     edge_eval, edge_intersect, edge_sign, trans_eval, trans_leq, trans_sign, vert_ccw, vert_leq,
     Vertex,
 };
-use crate::project::{invert_matrix, mult_matrices, mult_matrix_vec, project, unproject};
+use crate::mult_matrix_vec;
+use crate::project::{invert_matrix, mult_matrices, project, unproject};
 
 fn v(s: f64, t: f64) -> Vertex {
     Vertex { s, t }

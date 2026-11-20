@@ -8,15 +8,7 @@
 //! Not ported: `gluOrtho2D`, `gluPerspective`, `gluLookAt` and `gluPickMatrix`. Each one
 //! only issues GL state calls (`glOrtho`, `glMultMatrix*`, `glTranslate*`, `glScale*`).
 
-/// `__gluMultMatrixVecd`: `matrix * input`.
-pub fn mult_matrix_vec(matrix: &[f64; 16], input: &[f64; 4]) -> [f64; 4] {
-    std::array::from_fn(|i| {
-        input[0] * matrix[i]
-            + input[1] * matrix[4 + i]
-            + input[2] * matrix[8 + i]
-            + input[3] * matrix[12 + i]
-    })
-}
+use crate::mult_matrix_vec;
 
 /// `__gluMultMatricesd`: `a * b`.
 pub fn mult_matrices(a: &[f64; 16], b: &[f64; 16]) -> [f64; 16] {

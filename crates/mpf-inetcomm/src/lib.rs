@@ -13,7 +13,7 @@
 //!   [`header::unquote`] and [`header::split_params`].
 //! - `init_content_type` and `init_content_encoding`: [`header::content_type`] and
 //!   [`header::content_encoding`].
-//! - `decode_base64` and `decode_qp`: [`codec::decode_base64`] and [`codec::decode_quoted_printable`].
+//! - `decode_base64` and `decode_qp`: [`decode_base64`] and [`codec::decode_quoted_printable`].
 //!
 //! Skipped:
 //! - The POP3 response state machine in `pop3transport.c`. It needs a `sscanf("%lu")` emulation and
@@ -39,6 +39,42 @@ pub mod codec;
 pub mod header;
 pub mod mhtml;
 pub mod smtp;
+
+/// `decode_base64`: decodes four units into three bytes. Units outside the base64 alphabet are
+/// skipped, `=` included. A partial group at the end is dropped.
+pub fn decode_base64(input: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(input.len() / 4 * 3);
+    let mut group = [0u8; 4];
+    let mut n = 0;
+    for &c in input {
+        let Some(value) = base64_value(c) else {
+            continue;
+        };
+        group[n] = value;
+        n += 1;
+        match n {
+            2 => out.push((group[0] << 2) | (group[1] >> 4)),
+            3 => out.push((group[1] << 4) | (group[2] >> 2)),
+            4 => {
+                out.push((group[2] << 6) | group[3]);
+                n = 0;
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+fn base64_value(c: u8) -> Option<u8> {
+    match c {
+        b'A'..=b'Z' => Some(c - b'A'),
+        b'a'..=b'z' => Some(c - b'a' + 26),
+        b'0'..=b'9' => Some(c - b'0' + 52),
+        b'+' => Some(62),
+        b'/' => Some(63),
+        _ => None,
+    }
+}
 
 #[cfg(test)]
 mod edge_checks;

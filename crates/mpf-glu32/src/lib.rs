@@ -39,4 +39,14 @@ pub use geom::{
     edge_eval, edge_intersect, edge_sign, trans_eval, trans_leq, trans_sign, vert_ccw, vert_eq,
     vert_leq, Vertex,
 };
-pub use project::{invert_matrix, mult_matrices, mult_matrix_vec, project, unproject};
+pub use project::{invert_matrix, mult_matrices, project, unproject};
+
+/// `__gluMultMatrixVecd`: multiplies a column-major matrix by a vector.
+pub fn mult_matrix_vec(matrix: &[f64; 16], input: &[f64; 4]) -> [f64; 4] {
+    std::array::from_fn(|i| {
+        input[0] * matrix[i]
+            + input[1] * matrix[4 + i]
+            + input[2] * matrix[8 + i]
+            + input[3] * matrix[12 + i]
+    })
+}

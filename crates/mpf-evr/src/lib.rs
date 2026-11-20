@@ -68,9 +68,18 @@ pub use geometry::{
 };
 pub use mixer::{InputStreams, MAX_INPUT_STREAMS};
 pub use presenter::{
-    check_aspect_ratio_mode, check_video_position, gcd, native_video_size, NativeVideoSize,
-    AR_MODE_MASK,
+    check_aspect_ratio_mode, check_video_position, native_video_size, NativeVideoSize, AR_MODE_MASK,
 };
+
+/// `get_gcd`: the greatest common divisor by the Euclidean algorithm. `gcd(0, 0)` is `0`.
+pub fn gcd(mut a: u32, mut b: u32) -> u32 {
+    while b != 0 {
+        let rest = a % b;
+        a = b;
+        b = rest;
+    }
+    a
+}
 
 /// A Win32 `HRESULT`.
 pub type HResult = i32;

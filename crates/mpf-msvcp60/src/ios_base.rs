@@ -3,6 +3,8 @@
 //! The `ios_base` object is reduced to its `fmtfl` field, which each function takes by mutable
 //! reference. `IOSB_fmtflags` is a 32-bit enum, so the flags are `u32`.
 
+pub use crate::flags_get;
+
 /// `FMTFLAG_mask`: the bits that `flags_set`, `setf` and `setf_mask` keep. `unsetf` does not mask.
 pub const FMTFLAG_MASK: u32 = 0xffff;
 
@@ -10,11 +12,6 @@ pub const FMTFLAG_MASK: u32 = 0xffff;
 /// are dropped.
 pub fn flags_set(fmtfl: &mut u32, flags: u32) -> u32 {
     std::mem::replace(fmtfl, flags & FMTFLAG_MASK)
-}
-
-/// `flags()`: returns the current flags.
-pub fn flags_get(fmtfl: &u32) -> u32 {
-    *fmtfl
 }
 
 /// `setf(fmtflags)`: sets the flags and returns the old ones.

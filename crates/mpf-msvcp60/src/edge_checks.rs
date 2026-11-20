@@ -10,7 +10,7 @@ use std::fmt::Debug;
 use crate::basic_string;
 use crate::char_traits::{self, Unit};
 use crate::ios_base;
-use crate::NPOS;
+use crate::{flags_get, NPOS};
 
 /// A unit type that the edge checks can build from byte values and print.
 trait Width: Unit + From<u8> + Debug {}
@@ -382,7 +382,7 @@ fn ios_base_fmtflags_edges() {
     let mut f = 0x1_0003;
     assert_eq!(ios_base::flags_set(&mut f, 0x1_0005), 0x1_0003);
     assert_eq!(f, 0x5);
-    assert_eq!(ios_base::flags_get(&f), 0x5);
+    assert_eq!(flags_get(&f), 0x5);
     assert_eq!(ios_base::setf(&mut f, 0x1_0006), 0x5);
     assert_eq!(f, 0x7);
     let mut g = 0x0f;

@@ -1,5 +1,5 @@
 use crate::geometry::{check_normalized_rect, NormalizedRect, Rect, Size};
-use crate::{HResult, E_INVALIDARG, E_POINTER};
+use crate::{gcd, HResult, E_INVALIDARG, E_POINTER};
 
 /// `MFVideoARMode_Mask`: the bits of an aspect ratio mode that are defined.
 pub const AR_MODE_MASK: u32 = 0x7;
@@ -9,16 +9,6 @@ pub const AR_MODE_MASK: u32 = 0x7;
 pub struct NativeVideoSize {
     pub size: Size,
     pub ratio: Size,
-}
-
-/// `get_gcd`: the greatest common divisor by the Euclidean algorithm. `gcd(0, 0)` is `0`.
-pub fn gcd(mut a: u32, mut b: u32) -> u32 {
-    while b != 0 {
-        let rest = a % b;
-        a = b;
-        b = rest;
-    }
-    a
 }
 
 /// `video_presenter_get_native_video_size`: decodes the `MF_MT_FRAME_SIZE` attribute, packed as

@@ -3,7 +3,8 @@
 //! `(line, output)`: `line` is `<mode>|<payload>` with the driver's payload escapes, and `output` is
 //! the escaped line the driver prints. `run` mirrors `driver.c`, so `edge_checks` can use it too.
 
-use crate::codec::{decode_base64, decode_quoted_printable};
+use crate::codec::decode_quoted_printable;
+use crate::decode_base64;
 use crate::header::{self, ContentEncoding, Param};
 use crate::mhtml::parse_mhtml_url;
 use crate::smtp::{parse_status, RESPONSE_ERROR};

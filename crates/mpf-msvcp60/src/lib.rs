@@ -34,3 +34,8 @@ pub mod ios_base;
 
 /// `basic_string::npos`, which is `size_t(-1)`.
 pub const NPOS: usize = usize::MAX;
+
+/// `flags()`: returns the current `ios_base` formatting flags.
+pub fn flags_get(fmtfl: &u32) -> u32 {
+    *fmtfl
+}
