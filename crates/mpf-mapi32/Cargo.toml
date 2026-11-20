@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mapi32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mapi32 subset for MPF: deterministic helpers of Wine's dlls/mapi32"
+
+[dependencies]
