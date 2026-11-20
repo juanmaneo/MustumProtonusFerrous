@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mf"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mf subset for MPF: array growth, presentation clock, connect methods, session node states and sample grabber sink logic"
+
+[dependencies]
