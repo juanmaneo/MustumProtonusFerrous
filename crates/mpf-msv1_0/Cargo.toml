@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msv1_0"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msv1_0 subset for MPF: NTLM session keys, RC4 and HMAC-MD5 helpers, and the NTLMSSP signature and seal functions"
+
+[dependencies]
