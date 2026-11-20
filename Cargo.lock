@@ -27,6 +27,10 @@ name = "mpf-browseui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-cabinet"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cli"
 version = "0.1.0"
 dependencies = [
@@ -80,11 +84,39 @@ name = "mpf-credui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-crypt32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d2d1"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-d3dcompiler_43"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dx10_43"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d3dx11_43"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dx9_36"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dxof"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dmsynth"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dmusic"
 version = "0.1.0"
 
 [[package]]
@@ -163,6 +195,10 @@ name = "mpf-ir50_32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-itss"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-iyuv_32"
 version = "0.1.0"
 
@@ -223,7 +259,15 @@ name = "mpf-midimap"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mlang"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mp3dmod"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msacm32"
 version = "0.1.0"
 
 [[package]]
@@ -339,6 +383,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-quartz"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-rasapi32"
 version = "0.1.0"
 
@@ -348,6 +396,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-rpcrt4"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-rsaenh"
 version = "0.1.0"
 
 [[package]]
@@ -398,6 +450,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-urlmon"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-user32"
 version = "0.1.0"
 dependencies = [
@@ -417,6 +473,10 @@ name = "mpf-wer"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-windowscodecs"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wineboot"
 version = "0.1.0"
 dependencies = [
@@ -433,6 +493,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wing32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winhttp"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wininet"
 version = "0.1.0"
 
 [[package]]
@@ -465,6 +533,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-xactengine3_7"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-xmllite"
 version = "0.1.0"
 
 [[package]]
