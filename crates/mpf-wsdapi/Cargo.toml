@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wsdapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wsdapi subset for MPF: the decimal number parser and the URI list helpers of Wine's dlls/wsdapi"
+
+[dependencies]
