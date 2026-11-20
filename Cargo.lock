@@ -55,6 +55,14 @@ name = "mpf-combase"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-comctl32_v6"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-comdlg32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-compstui"
 version = "0.1.0"
 
@@ -128,7 +136,15 @@ name = "mpf-dbghelp"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-ddraw"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dinput"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dmime"
 version = "0.1.0"
 
 [[package]]
@@ -141,6 +157,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-dnsapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dplayx"
 version = "0.1.0"
 
 [[package]]
@@ -208,6 +228,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-iccvid"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ieframe"
 version = "0.1.0"
 
 [[package]]
@@ -311,11 +335,19 @@ name = "mpf-mlang"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mmdevapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mp3dmod"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-msacm32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msado15"
 version = "0.1.0"
 
 [[package]]
@@ -328,6 +360,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mscms"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mscoree"
 version = "0.1.0"
 
 [[package]]
@@ -395,6 +431,10 @@ name = "mpf-ntdsapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-ntoskrnl_exe"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ntprint"
 version = "0.1.0"
 
@@ -434,6 +474,10 @@ name = "mpf-pe"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-propsys"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-proton"
 version = "0.1.0"
 dependencies = [
@@ -445,6 +489,10 @@ dependencies = [
  "mpf-pe",
  "mpf-wineboot",
 ]
+
+[[package]]
+name = "mpf-qcap"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-quartz"
@@ -459,11 +507,23 @@ name = "mpf-resampledmo"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-riched20"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-rpcrt4"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-rsaenh"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-sapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-secur32"
 version = "0.1.0"
 
 [[package]]
@@ -502,11 +562,19 @@ name = "mpf-t2embed"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-taskschd"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-twinapi_appcore"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-ucrtbase"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-uiautomationcore"
 version = "0.1.0"
 
 [[package]]
@@ -564,6 +632,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-winebth_sys"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winegstreamer"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-winemapi"
 version = "0.1.0"
 
@@ -588,6 +664,10 @@ name = "mpf-winnt"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-winspool_drv"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wintab32"
 version = "0.1.0"
 
@@ -609,6 +689,18 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wmphoto"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wow64"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wow64win"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ws2_32"
 version = "0.1.0"
 
 [[package]]
