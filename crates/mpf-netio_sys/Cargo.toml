@@ -1,0 +1,8 @@
+[package]
+name = "mpf-netio_sys"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "netio.sys subset for MPF: the WSA-to-NTSTATUS error map and the pending-I/O slot helpers of Wine's dlls/netio.sys"
+
+[dependencies]
