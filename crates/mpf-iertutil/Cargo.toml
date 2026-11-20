@@ -1,0 +1,8 @@
+[package]
+name = "mpf-iertutil"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "iertutil subset for MPF: URI scheme, userinfo, port, IPv4, IPvFuture, path, query, fragment and domain name parsers, and Uri_CREATE flag checks"
+
+[dependencies]
