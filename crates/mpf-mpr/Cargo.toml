@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mpr"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mpr subset for MPF: the password cache value-name codec and the enumeration string copy of Wine's dlls/mpr"
+
+[dependencies]
