@@ -14,3 +14,20 @@ mod edge_checks;
 mod oracle_checks;
 
 pub mod variable_length;
+
+/// Decodes one MIDI variable-length number through the crate's primary API.
+pub fn decode_variable_length(bytes: &[u8]) -> variable_length::DecodeResult {
+    variable_length::read_variable_length_number(bytes)
+}
+
+#[cfg(test)]
+mod root_api_tests {
+    #[test]
+    fn decode_variable_length_matches_the_decoder_module() {
+        let bytes = [0x81, 0x01];
+        assert_eq!(
+            super::decode_variable_length(&bytes),
+            super::variable_length::read_variable_length_number(&bytes)
+        );
+    }
+}
