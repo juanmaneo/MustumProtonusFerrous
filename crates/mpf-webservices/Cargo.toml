@@ -1,0 +1,8 @@
+[package]
+name = "mpf-webservices"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "webservices subset for MPF: URL, text and datetime parsers"
+
+[dependencies]
