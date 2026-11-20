@@ -1,0 +1,8 @@
+[package]
+name = "mpf-dmime"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dmime subset for MPF: DirectMusic MIDI variable-length number parsing"
+
+[dependencies]
