@@ -1,7 +1,7 @@
 //! Deterministic SID string conversion logic from Wine's `dlls/sechost/security.c`.
 //!
-//! This crate ports the numeric and two-character well-known SID cases from
-//! `parse_sid`. It does not allocate Windows memory or call Win32 APIs.
+//! This crate ports `parse_token`, `get_sid_size` and `parse_sid` for SDDL SID
+//! strings. It does not allocate Windows memory or call Win32 APIs.
 
 #[cfg(test)]
 mod edge_checks;
@@ -34,103 +34,149 @@ impl Sid {
     }
 }
 
-/// Parses a numeric or supported two-character SDDL SID string.
+/// Parses an SDDL SID string: `S-revision-authority-subauthority...` or a
+/// two-character alias.
 ///
-/// Numeric SIDs use the `S-revision-authority-subauthority...` spelling. The
-/// parser accepts decimal tokens and `0x` hexadecimal tokens, matching Wine's
-/// token conversion, and rejects values outside the SID structure's 15-RID
-/// limit. Supported aliases include common principals, builtin groups, and
-/// mandatory integrity labels.
+/// Leading spaces are skipped as in Wine's `parse_sid`. Numeric tokens follow
+/// Wine's `parse_token`, which converts them with the C runtime `wcstoul`:
+/// decimal, or hexadecimal with an optional `0x` prefix, a leading sign, and
+/// saturation to `u32::MAX` on overflow (never negated). Each token may be
+/// followed by one `-`. The revision is truncated to a byte before it is
+/// checked against 1. Strings with more than 15 subauthorities are rejected,
+/// because Wine's `parse_sid` writes past the fixed `SubAuthority[15]` array
+/// for them.
 pub fn parse_string_sid(input: &str) -> Option<Sid> {
-    if input.len() == 2 {
-        if let Some(sid) = well_known_sid(input) {
-            return Some(sid);
-        }
-        if let Some(rid) = well_known_rid(input) {
-            return Some(Sid {
-                revision: 1,
-                identifier_authority: 5,
-                sub_authorities: vec![21, 0, 0, 0, rid],
-            });
-        }
-    }
-
-    let bytes = input.as_bytes();
-    if bytes.len() < 2 || !matches!(bytes[0], b'S' | b's') || bytes[1] != b'-' || !input.is_ascii()
-    {
+    let input = input.trim_start_matches(' ');
+    if !input.is_ascii() {
         return None;
     }
+    let bytes = input.as_bytes();
+    if bytes.len() < 2 {
+        return None;
+    }
+    if matches!(bytes[0], b'S' | b's') && bytes[1] == b'-' {
+        return parse_numeric(bytes);
+    }
+    if bytes.len() != 2 {
+        return None;
+    }
+    if let Some(sid) = well_known_sid(input) {
+        return Some(sid);
+    }
+    well_known_rid(input).map(domain_relative_sid)
+}
 
+fn parse_numeric(bytes: &[u8]) -> Option<Sid> {
     let mut cursor = 2;
     let mut tokens = Vec::new();
     while let Some((value, end)) = parse_token(bytes, cursor) {
         tokens.push(value);
         cursor = end;
     }
-
     if cursor != bytes.len() || tokens.len() < 3 || tokens.len() > 17 {
         return None;
     }
-    let revision = u8::try_from(tokens[0]).ok()?;
+    let revision = tokens[0] as u8;
     if revision != 1 {
         return None;
     }
-    let sub_authorities = &tokens[2..];
     Some(Sid {
         revision,
         identifier_authority: u64::from(tokens[1]),
-        sub_authorities: sub_authorities.to_vec(),
+        sub_authorities: tokens[2..].to_vec(),
     })
 }
 
 fn parse_token(bytes: &[u8], start: usize) -> Option<(u32, usize)> {
-    let first = *bytes.get(start)?;
-    let (mut cursor, radix) = if first == b'0' && matches!(bytes.get(start + 1), Some(b'X' | b'x'))
-    {
-        (start + 2, 16)
+    let first = byte_at(bytes, start);
+    let (value, end) = if first == b'0' && matches!(byte_at(bytes, start + 1), b'X' | b'x') {
+        wcstoul(bytes, start + 2, 16)
     } else if first.is_ascii_digit() || first == b'-' {
-        (start, 10)
+        wcstoul(bytes, start, 10)
     } else {
         return None;
     };
-
-    let negative = bytes.get(cursor) == Some(&b'-');
-    if negative || bytes.get(cursor) == Some(&b'+') {
-        cursor += 1;
-    }
-    let digits_start = cursor;
-    let mut value = 0u64;
-    while let Some(digit) = bytes.get(cursor).and_then(|byte| digit_value(*byte)) {
-        if digit >= radix {
-            break;
-        }
-        value = value
-            .checked_mul(radix)
-            .and_then(|current| current.checked_add(digit))
-            .unwrap_or(u64::MAX);
-        cursor += 1;
-    }
-    if cursor == digits_start {
-        return None;
-    }
-
-    if bytes.get(cursor) == Some(&b'-') {
-        cursor += 1;
-    }
-    let value = if negative {
-        0u64.wrapping_sub(value)
+    let end = if byte_at(bytes, end) == b'-' {
+        end + 1
     } else {
-        value
+        end
     };
-    Some((value as u32, cursor))
+    Some((value, end))
 }
 
-fn digit_value(byte: u8) -> Option<u64> {
+/// Converts the ASCII digits at `start` the way glibc's `wcstoul` does, which
+/// is what Wine's oracle build uses. Returns the value and the index where
+/// conversion stopped.
+fn wcstoul(bytes: &[u8], start: usize, radix: u32) -> (u32, usize) {
+    let mut cursor = start;
+    while matches!(
+        byte_at(bytes, cursor),
+        b' ' | b'\t' | b'\n' | 0x0b | 0x0c | b'\r'
+    ) {
+        cursor += 1;
+    }
+    let negative = byte_at(bytes, cursor) == b'-';
+    if matches!(byte_at(bytes, cursor), b'+' | b'-') {
+        cursor += 1;
+    }
+    let prefixed = radix == 16
+        && byte_at(bytes, cursor) == b'0'
+        && byte_at(bytes, cursor + 1).eq_ignore_ascii_case(&b'x');
+    if prefixed {
+        cursor += 2;
+    }
+
+    let digits_start = cursor;
+    let mut value = 0u64;
+    loop {
+        match digit_value(byte_at(bytes, cursor)) {
+            Some(digit) if digit < radix => {
+                value = value
+                    .saturating_mul(u64::from(radix))
+                    .saturating_add(u64::from(digit));
+                cursor += 1;
+            }
+            _ => break,
+        }
+    }
+
+    if cursor == digits_start {
+        // Without digits glibc consumes only the "0" of a "0x" prefix; otherwise
+        // nothing is consumed.
+        return (0, if prefixed { cursor - 1 } else { start });
+    }
+    if value > u64::from(u32::MAX) {
+        return (u32::MAX, cursor);
+    }
+    let value = value as u32;
+    (
+        if negative {
+            value.wrapping_neg()
+        } else {
+            value
+        },
+        cursor,
+    )
+}
+
+fn byte_at(bytes: &[u8], index: usize) -> u8 {
+    bytes.get(index).copied().unwrap_or(0)
+}
+
+fn digit_value(byte: u8) -> Option<u32> {
     match byte {
-        b'0'..=b'9' => Some(u64::from(byte - b'0')),
-        b'a'..=b'f' => Some(u64::from(byte - b'a' + 10)),
-        b'A'..=b'F' => Some(u64::from(byte - b'A' + 10)),
+        b'0'..=b'9' => Some(u32::from(byte - b'0')),
+        b'a'..=b'f' => Some(u32::from(byte - b'a' + 10)),
+        b'A'..=b'F' => Some(u32::from(byte - b'A' + 10)),
         _ => None,
+    }
+}
+
+fn domain_relative_sid(rid: u32) -> Sid {
+    Sid {
+        revision: 1,
+        identifier_authority: 5,
+        sub_authorities: vec![21, 0, 0, 0, rid],
     }
 }
 
