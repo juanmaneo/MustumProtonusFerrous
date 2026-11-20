@@ -1,0 +1,86 @@
+//! Rows compared with the ASan/UBSan Wine C oracle in `target/canon/coml2/oracle.c`.
+//!
+//! The oracle prints 21 rows. These tests cover the 19 that have a Rust equivalent. The two
+//! rows with a NULL output pointer (`E9`, `D11`) do not apply, because Rust returns owned values.
+
+use crate::{
+    fmt_id_to_prop_stg_name, prop_stg_name_to_fmt_id, Error, Fmtid, FMTID_DOC_SUMMARY_INFORMATION,
+    FMTID_SUMMARY_INFORMATION,
+};
+
+#[rustfmt::skip]
+const ENCODE_ROWS: &[([u8; 16], &str)] = &[
+    ([0xe0,0x85,0x9f,0xf2,0xf9,0x4f,0x68,0x10,0xab,0x91,0x08,0x00,0x2b,0x27,0xb3,0xd9], "\u{5}SummaryInformation"),
+    ([0x02,0xd5,0xcd,0xd5,0x9c,0x2e,0x1b,0x10,0x93,0x97,0x08,0x00,0x2b,0x2c,0xf9,0xae], "\u{5}DocumentSummaryInformation"),
+    ([0x05,0xd5,0xcd,0xd5,0x9c,0x2e,0x1b,0x10,0x93,0x97,0x08,0x00,0x2b,0x2c,0xf9,0xae], "\u{5}DocumentSummaryInformation"),
+    ([0; 16], "\u{5}AaaaaaaaAaaaaaaaAaaaaaaaAa"),
+    ([0x38,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46], "\u{5}YjaaaaaaAaaaaadaAaaaaaaaGc"),
+    ([0x67,0x45,0x23,0x01,0xab,0x89,0xef,0xcd,0x01,0x23,0x45,0x67,0x89,0xab,0xcd,0xef], "\u{5}HlrgsamvJ2112ameF0zsyvwzPh"),
+    ([0xff; 16], "\u{5}5555555555555555555555555h"),
+    ([0xef,0xbe,0xad,0xde,0x20,0x10,0x40,0x30,0x50,0x60,0x70,0x80,0x90,0xa0,0xb0,0xc0], "\u{5}Pxp1kpdeQaqadibmQdabjqcwAg"),
+];
+
+fn nul_terminated(text: &str) -> Vec<u16> {
+    text.encode_utf16().chain([0]).collect()
+}
+
+#[test]
+fn encoding_rows_match_wine_oracle() {
+    for (bytes, expected) in ENCODE_ROWS {
+        let fmtid = Fmtid::from_bytes(*bytes);
+        assert_eq!(
+            fmt_id_to_prop_stg_name(Some(&fmtid)),
+            Ok(nul_terminated(expected))
+        );
+    }
+}
+
+#[test]
+fn encoding_null_id_matches_wine_oracle() {
+    assert_eq!(fmt_id_to_prop_stg_name(None), Err(Error::InvalidArg));
+    assert_eq!(Error::InvalidArg.hresult(), 0x8007_0057_u32 as i32);
+}
+
+#[rustfmt::skip]
+const DECODE_ROWS: &[(&str, [u8; 16])] = &[
+    ("\u{5}SummaryInformation", [0xe0,0x85,0x9f,0xf2,0xf9,0x4f,0x68,0x10,0xab,0x91,0x08,0x00,0x2b,0x27,0xb3,0xd9]),
+    ("\u{5}dOCuMeNtSuMmArYiNfOrMaTiOn", [0x02,0xd5,0xcd,0xd5,0x9c,0x2e,0x1b,0x10,0x93,0x97,0x08,0x00,0x2b,0x2c,0xf9,0xae]),
+    ("\u{5}0jaaaaaaAaaaaadaAaaaaaaaGc", [0x3a,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46]),
+    ("\u{5}YjaaaaaaAaaaaadaAaaaaaaaGc", [0x38,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46]),
+    ("\u{5}yjaaaaaaAaaaaadaAaaaaaaaGc", [0x38,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46]),
+    ("xYjaaaaaaAaaaaadaAaaaaaaaGc", [0x38,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46]),
+];
+
+#[test]
+fn decoding_rows_match_wine_oracle() {
+    for (name, bytes) in DECODE_ROWS {
+        assert_eq!(
+            prop_stg_name_to_fmt_id(Some(&nul_terminated(name))),
+            Ok(Fmtid::from_bytes(*bytes))
+        );
+    }
+    assert_eq!(
+        prop_stg_name_to_fmt_id(Some(&nul_terminated("\u{5}~AAAAAAAAAAAAAAAAAAAAAAAAA"))),
+        Err(Error::InvalidName)
+    );
+    assert_eq!(
+        prop_stg_name_to_fmt_id(Some(&nul_terminated("\u{5}YjaaaaaaAaaaaadaAaaaaaaaGi"))),
+        Err(Error::InvalidName)
+    );
+    assert_eq!(prop_stg_name_to_fmt_id(None), Err(Error::InvalidName));
+    assert_eq!(Error::InvalidName.hresult(), 0x8003_00fc_u32 as i32);
+    assert_eq!(
+        prop_stg_name_to_fmt_id(Some(&nul_terminated("\u{5}SummaryInformation"))),
+        Ok(FMTID_SUMMARY_INFORMATION)
+    );
+    assert_eq!(
+        prop_stg_name_to_fmt_id(Some(&nul_terminated("\u{5}dOCuMeNtSuMmArYiNfOrMaTiOn"))),
+        Ok(FMTID_DOC_SUMMARY_INFORMATION)
+    );
+    assert_eq!(
+        prop_stg_name_to_fmt_id(Some(&nul_terminated(
+            "\u{5}DocumentSummaryInformationextra"
+        ))),
+        Err(Error::InvalidName)
+    );
+}
