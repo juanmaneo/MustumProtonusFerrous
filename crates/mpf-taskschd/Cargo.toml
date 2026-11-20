@@ -1,0 +1,8 @@
+[package]
+name = "mpf-taskschd"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Task Scheduler deterministic trigger validation logic"
+
+[dependencies]
