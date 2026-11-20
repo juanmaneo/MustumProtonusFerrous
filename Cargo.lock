@@ -7,6 +7,10 @@ name = "mpf-advapi32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-advpack"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-amstream"
 version = "0.1.0"
 
@@ -44,6 +48,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-cards"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-cfgmgr32"
 version = "0.1.0"
 
 [[package]]
@@ -231,6 +239,10 @@ name = "mpf-graphics"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-hhctrl_ocx"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-hid"
 version = "0.1.0"
 
@@ -279,6 +291,10 @@ name = "mpf-inetcpl_cpl"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-iphlpapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ir50_32"
 version = "0.1.0"
 
@@ -323,6 +339,10 @@ name = "mpf-localui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mapi32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mcicda"
 version = "0.1.0"
 
@@ -351,6 +371,14 @@ name = "mpf-mfplay"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mfreadwrite"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mfsrcsnk"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-midimap"
 version = "0.1.0"
 
@@ -360,6 +388,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mmdevapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mountmgr_sys"
 version = "0.1.0"
 
 [[package]]
@@ -391,6 +423,10 @@ name = "mpf-mscoree"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msctf"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msdmo"
 version = "0.1.0"
 
@@ -415,11 +451,19 @@ name = "mpf-msv1_0"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msvcirt"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msvcp60"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-msvcrt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvfw32"
 version = "0.1.0"
 
 [[package]]
@@ -539,6 +583,10 @@ name = "mpf-riched20"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-rometadata"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-rpcrt4"
 version = "0.1.0"
 
@@ -552,6 +600,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-schannel"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-scrrun"
 version = "0.1.0"
 
 [[package]]
@@ -637,6 +689,10 @@ name = "mpf-userenv"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-uxtheme"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-vbscript"
 version = "0.1.0"
 
@@ -673,6 +729,10 @@ dependencies = [
 
 [[package]]
 name = "mpf-winebth_sys"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winebus_sys"
 version = "0.1.0"
 
 [[package]]
@@ -716,6 +776,10 @@ name = "mpf-wintrust"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wintypes"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wlanapi"
 version = "0.1.0"
 
@@ -745,6 +809,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-ws2_32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wsdapi"
 version = "0.1.0"
 
 [[package]]
