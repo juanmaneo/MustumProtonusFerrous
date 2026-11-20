@@ -19,6 +19,10 @@ name = "mpf-bcp47langs"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-bcrypt"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-bluetoothapis"
 version = "0.1.0"
 
@@ -44,6 +48,10 @@ dependencies = [
 
 [[package]]
 name = "mpf-colorcnv"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-combase"
 version = "0.1.0"
 
 [[package]]
@@ -96,6 +104,10 @@ name = "mpf-d3dcompiler_43"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-d3drm"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d3dx10_43"
 version = "0.1.0"
 
@@ -112,11 +124,23 @@ name = "mpf-d3dxof"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dbghelp"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dinput"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dmsynth"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-dmusic"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dnsapi"
 version = "0.1.0"
 
 [[package]]
@@ -144,6 +168,10 @@ name = "mpf-dxva2"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-evr"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-faultrep"
 version = "0.1.0"
 
@@ -153,6 +181,10 @@ version = "0.1.0"
 dependencies = [
  "mpf-ntdll",
 ]
+
+[[package]]
+name = "mpf-glu32"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-graphics"
@@ -179,11 +211,23 @@ name = "mpf-iccvid"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-iertutil"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-imaadp32_acm"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-imagehlp"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-imm32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-inetcomm"
 version = "0.1.0"
 
 [[package]]
@@ -251,6 +295,10 @@ name = "mpf-mciwave"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mf"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mfplat"
 version = "0.1.0"
 
@@ -303,6 +351,14 @@ name = "mpf-msrle32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msv1_0"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvcp60"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msvcrt"
 version = "0.1.0"
 
@@ -316,6 +372,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-ncrypt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-netapi32"
 version = "0.1.0"
 
 [[package]]
@@ -336,6 +396,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-ntprint"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-odbc32"
 version = "0.1.0"
 
 [[package]]
@@ -407,6 +471,10 @@ name = "mpf-serialui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-shcore"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-shell32"
 version = "0.1.0"
 
@@ -465,7 +533,19 @@ name = "mpf-userenv"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-vbscript"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-version"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wbemprox"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-webservices"
 version = "0.1.0"
 
 [[package]]
@@ -512,7 +592,15 @@ name = "mpf-wintab32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wintrust"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wlanapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wldap32"
 version = "0.1.0"
 
 [[package]]
