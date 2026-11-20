@@ -1,0 +1,8 @@
+[package]
+name = "mpf-amstream"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dlls/amstream subset for MPF: audio and video media-type and format checks"
+
+[dependencies]
