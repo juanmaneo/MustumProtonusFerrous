@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3drm"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dlls/d3drm subset for MPF: colour, quaternion, vector and affine matrix math, animation key search, and the palette and load helpers of the texture code"
+
+[dependencies]
