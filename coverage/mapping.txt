@@ -197,3 +197,11 @@ dlls/winebth.sys      mpf-winebth_sys     partial  P3
 dlls/amstream         mpf-amstream        partial  P3
 dlls/wnaspi32         mpf-wnaspi32        partial  P3
 dlls/xtajit64         mpf-xtajit64        partial  P3
+dlls/capi2032         mpf-capi2032        partial  P3
+dlls/cryptnet         mpf-cryptnet        partial  P3
+dlls/dxdiagn          mpf-dxdiagn         partial  P3
+dlls/schannel         mpf-schannel        partial  P3
+dlls/usbd.sys         mpf-usbd_sys        partial  P3
+dlls/mfplay           mpf-mfplay          partial  P3
+dlls/oleacc           mpf-oleacc          partial  P3
+dlls/vccorlib140      mpf-vccorlib140     partial  P3
