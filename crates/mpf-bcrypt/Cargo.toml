@@ -1,0 +1,8 @@
+[package]
+name = "mpf-bcrypt"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "bcrypt subset for MPF: the built-in algorithm table, provider open and enumeration, property get and set, AES key length checks, derived key copy, ECC blob mapping and blob type resolution of Wine's dlls/bcrypt"
+
+[dependencies]
