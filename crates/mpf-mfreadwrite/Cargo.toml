@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mfreadwrite"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mfreadwrite subset for MPF: source reader stream selection, read-index resolution, transform lookup, video-processor policy and the start-state plan"
+
+[dependencies]
