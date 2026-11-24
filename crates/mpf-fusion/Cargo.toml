@@ -1,0 +1,8 @@
+[package]
+name = "mpf-fusion"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "fusion subset for MPF: display-name parsing, metadata blob length and RVA helpers and public key token formatting"
+
+[dependencies]
