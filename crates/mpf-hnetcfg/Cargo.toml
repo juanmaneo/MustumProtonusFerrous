@@ -1,0 +1,8 @@
+[package]
+name = "mpf-hnetcfg"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "hnetcfg subset for MPF: the SSDP search response parser, the UPnP WANIPConnection SOAP request envelope and the port and protocol argument checks of Wine's dlls/hnetcfg"
+
+[dependencies]
