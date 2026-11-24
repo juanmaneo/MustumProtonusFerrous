@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msscript_ocx"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msscript.ocx subset for MPF: script enumerator cursors, module index and growth rules, procedure lookup, and error position fill from Wine's msscript.c"
+
+[dependencies]
