@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wmvcore"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wmvcore subset for MPF: the debugstr_time formatter and the async reader's clock arithmetic (get_current_time and the wait timeout) of Wine's dlls/wmvcore"
+
+[dependencies]
