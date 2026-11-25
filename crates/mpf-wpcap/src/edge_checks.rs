@@ -23,9 +23,18 @@ fn prefix_mask_has_contiguous_leading_ones() {
 
 #[test]
 fn statustostr_names_the_remaining_error_codes() {
-    assert_eq!(statustostr(PCAP_ERROR_BREAK), "Loop terminated by pcap_breakloop");
-    assert_eq!(statustostr(PCAP_ERROR_NOT_ACTIVATED), "The pcap_t has not been activated");
-    assert_eq!(statustostr(PCAP_ERROR_NO_SUCH_DEVICE), "No such device exists");
+    assert_eq!(
+        statustostr(PCAP_ERROR_BREAK),
+        "Loop terminated by pcap_breakloop"
+    );
+    assert_eq!(
+        statustostr(PCAP_ERROR_NOT_ACTIVATED),
+        "The pcap_t has not been activated"
+    );
+    assert_eq!(
+        statustostr(PCAP_ERROR_NO_SUCH_DEVICE),
+        "No such device exists"
+    );
 }
 
 #[test]
@@ -47,12 +56,18 @@ fn build_win32_description_keeps_the_separator_for_empty_text() {
 
 #[test]
 fn dispatch_stops_at_the_count_limit() {
-    assert_eq!(run_packets(Driver::Dispatch, 1, &[Ok(0), Ok(1)]), (1, vec![0], 1));
+    assert_eq!(
+        run_packets(Driver::Dispatch, 1, &[Ok(0), Ok(1)]),
+        (1, vec![0], 1)
+    );
 }
 
 #[test]
 fn dispatch_break_after_packets_returns_the_count() {
-    assert_eq!(run_packets(Driver::Dispatch, 0, &[Ok(4), Err(-2)]), (1, vec![4], 2));
+    assert_eq!(
+        run_packets(Driver::Dispatch, 0, &[Ok(4), Err(-2)]),
+        (1, vec![4], 2)
+    );
 }
 
 #[test]
@@ -62,7 +77,10 @@ fn dispatch_timeout_before_any_packet_returns_zero() {
 
 #[test]
 fn dispatch_reports_an_error_after_packets() {
-    assert_eq!(run_packets(Driver::Dispatch, 0, &[Ok(0), Err(-5)]), (-5, vec![0], 2));
+    assert_eq!(
+        run_packets(Driver::Dispatch, 0, &[Ok(0), Err(-5)]),
+        (-5, vec![0], 2)
+    );
 }
 
 #[test]
@@ -73,10 +91,16 @@ fn packet_loop_skips_timeouts_until_a_packet() {
 
 #[test]
 fn packet_loop_reports_an_error() {
-    assert_eq!(run_packets(Driver::PacketLoop, 0, &[Err(-4)]), (-4, vec![], 1));
+    assert_eq!(
+        run_packets(Driver::PacketLoop, 0, &[Err(-4)]),
+        (-4, vec![], 1)
+    );
 }
 
 #[test]
 fn packet_loop_stops_at_the_count_limit() {
-    assert_eq!(run_packets(Driver::PacketLoop, 2, &[Ok(1), Ok(2), Ok(3)]), (2, vec![1, 2], 2));
+    assert_eq!(
+        run_packets(Driver::PacketLoop, 2, &[Ok(1), Ok(2), Ok(3)]),
+        (2, vec![1, 2], 2)
+    );
 }
