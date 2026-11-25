@@ -7,6 +7,10 @@ name = "mpf-activeds"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-adsldp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-advapi32"
 version = "0.1.0"
 
@@ -144,6 +148,10 @@ name = "mpf-cryptnet"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-cryptui"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d2d1"
 version = "0.1.0"
 
@@ -180,11 +188,19 @@ name = "mpf-ddraw"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-devenum"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dinput"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-dmime"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dmstyle"
 version = "0.1.0"
 
 [[package]]
@@ -244,6 +260,10 @@ name = "mpf-faultrep"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-fusion"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-gdi32"
 version = "0.1.0"
 dependencies = [
@@ -272,6 +292,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-hidparse_sys"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-hlink"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-hnetcfg"
 version = "0.1.0"
 
 [[package]]
@@ -371,6 +399,10 @@ name = "mpf-mapi32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mciavi32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mcicda"
 version = "0.1.0"
 
@@ -459,6 +491,10 @@ name = "mpf-msctf"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msdasql"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msdmo"
 version = "0.1.0"
 
@@ -480,6 +516,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-msrle32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msscript_ocx"
 version = "0.1.0"
 
 [[package]]
@@ -524,6 +564,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-netio_sys"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-netprofm"
 version = "0.1.0"
 
 [[package]]
@@ -605,6 +649,10 @@ dependencies = [
  "mpf-pe",
  "mpf-wineboot",
 ]
+
+[[package]]
+name = "mpf-qasf"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-qcap"
@@ -761,6 +809,10 @@ name = "mpf-vccorlib140"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-vcomp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-version"
 version = "0.1.0"
 
@@ -856,6 +908,10 @@ name = "mpf-wmphoto"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wmvcore"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wnaspi32"
 version = "0.1.0"
 
@@ -865,6 +921,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wow64win"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wpcap"
 version = "0.1.0"
 
 [[package]]
