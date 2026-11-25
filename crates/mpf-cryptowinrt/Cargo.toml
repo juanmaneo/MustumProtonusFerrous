@@ -1,0 +1,8 @@
+[package]
+name = "mpf-cryptowinrt"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "cryptowinrt subset for MPF: base64 encoding, activation class dispatch, IAsyncInfo state machine"
+
+[dependencies]
