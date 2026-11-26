@@ -1,0 +1,8 @@
+[package]
+name = "mpf-w32skrnl"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "w32skrnl subset for MPF: Win32s directory concatenation and stub exports"
+
+[dependencies]
