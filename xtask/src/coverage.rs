@@ -19,7 +19,9 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 9] = [
+const NO_CODE_FILES: [&str; 11] = [
+    "crates/mpf-atlthunk/src/lib.rs",
+    "crates/mpf-dbgeng/src/lib.rs",
     "crates/mpf-hhctrl_ocx/src/lib.rs",
     "crates/mpf-iccvid/src/oracle.rs",
     "crates/mpf-mfsrcsnk/src/lib.rs",
