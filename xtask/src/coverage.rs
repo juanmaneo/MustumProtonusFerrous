@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 7] = [
+const NO_CODE_FILES: [&str; 8] = [
     "crates/mpf-hhctrl_ocx/src/lib.rs",
     "crates/mpf-iccvid/src/oracle.rs",
     "crates/mpf-mfsrcsnk/src/lib.rs",
@@ -27,6 +27,7 @@ const NO_CODE_FILES: [&str; 7] = [
     "crates/mpf-msvfw32/src/lib.rs",
     "crates/mpf-ntdll/src/lib.rs",
     "crates/mpf-nsi/src/oracle_data.rs",
+    "crates/mpf-usp10/src/lib.rs",
 ];
 
 /// Runs the workspace tests under coverage and prints the usual table.
