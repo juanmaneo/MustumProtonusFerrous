@@ -269,3 +269,13 @@ dlls/mfwmaaec           mpf-mfwmaaec        partial
 dlls/inetmib1           mpf-inetmib1        partial
 dlls/usp10              mpf-usp10           partial
 dlls/qwave              mpf-qwave           partial
+dlls/opcservices        mpf-opcservices     partial
+dlls/aclui              mpf-aclui           partial
+dlls/dpnet              mpf-dpnet           partial
+dlls/dmloader           mpf-dmloader        partial
+dlls/sspicli            mpf-sspicli         partial
+dlls/mouhid.sys         mpf-mouhid_sys      partial
+dlls/winscard           mpf-winscard        partial
+dlls/joy.cpl            mpf-joy_cpl         partial
+dlls/dpvoice            mpf-dpvoice         partial
+dlls/diasymreader       mpf-diasymreader    partial

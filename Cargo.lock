@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "mpf-aclui"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-activeds"
 version = "0.1.0"
 
@@ -212,11 +216,19 @@ name = "mpf-devenum"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-diasymreader"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dinput"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-dmime"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dmloader"
 version = "0.1.0"
 
 [[package]]
@@ -237,6 +249,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-dplayx"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dpnet"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dpvoice"
 version = "0.1.0"
 
 [[package]]
@@ -383,6 +403,10 @@ name = "mpf-iyuv_32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-joy_cpl"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-jsproxy"
 version = "0.1.0"
 
@@ -476,6 +500,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mmdevapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mouhid_sys"
 version = "0.1.0"
 
 [[package]]
@@ -666,6 +694,10 @@ name = "mpf-oledlg"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-opcservices"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-opencl"
 version = "0.1.0"
 
@@ -806,6 +838,10 @@ name = "mpf-spoolss"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-sspicli"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-sxs"
 version = "0.1.0"
 
@@ -937,6 +973,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-winnt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winscard"
 version = "0.1.0"
 
 [[package]]
