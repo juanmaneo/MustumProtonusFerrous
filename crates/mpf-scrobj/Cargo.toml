@@ -1,0 +1,8 @@
+[package]
+name = "mpf-scrobj"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "scrobj subset for MPF: script host and member lookup, scriptlet property XML parsing, and the COM methods that return fixed HRESULTs"
+
+[dependencies]
