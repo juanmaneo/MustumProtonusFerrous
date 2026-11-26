@@ -1,0 +1,8 @@
+[package]
+name = "mpf-scsiport_sys"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "scsiport.sys subset for MPF: the DriverEntry return value and the 48 @ stub exports of Wine's dlls/scsiport.sys as __wine_spec_unimplemented_stub records"
+
+[dependencies]
