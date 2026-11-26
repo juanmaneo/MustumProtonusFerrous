@@ -148,6 +148,14 @@ name = "mpf-cryptnet"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-cryptowinrt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-cryptsp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cryptui"
 version = "0.1.0"
 
@@ -467,6 +475,10 @@ name = "mpf-msacm32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msacm32_drv"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msado15"
 version = "0.1.0"
 
@@ -508,6 +520,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-msi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msisip"
 version = "0.1.0"
 
 [[package]]
@@ -634,6 +650,10 @@ name = "mpf-pe"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-prntvpt"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-propsys"
 version = "0.1.0"
 
@@ -688,6 +708,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-rsaenh"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-rtworkq"
 version = "0.1.0"
 
 [[package]]

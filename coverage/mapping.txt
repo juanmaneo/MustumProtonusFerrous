@@ -252,3 +252,10 @@ dlls/qasf               mpf-qasf            partial
 dlls/vcomp              mpf-vcomp           partial
 dlls/wmvcore            mpf-wmvcore         partial
 dlls/wpcap              mpf-wpcap           partial
+dlls/cards              mpf-cards           partial
+dlls/prntvpt            mpf-prntvpt         partial
+dlls/msisip             mpf-msisip          partial
+dlls/msacm32.drv        mpf-msacm32_drv     partial
+dlls/cryptsp            mpf-cryptsp         partial
+dlls/cryptowinrt        mpf-cryptowinrt     partial
+dlls/rtworkq            mpf-rtworkq         partial
