@@ -1,0 +1,8 @@
+[package]
+name = "mpf-tbs"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "tbs subset for MPF: fixed-result Tbsi and GetDeviceIDString returns, tbs.spec export table, @ stub exception records"
+
+[dependencies]
