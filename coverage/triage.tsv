@@ -177,3 +177,7 @@ virtdisk	partial	model disk return logic and stubs
 vssapi	partial	writer stubs, backup E_NOTIMPL, spec stubs
 w32skrnl	partial	Win32s directory concatenation, spec export table, stub exceptions
 wbemdisp	partial	stub exports and export table
+vulkan-1	partial	spec export table, DllMain gate, stub exceptions
+websocket	partial	export table, E_NOTIMPL/no-op handle functions, stub exceptions
+wevtapi	partial	fixed-value Evt returns, log-path property, export table, stub records
+wevtsvc	partial	SERVICE_STATUS records, control dispatch and ServiceMain states

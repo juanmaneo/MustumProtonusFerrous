@@ -1477,6 +1477,10 @@ name = "mpf-vssapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-vulkan_1"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-w32skrnl"
 version = "0.1.0"
 
@@ -1493,7 +1497,19 @@ name = "mpf-webservices"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-websocket"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wer"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wevtapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wevtsvc"
 version = "0.1.0"
 
 [[package]]

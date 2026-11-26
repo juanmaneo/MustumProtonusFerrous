@@ -424,3 +424,7 @@ dlls/virtdisk           mpf-virtdisk         partial
 dlls/vssapi             mpf-vssapi           partial
 dlls/w32skrnl           mpf-w32skrnl         partial
 dlls/wbemdisp           mpf-wbemdisp         partial
+dlls/vulkan-1           mpf-vulkan_1         partial
+dlls/websocket          mpf-websocket        partial
+dlls/wevtapi            mpf-wevtapi          partial
+dlls/wevtsvc            mpf-wevtsvc          partial
