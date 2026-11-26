@@ -1,0 +1,8 @@
+[package]
+name = "mpf-bthprops_cpl"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "bthprops.cpl subset for MPF: bthprops.cpl.spec export table and the @ stub exception for its 42 stub exports"
+
+[dependencies]
