@@ -1,0 +1,8 @@
+[package]
+name = "mpf-oledb32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "oledb32 subset for MPF: DllGetClassObject class table, DBTYPE sizes and classes, and the MSDAINITIALIZE init-string parser"
+
+[dependencies]
