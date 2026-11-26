@@ -1,0 +1,8 @@
+[package]
+name = "mpf-adsldpc"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "adsldpc subset for MPF: adsldpc.spec export table and @ stub records for its 189 exports"
+
+[dependencies]
