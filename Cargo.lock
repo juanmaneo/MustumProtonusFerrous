@@ -719,6 +719,10 @@ name = "mpf-quartz"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-qwave"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-rasapi32"
 version = "0.1.0"
 
@@ -850,6 +854,10 @@ dependencies = [
 
 [[package]]
 name = "mpf-userenv"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-usp10"
 version = "0.1.0"
 
 [[package]]

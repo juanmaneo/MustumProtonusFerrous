@@ -267,3 +267,5 @@ dlls/avicap32           mpf-avicap32        partial
 dlls/ctl3d32            mpf-ctl3d32         partial
 dlls/mfwmaaec           mpf-mfwmaaec        partial
 dlls/inetmib1           mpf-inetmib1        partial
+dlls/usp10              mpf-usp10           partial
+dlls/qwave              mpf-qwave           partial
