@@ -1,0 +1,7 @@
+[package]
+name = "mpf-wmp"
+edition.workspace = true
+license.workspace = true
+description = "wmp subset for MPF: DllGetClassObject and class factory logic, DllMain state, wmp.spec export table, and the ordinal @ stub exceptions"
+
+[dependencies]
