@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msttsengine"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msttsengine subset for MPF: TTSEngineCom class factory, ttsengine object with ISpTTSEngine and ISpObjectWithToken, DllMain and DllGetClassObject, spec export table"
+
+[dependencies]
