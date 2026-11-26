@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wldp"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wldp subset for MPF: WldpIsDynamicCodePolicyEnabled, WldpGetLockdownPolicy and WldpQueryWindowsLockdownMode return values, wldp.spec export table, and the @ stub exception for the other 26 exports"
+
+[dependencies]
