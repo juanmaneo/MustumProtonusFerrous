@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3d10core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d3d10core subset for MPF: D3D10CoreCreateDevice control flow and the D3D10CoreRegisterLayers stub"
+
+[dependencies]
