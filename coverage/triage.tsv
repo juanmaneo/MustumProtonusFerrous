@@ -133,3 +133,18 @@ newdev	partial	stub exports, TRUE returns, ANSI thunk and hardware ID match
 npmshtml	partial	NP_Initialize/NP_Shutdown returns and npmshtml.spec exports
 nsiproxy.sys	partial	IP helpers, ICMP checksums and IOCTL checks
 objsel	partial	DllGetClassObject, class factory and IDsObjectPicker
+olecli32	partial	client-doc handles, OleQueryType dispatch and stub records
+oledb32	partial	DllGetClassObject table, DBTYPE helpers, init-string parser
+olepro32	partial	DllGetClassObject S_OK and olepro32.spec forwards
+olesvr32	partial	server handle counter, OLE_OK exports and stub model
+packager	partial	OleObject, PersistStorage and class factory methods
+pidgen	partial	PIDGenSimpA/W and @ stub records
+printui	partial	rundll parser, PrintUIEntryW dispatch, printui.spec exports and stub records
+pstorec	partial	IPStore refcounts, PStoreCreateInstance, stub exports
+qdvd	partial	class factory gates, graph refcounts and E_NOTIMPL exports
+qedit	partial	DllGetClassObject dispatch, class factory, filter registration data
+query	partial	export table, CI status returns and @ stub model
+rasdlg	partial	RasEntryDlgW FALSE return and rasdlg.spec stub exception table
+riched32	partial	DllMain and RichEdit 1.0 class registration
+rstrtmgr	partial	RmGetList and RmStartSession out-params, ERROR_SUCCESS returns, stub model
+rtscom	partial	DllGetClassObject dispatch, class factory, E_NOTIMPL methods

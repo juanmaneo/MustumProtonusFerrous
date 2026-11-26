@@ -1082,7 +1082,23 @@ name = "mpf-oleaut32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-olecli32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-oledb32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-oledlg"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-olepro32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-olesvr32"
 version = "0.1.0"
 
 [[package]]
@@ -1094,6 +1110,10 @@ name = "mpf-opencl"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-packager"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-pdh"
 version = "0.1.0"
 
@@ -1102,7 +1122,15 @@ name = "mpf-pe"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-pidgen"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-powrprof"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-printui"
 version = "0.1.0"
 
 [[package]]
@@ -1127,11 +1155,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-pstorec"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-qasf"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-qcap"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-qdvd"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-qedit"
 version = "0.1.0"
 
 [[package]]
@@ -1143,6 +1183,10 @@ name = "mpf-quartz"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-query"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-qwave"
 version = "0.1.0"
 
@@ -1151,11 +1195,19 @@ name = "mpf-rasapi32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-rasdlg"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-resampledmo"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-riched20"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-riched32"
 version = "0.1.0"
 
 [[package]]
@@ -1168,6 +1220,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-rsaenh"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-rstrtmgr"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-rtscom"
 version = "0.1.0"
 
 [[package]]
