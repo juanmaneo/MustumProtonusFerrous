@@ -148,3 +148,28 @@ rasdlg	partial	RasEntryDlgW FALSE return and rasdlg.spec stub exception table
 riched32	partial	DllMain and RichEdit 1.0 class registration
 rstrtmgr	partial	RmGetList and RmStartSession out-params, ERROR_SUCCESS returns, stub model
 rtscom	partial	DllGetClassObject dispatch, class factory, E_NOTIMPL methods
+rtutils	partial	TraceRegisterExA/W contract, rtutils.spec export table, 54 stub exports
+scardsvr	partial	service handler, CalaisMain sequence and InitSmartCardService stub model
+scrobj	partial	script lookup, scriptlet property XML parsing and fixed-HRESULT COM methods
+scsiport.sys	partial	DriverEntry return value and 48 @ stub exports
+sensapi	ported	IsDestinationReachable, IsNetworkAlive and the export table
+sfc_os	partial	fixed-result exports, SR restore point status, stub records
+shdocvw	partial	class routing, fixed-return and forward exports, IPropertyBag checks, shdocvw.spec stub table
+sppc	partial	SLOpen/SLClose handle, SLPersistApplicationPolicies NULL gate, sppc.spec stub model
+srvsvc	partial	LanmanServer ServiceMain state sequence and control handler
+sti	partial	StiCreateInstance object model, class factory, launch-application registry logic
+tapi32	partial	line country list, location info, export table, stubs
+tbs	ported	fixed-result Tbsi returns, tbs.spec export table, @ stub records
+tdh	ported	enumerate-providers contract, loaders and stub records
+tdi.sys	ported	DriverEntry return value and 56 @ stub exports
+threadpoolwinrt	partial	class match, QueryInterface tables, refcounts, run_async routing
+thumbcache	partial	DllGetClassObject dispatch, class factory and IThumbnailCache refcounts
+tiptsf	partial	ITextInputPanel object, class factory and stub model
+traffic	partial	TcRegisterClient/TcDeregisterClient returns, traffic.spec stub model
+twaindsm	ported	Source Manager dispatch, source list and DSM_Entry routing
+uianimation	partial	DllGetClassObject dispatch, class factories and entry points
+uiribbon	partial	DllGetClassObject dispatch, class factory, IUIFramework stubs
+updspapi	partial	SetDynamicStringA return value and @ stub records
+url	partial	FileProtocolHandlerA target choice, url.spec exports and stub records
+vcruntime140	partial	export table, stub records, init-thread state, operator new/delete rules
+vdmdbg	partial	export table, stub records and enum return values

@@ -1231,11 +1231,19 @@ name = "mpf-rtscom"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-rtutils"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-rtworkq"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-sapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-scardsvr"
 version = "0.1.0"
 
 [[package]]
@@ -1247,7 +1255,15 @@ name = "mpf-schedsvc"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-scrobj"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-scrrun"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-scsiport_sys"
 version = "0.1.0"
 
 [[package]]
@@ -1259,11 +1275,23 @@ name = "mpf-secur32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-sensapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-serialui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-sfc_os"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-shcore"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-shdocvw"
 version = "0.1.0"
 
 [[package]]
@@ -1290,7 +1318,19 @@ name = "mpf-spoolss"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-sppc"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-srvsvc"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-sspicli"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-sti"
 version = "0.1.0"
 
 [[package]]
@@ -1302,7 +1342,43 @@ name = "mpf-t2embed"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-tapi32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-taskschd"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-tbs"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-tdh"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-tdi_sys"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-threadpoolwinrt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-thumbcache"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-tiptsf"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-traffic"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-twaindsm"
 version = "0.1.0"
 
 [[package]]
@@ -1314,7 +1390,15 @@ name = "mpf-ucrtbase"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-uianimation"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-uiautomationcore"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-uiribbon"
 version = "0.1.0"
 
 [[package]]
@@ -1324,6 +1408,14 @@ dependencies = [
  "mpf-pe",
  "mpf-proton",
 ]
+
+[[package]]
+name = "mpf-updspapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-url"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-urlmon"
@@ -1362,6 +1454,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-vcomp"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-vcruntime140"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-vdmdbg"
 version = "0.1.0"
 
 [[package]]
