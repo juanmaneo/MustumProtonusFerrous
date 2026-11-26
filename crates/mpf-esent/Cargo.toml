@@ -1,0 +1,8 @@
+[package]
+name = "mpf-esent"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "esent subset for MPF: esent.spec export table and the __wine_spec_unimplemented_stub record for its 336 @ stub exports"
+
+[dependencies]
