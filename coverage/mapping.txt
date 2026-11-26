@@ -287,3 +287,6 @@ dlls/wow64cpu           mpf-wow64cpu        partial
 dlls/desk.cpl           mpf-desk_cpl        partial
 dlls/gameux             mpf-gameux          partial
 dlls/ddrawex            mpf-ddrawex         partial
+dlls/atlthunk           mpf-atlthunk        partial
+dlls/d3dx11_42          mpf-d3dx11_42       partial
+dlls/dbgeng             mpf-dbgeng          partial

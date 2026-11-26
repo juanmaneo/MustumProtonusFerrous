@@ -35,6 +35,10 @@ name = "mpf-atl"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-atlthunk"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-avicap32"
 version = "0.1.0"
 
@@ -192,6 +196,10 @@ name = "mpf-d3dx10_43"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-d3dx11_42"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d3dx11_43"
 version = "0.1.0"
 
@@ -201,6 +209,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-d3dxof"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dbgeng"
 version = "0.1.0"
 
 [[package]]

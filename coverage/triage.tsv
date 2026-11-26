@@ -108,3 +108,19 @@ wow64cpu	partial	fpux_to_fpu and copy_context_64to32 (7c9269e)
 desk.cpl	partial	display rect, devmode layout and option helpers (c9f8443)
 gameux	partial	registry/statistics path building and statistics store (94b7ff2)
 ddrawex	partial	DDSURFACEDESC <-> DDSURFACEDESC2 conversion (c69db6a)
+atlthunk	partial	thunk machine-code encoders for x86-64/i386/AArch64, pool capacity and slot counters
+d3dx11_42	partial	D3DX11CheckVersion version predicate
+dbgeng	partial	debug target string return buffer and module lookup by base
+acledit	skip	single FIXME stub (FMExtensionProcW)
+apphelp	skip	all exports are stubs
+appxdeploymentclient	skip	COM factory and package plumbing, FIXME stubs
+atmlib	skip	FIXME stubs only
+capabilityaccessmanagerclient	skip	WinRT/COM shell, FIXME stubs
+chakra	skip	single FIXME stub (DllGetClassObject)
+cldapi	skip	FIXME stubs returning E_NOTIMPL
+clusapi	skip	FIXME stubs returning fixed values
+cng.sys	skip	DriverEntry only, other exports are stubs or bcrypt forwarders
+connect	skip	single FIXME stub (IsInternetConnected)
+coremessaging	skip	COM/WinRT plumbing and FIXME stubs
+d3d10core	skip	E_NOTIMPL stub and LoadLibrary/COM plumbing
+davclnt	skip	FIXME stubs only
