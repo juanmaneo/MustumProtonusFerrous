@@ -74,3 +74,13 @@ in the dev container for direct comparison.
       (string-only subset, conformance case seeded from `dlls/shlwapi/tests`)
 - [ ] all 744 `dlls/` components ported, each with conformance cases
       seeded from its `dlls/<dll>/tests`
+
+Definition of done for Phase 5: every `dlls/` component is ported (no
+permanent skip or `out-of-scope` status), each port has conformance cases,
+and all gates are green. Components skipped during triage stay open until
+ported.
+
+## Phase 6 — game acceptance (planned)
+
+- [ ] Phase 5 done, and the port runs real Windows games and applications
+      with results comparable to upstream Wine, verified per title
