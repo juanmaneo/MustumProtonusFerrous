@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wimgapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wimgapi subset for MPF: WIMRegisterMessageCallback, WIMGetMountedImages and WIMCreateFile stub bodies, wimgapi.spec export table, and the @ stub exception for the other 37 exports"
+
+[dependencies]
