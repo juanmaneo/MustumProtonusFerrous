@@ -78,7 +78,10 @@ in the dev container for direct comparison.
 Definition of done for Phase 5: every `dlls/` component is ported (no
 permanent skip or `out-of-scope` status), each port has conformance cases,
 and all gates are green. Components skipped during triage stay open until
-ported.
+ported. Alias and forwarder DLLs (for example `d3dx9_24` or `msvcr70`) also
+get their own port crate, each with a conformance case that proves the alias
+resolves to the ported implementation. `native` is not a final status for
+them.
 
 ## Phase 6 — game acceptance (planned)
 
