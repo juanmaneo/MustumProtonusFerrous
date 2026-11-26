@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "mpf-acledit"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-aclui"
 version = "0.1.0"
 
@@ -23,11 +27,23 @@ name = "mpf-advpack"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-amsi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-amstream"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-apphelp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-appwiz_cpl"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-appxdeploymentclient"
 version = "0.1.0"
 
 [[package]]
@@ -39,6 +55,14 @@ name = "mpf-atlthunk"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-atmlib"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-authz"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-avicap32"
 version = "0.1.0"
 
@@ -47,11 +71,19 @@ name = "mpf-avifil32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-avrt"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-bcp47langs"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-bcrypt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-bcryptprimitives"
 version = "0.1.0"
 
 [[package]]
@@ -67,6 +99,10 @@ name = "mpf-cabinet"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-capabilityaccessmanagerclient"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-capi2032"
 version = "0.1.0"
 
@@ -75,7 +111,19 @@ name = "mpf-cards"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-cdosys"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cfgmgr32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-chakra"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-cldapi"
 version = "0.1.0"
 
 [[package]]
@@ -89,6 +137,14 @@ dependencies = [
  "mpf-wineboot",
  "mpf-winnt",
 ]
+
+[[package]]
+name = "mpf-clusapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-cng_sys"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-colorcnv"
@@ -142,6 +198,10 @@ dependencies = [
  "mpf-wineboot",
  "mpf-winnt",
 ]
+
+[[package]]
+name = "mpf-connect"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-credui"

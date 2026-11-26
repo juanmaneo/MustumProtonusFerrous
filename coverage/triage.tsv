@@ -58,3 +58,18 @@ fltlib	partial	HRESULT_FROM_WIN32 and filter stub return values
 fltmgr.sys	partial	default security descriptor layout and export stub returns
 fwpuclnt	partial	WFP export stubs modelled as return values (137 spec-only stubs not modelled)
 gameinput	partial	GameInputCreate and DllGetClassObject stub codes
+acledit	partial	FMExtensionProcW, default DllMain, six stubs as stub exception
+amsi	partial	AMSI context, session and scan model, stub exceptions
+apphelp	partial	ApphelpCheckShellObject, SdbGetAppPatchDir, 155 stub exception model
+appxdeploymentclient	partial	DLL class dispatch, IID tables, refcounts, 34 E_NOTIMPL exports
+atmlib	partial	ATMProperlyLoaded, ATMFinish, export table, stub exception model
+authz	partial	seven exports over the last-error slot (ERROR_CALL_NOT_IMPLEMENTED)
+avrt	partial	MM thread argument checks, stub returns, 7 ordering-group stub exceptions
+bcryptprimitives	ported	ProcessPrng chunked fill loop
+capabilityaccessmanagerclient	partial	DllGetActivationFactory dispatch, factories, AppCapability, CheckAccess
+cdosys	partial	DllGetClassObject and DllCanUnloadNow/Register return values
+chakra	partial	Dll* return codes and 156 stub exception raises
+cldapi	partial	CfGetPlaceholderInfo, CfGetPlatformInfo, 49 stub exception raises
+clusapi	partial	7 fixed-return exports, 108 stub exception raises
+cng.sys	partial	DriverEntry, 35 bcrypt forwards, 28 stub exception raises
+connect	partial	IsInternetConnected, DllCanUnloadNow, 13 stub exception raises
