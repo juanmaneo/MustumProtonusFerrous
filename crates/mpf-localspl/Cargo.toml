@@ -1,0 +1,8 @@
+[package]
+name = "mpf-localspl"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "localspl subset for MPF: port name classification, MULTI_SZ length, UNC server and basename parsing, print environment lookup"
+
+[dependencies]
