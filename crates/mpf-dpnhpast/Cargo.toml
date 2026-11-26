@@ -1,0 +1,8 @@
+[package]
+name = "mpf-dpnhpast"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "dpnhpast subset for MPF: DirectPlayNATHelpCreate and DllGetClassObject stubs, DllCanUnloadNow, and the resource registration result fold"
+
+[dependencies]
