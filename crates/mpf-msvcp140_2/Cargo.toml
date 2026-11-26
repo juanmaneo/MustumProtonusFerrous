@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msvcp140_2"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Deterministic 3-D hypot wrappers from Wine's msvcp140_2 math.c, for double and float"
+
+[dependencies]
