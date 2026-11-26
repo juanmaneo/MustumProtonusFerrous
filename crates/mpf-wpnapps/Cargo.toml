@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wpnapps"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wpnapps subset for MPF: DllGetActivationFactory class match, static factory and notifier QueryInterface tables, refcounts, debugstr_ToastTemplateType and E_NOTIMPL methods"
+
+[dependencies]
