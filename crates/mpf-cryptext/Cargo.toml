@@ -1,0 +1,8 @@
+[package]
+name = "mpf-cryptext"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "cryptext subset for MPF: ANSI to wide string copy, CryptExtOpenCER dialog choice, CryptExtAddPFX stub returns"
+
+[dependencies]
