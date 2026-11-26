@@ -1,0 +1,8 @@
+[package]
+name = "mpf-xaudio2_7"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "xaudio2_7 subset for MPF: class-object and aggregation gates, QueryInterface dispatch, XAudio2 callback table, mastering-voice latch and XAPO return values"
+
+[dependencies]
