@@ -1,0 +1,8 @@
+[package]
+name = "mpf-nsiproxy_sys"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "nsiproxy.sys subset for MPF: IP prefix and IPv6 address helpers, IPv6 scope lookup, ICMP checksums and status mapping, IOCTL dispatch and ICMP echo request checks"
+
+[dependencies]
