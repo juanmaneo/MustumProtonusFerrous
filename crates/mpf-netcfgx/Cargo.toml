@@ -1,0 +1,8 @@
+[package]
+name = "mpf-netcfgx"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "netcfgx subset for MPF: DllGetClassObject, the CNetCfg class factory and object, the netcfgx.spec export table, and the @ stub exception records"
+
+[dependencies]
