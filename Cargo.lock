@@ -387,6 +387,10 @@ name = "mpf-inetmib1"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-infosoft"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-iphlpapi"
 version = "0.1.0"
 
@@ -437,6 +441,10 @@ version = "0.1.0"
 dependencies = [
  "mpf-pe",
 ]
+
+[[package]]
+name = "mpf-localspl"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-localui"
@@ -960,6 +968,10 @@ name = "mpf-wineusb_sys"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-winexinput_sys"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wing32"
 version = "0.1.0"
 
@@ -973,6 +985,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-winnt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winprint"
 version = "0.1.0"
 
 [[package]]

@@ -279,3 +279,7 @@ dlls/winscard           mpf-winscard        partial
 dlls/joy.cpl            mpf-joy_cpl         partial
 dlls/dpvoice            mpf-dpvoice         partial
 dlls/diasymreader       mpf-diasymreader    partial
+dlls/winexinput.sys     mpf-winexinput_sys  partial
+dlls/infosoft           mpf-infosoft        partial
+dlls/localspl           mpf-localspl        partial
+dlls/winprint           mpf-winprint        partial
