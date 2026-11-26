@@ -1,0 +1,8 @@
+[package]
+name = "mpf-explorerframe"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "explorerframe subset for MPF: NSTC style masks and item-state flags, taskbar method results, class-object selection and module lock checks"
+
+[dependencies]
