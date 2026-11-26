@@ -1,0 +1,8 @@
+[package]
+name = "mpf-winscard"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "winscard subset for MPF: multi-string copy (copy_multiszA/W) with size query, autoalloc and buffer modes"
+
+[dependencies]
