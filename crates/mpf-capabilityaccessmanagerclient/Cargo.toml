@@ -1,0 +1,8 @@
+[package]
+name = "mpf-capabilityaccessmanagerclient"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "capabilityaccessmanagerclient subset for MPF: AppCapability access checks, reference counting, and DllGetActivationFactory class dispatch"
+
+[dependencies]
