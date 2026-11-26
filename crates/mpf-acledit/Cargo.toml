@@ -1,0 +1,8 @@
+[package]
+name = "mpf-acledit"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "acledit subset for MPF: FMExtensionProcW return value, default DllMain result, spec-stub exception model"
+
+[dependencies]
