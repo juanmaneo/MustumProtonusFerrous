@@ -17,9 +17,9 @@ use std::process::{Child, Command, ExitCode, Stdio};
 /// Metrics that must be fully covered in every file.
 const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
-/// Source files that hold only constants, `mod` declarations or re-exports,
-/// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 132] = [
+/// Source files that hold only constants, type definitions, `mod` declarations
+/// or re-exports, which llvm-cov never lists because they contain no code.
+const NO_CODE_FILES: [&str; 134] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -140,9 +140,11 @@ const NO_CODE_FILES: [&str; 132] = [
     "crates/mpf-tdh/src/lib.rs",
     "crates/mpf-tdi_sys/src/lib.rs",
     "crates/mpf-threadpoolwinrt/src/lib.rs",
+    "crates/mpf-thumbcache/src/guid.rs",
     "crates/mpf-thumbcache/src/lib.rs",
     "crates/mpf-tiptsf/src/lib.rs",
     "crates/mpf-traffic/src/lib.rs",
+    "crates/mpf-twaindsm/src/data.rs",
     "crates/mpf-twaindsm/src/lib.rs",
     "crates/mpf-uianimation/src/lib.rs",
     "crates/mpf-uiribbon/src/lib.rs",
