@@ -118,3 +118,18 @@ msnet32	partial	MSNET32_57 return value and stub records
 msports	partial	ComDBOpen/ComDBClose returns, msports.spec exports, stub records
 mssign32	partial	fixed Pvk/Signer returns and stub exception records
 msttsengine	ported	class factory, ttsengine object, DLL exports
+msvcm80	partial	msvcm_main.c no-op exports and @ stub model
+msvcp140_atomic_wait	partial	shared mutex, tzdb names, stub records
+msvcp140_codecvt_ids	partial	locale id data exports
+msvcrt20	partial	argument forwarding, _matherr and stub records
+msvdsp	partial	DllRegisterServer/DllUnregisterServer registration tables, DllGetClassObject, DllCanUnloadNow
+mswsock	partial	extension-pointer dispatch, WSARecvEx, and 26 @ stub exports
+mtxdm	partial	GetDispenserManager forwarding and export table
+nddeapi	partial	fixed NDde return values, nddeapi.spec exports, NDdeSpecialCommand stubs
+ndfapi	partial	E_NOTIMPL exports and stub exception records
+netcfgx	partial	CNetCfg class factory, object and spec stubs
+netutils	ported	NetApiBuffer heap logic, spec exports, stub records
+newdev	partial	stub exports, TRUE returns, ANSI thunk and hardware ID match
+npmshtml	partial	NP_Initialize/NP_Shutdown returns and npmshtml.spec exports
+nsiproxy.sys	partial	IP helpers, ICMP checksums and IOCTL checks
+objsel	partial	DllGetClassObject, class factory and IDsObjectPicker

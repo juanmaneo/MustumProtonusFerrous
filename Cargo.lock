@@ -931,7 +931,19 @@ name = "mpf-msvcirt"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msvcm80"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msvcp140_2"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvcp140_atomic_wait"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvcp140_codecvt_ids"
 version = "0.1.0"
 
 [[package]]
@@ -947,6 +959,14 @@ name = "mpf-msvcrt"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msvcrt20"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvdsp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msvfw32"
 version = "0.1.0"
 
@@ -959,11 +979,31 @@ name = "mpf-msvproc"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mswsock"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mtxdm"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ncrypt"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-nddeapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ndfapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-netapi32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-netcfgx"
 version = "0.1.0"
 
 [[package]]
@@ -975,11 +1015,27 @@ name = "mpf-netprofm"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-netutils"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-newdev"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ninput"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-npmshtml"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-nsi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-nsiproxy_sys"
 version = "0.1.0"
 
 [[package]]
@@ -996,6 +1052,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-ntprint"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-objsel"
 version = "0.1.0"
 
 [[package]]
