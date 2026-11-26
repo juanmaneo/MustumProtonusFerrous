@@ -1,0 +1,8 @@
+[package]
+name = "mpf-atlthunk"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "atlthunk subset for MPF: thunk machine-code encoding (x86-64, i386, AArch64), thunk pool slot bookkeeping"
+
+[dependencies]
