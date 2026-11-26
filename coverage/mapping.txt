@@ -259,3 +259,9 @@ dlls/msacm32.drv        mpf-msacm32_drv     partial
 dlls/cryptsp            mpf-cryptsp         partial
 dlls/cryptowinrt        mpf-cryptowinrt     partial
 dlls/rtworkq            mpf-rtworkq         partial
+dlls/mstask             mpf-mstask          partial
+dlls/powrprof           mpf-powrprof        partial
+dlls/atl                mpf-atl             partial
+dlls/msvcp140_2         mpf-msvcp140_2      partial
+dlls/avicap32           mpf-avicap32        partial
+dlls/ctl3d32            mpf-ctl3d32         partial

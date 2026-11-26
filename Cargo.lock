@@ -27,6 +27,14 @@ name = "mpf-appwiz_cpl"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-atl"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-avicap32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-avifil32"
 version = "0.1.0"
 
@@ -157,6 +165,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-cryptui"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ctl3d32"
 version = "0.1.0"
 
 [[package]]
@@ -539,11 +551,19 @@ name = "mpf-msscript_ocx"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mstask"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msv1_0"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-msvcirt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvcp140_2"
 version = "0.1.0"
 
 [[package]]
@@ -647,6 +667,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-pe"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-powrprof"
 version = "0.1.0"
 
 [[package]]
