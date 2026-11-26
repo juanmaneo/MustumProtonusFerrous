@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msident"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msident subset for MPF: DllGetClassObject, class factory, IUserIdentityManager and IEnumUserIdentity logic, DllCanUnloadNow"
+
+[dependencies]
