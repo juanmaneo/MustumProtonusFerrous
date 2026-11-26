@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msvcp140_atomic_wait"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msvcp140_atomic_wait subset for MPF: shared mutex table, time zone name copy, bulk submit, stub exception records"
+
+[dependencies]
