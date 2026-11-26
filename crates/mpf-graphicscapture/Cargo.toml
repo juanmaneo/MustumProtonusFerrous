@@ -1,0 +1,8 @@
+[package]
+name = "mpf-graphicscapture"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "graphicscapture subset for MPF: DllGetActivationFactory class gate, GraphicsCaptureSession QueryInterface and refcount, E_NOTIMPL methods, IsSupported and DllCanUnloadNow"
+
+[dependencies]
