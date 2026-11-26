@@ -1,0 +1,8 @@
+[package]
+name = "mpf-uiribbon"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "uiribbon subset for MPF: DllGetClassObject dispatch, UIRibbonFramework class factory and reference counting, E_NOTIMPL IUIFramework methods, DllCanUnloadNow"
+
+[dependencies]
