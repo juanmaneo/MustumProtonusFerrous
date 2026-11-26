@@ -1,0 +1,8 @@
+[package]
+name = "mpf-vssapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Portable VSSAPI logic and stub modeling for MPF"
+
+[dependencies]
