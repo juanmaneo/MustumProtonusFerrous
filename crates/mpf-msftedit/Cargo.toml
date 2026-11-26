@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msftedit"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msftedit subset for MPF: DllMain riched20 handle state machine, DllGetVersion winecrt0 default, msftedit.spec export table, and @ stub exception records"
+
+[dependencies]
