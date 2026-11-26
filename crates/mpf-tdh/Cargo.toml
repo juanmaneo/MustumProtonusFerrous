@@ -1,0 +1,8 @@
+[package]
+name = "mpf-tdh"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "tdh subset for MPF: TdhEnumerateProviders buffer contract, fixed-status manifest loaders, tdh.spec export table, and the stub records for its 31 @ stub exports"
+
+[dependencies]
