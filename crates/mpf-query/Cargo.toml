@@ -1,0 +1,8 @@
+[package]
+name = "mpf-query"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "query subset for MPF: DllGetClassObject, CIState, LocateCatalogs and LoadIFilter returns, query.spec export table and the 38 @ stub exception model"
+
+[dependencies]
