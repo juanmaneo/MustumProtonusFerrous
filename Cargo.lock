@@ -212,6 +212,14 @@ name = "mpf-ddraw"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-ddrawex"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-desk_cpl"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-devenum"
 version = "0.1.0"
 
@@ -301,6 +309,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-fusion"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-gameux"
 version = "0.1.0"
 
 [[package]]
@@ -1037,6 +1049,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wow64"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wow64cpu"
 version = "0.1.0"
 
 [[package]]

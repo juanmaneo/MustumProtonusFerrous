@@ -283,3 +283,7 @@ dlls/winexinput.sys     mpf-winexinput_sys  partial
 dlls/infosoft           mpf-infosoft        partial
 dlls/localspl           mpf-localspl        partial
 dlls/winprint           mpf-winprint        partial
+dlls/wow64cpu           mpf-wow64cpu        partial
+dlls/desk.cpl           mpf-desk_cpl        partial
+dlls/gameux             mpf-gameux          partial
+dlls/ddrawex            mpf-ddrawex         partial
