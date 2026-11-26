@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, type definitions, `mod` declarations
 /// or re-exports, which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 142] = [
+const NO_CODE_FILES: [&str; 162] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -161,7 +161,27 @@ const NO_CODE_FILES: [&str; 142] = [
     "crates/mpf-websocket/src/lib.rs",
     "crates/mpf-wevtapi/src/lib.rs",
     "crates/mpf-wevtsvc/src/lib.rs",
+    "crates/mpf-wiaservc/src/lib.rs",
+    "crates/mpf-winbrand/src/lib.rs",
+    "crates/mpf-windowscodecsext/src/lib.rs",
+    "crates/mpf-winedmo/src/lib.rs",
+    "crates/mpf-winehid_sys/src/lib.rs",
     "crates/mpf-winexinput_sys/src/lib.rs",
+    "crates/mpf-winnls32/src/lib.rs",
+    "crates/mpf-winsta/src/lib.rs",
+    "crates/mpf-winusb/src/lib.rs",
+    "crates/mpf-wkscli/src/lib.rs",
+    "crates/mpf-wldp/src/lib.rs",
+    "crates/mpf-wmadmod/src/lib.rs",
+    "crates/mpf-wmilib_sys/src/lib.rs",
+    "crates/mpf-wmp/src/lib.rs",
+    "crates/mpf-wmvdecod/src/lib.rs",
+    "crates/mpf-wofutil/src/lib.rs",
+    "crates/mpf-wpc/src/lib.rs",
+    "crates/mpf-wpnapps/src/lib.rs",
+    "crates/mpf-wsnmp32/src/lib.rs",
+    "crates/mpf-xaudio2_7/src/lib.rs",
+    "crates/mpf-xinput9_1_0/src/lib.rs",
 ];
 
 /// Runs the workspace tests under coverage and prints the usual table.
