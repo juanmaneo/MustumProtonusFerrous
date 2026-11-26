@@ -1,0 +1,8 @@
+[package]
+name = "mpf-sensapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "sensapi subset for MPF: IsDestinationReachable and IsNetworkAlive return values, NETWORK_ALIVE flags, sensapi.spec export table"
+
+[dependencies]
