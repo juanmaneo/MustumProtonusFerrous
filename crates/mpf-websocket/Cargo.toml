@@ -1,0 +1,8 @@
+[package]
+name = "mpf-websocket"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "websocket subset for MPF: websocket.spec export table, WebSocketCreateClientHandle E_NOTIMPL, Abort/DeleteHandle no-ops, and the unimplemented stub exceptions"
+
+[dependencies]
