@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wow64cpu"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wow64cpu subset for MPF: x87 FXSAVE to FLOATING_SAVE_AREA tag conversion and 64-to-32 context copy"
+
+[dependencies]
