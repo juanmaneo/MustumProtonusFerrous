@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wsnmp32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wsnmp32 subset for MPF: SnmpStartup, SnmpCleanup, SnmpOpen and the mode setters, wsnmp32.spec export table, and the @ stub exception for the other 43 exports"
+
+[dependencies]
