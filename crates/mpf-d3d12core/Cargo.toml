@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3d12core"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d3d12core subset for MPF: d3d12core.spec export table and the D3D12GetInterface and D3D12SDKVersion stub exceptions"
+
+[dependencies]
