@@ -19,9 +19,22 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 11] = [
+const NO_CODE_FILES: [&str; 24] = [
     "crates/mpf-atlthunk/src/lib.rs",
     "crates/mpf-dbgeng/src/lib.rs",
+    "crates/mpf-dciman32/src/lib.rs",
+    "crates/mpf-dcomp/src/lib.rs",
+    "crates/mpf-dhtmled_ocx/src/lib.rs",
+    "crates/mpf-directmanipulation/src/lib.rs",
+    "crates/mpf-dmusic32/src/lib.rs",
+    "crates/mpf-dpnhupnp/src/lib.rs",
+    "crates/mpf-dsrole/src/lib.rs",
+    "crates/mpf-dx8vb/src/lib.rs",
+    "crates/mpf-dxtrans/src/lib.rs",
+    "crates/mpf-explorerframe/src/lib.rs",
+    "crates/mpf-fltlib/src/lib.rs",
+    "crates/mpf-fltmgr_sys/src/lib.rs",
+    "crates/mpf-fwpuclnt/src/lib.rs",
     "crates/mpf-hhctrl_ocx/src/lib.rs",
     "crates/mpf-iccvid/src/oracle.rs",
     "crates/mpf-mfsrcsnk/src/lib.rs",
