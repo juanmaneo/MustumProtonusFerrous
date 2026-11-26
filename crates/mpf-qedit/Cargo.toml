@@ -1,0 +1,8 @@
+[package]
+name = "mpf-qedit"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "qedit subset for MPF: DllGetClassObject dispatch, class factory reference counting, DllCanUnloadNow, filter registration data and DllRegisterServer/DllUnregisterServer sequencing"
+
+[dependencies]
