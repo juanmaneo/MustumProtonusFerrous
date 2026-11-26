@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 92] = [
+const NO_CODE_FILES: [&str; 107] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -110,6 +110,21 @@ const NO_CODE_FILES: [&str; 92] = [
     "crates/mpf-ntdll/src/lib.rs",
     "crates/mpf-nsi/src/oracle_data.rs",
     "crates/mpf-objsel/src/lib.rs",
+    "crates/mpf-olecli32/src/lib.rs",
+    "crates/mpf-oledb32/src/lib.rs",
+    "crates/mpf-olepro32/src/lib.rs",
+    "crates/mpf-olesvr32/src/lib.rs",
+    "crates/mpf-packager/src/lib.rs",
+    "crates/mpf-pidgen/src/lib.rs",
+    "crates/mpf-printui/src/lib.rs",
+    "crates/mpf-pstorec/src/lib.rs",
+    "crates/mpf-qdvd/src/lib.rs",
+    "crates/mpf-qedit/src/lib.rs",
+    "crates/mpf-query/src/lib.rs",
+    "crates/mpf-rasdlg/src/lib.rs",
+    "crates/mpf-riched32/src/lib.rs",
+    "crates/mpf-rstrtmgr/src/lib.rs",
+    "crates/mpf-rtscom/src/lib.rs",
     "crates/mpf-usp10/src/lib.rs",
     "crates/mpf-winexinput_sys/src/lib.rs",
 ];
