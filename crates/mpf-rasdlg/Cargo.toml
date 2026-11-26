@@ -1,0 +1,8 @@
+[package]
+name = "mpf-rasdlg"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "rasdlg subset for MPF: RasEntryDlgW FALSE return, rasdlg.spec export table, and the @ stub exception records"
+
+[dependencies]
