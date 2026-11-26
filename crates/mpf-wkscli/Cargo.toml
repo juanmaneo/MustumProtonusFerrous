@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wkscli"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wkscli subset for MPF: NetGetJoinInformation workgroup report, fixed-status NetUse and NetWksta functions, wkscli.spec export table and @ stub exceptions"
+
+[dependencies]
