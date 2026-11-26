@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mfmediaengine"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mfmediaengine subset for MPF: IMFMediaTimeRange table, DllGetClassObject and the media engine class factory, mfmediaengine.spec export table, DllGetActivationFactory stub exception"
+
+[dependencies]
