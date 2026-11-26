@@ -1,0 +1,8 @@
+[package]
+name = "mpf-inkobj"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "inkobj subset for MPF: DllGetClassObject class-not-available result and inkobj.spec export kinds"
+
+[dependencies]
