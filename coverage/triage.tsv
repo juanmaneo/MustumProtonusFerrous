@@ -1,25 +1,8 @@
 # Phase 5 triage ledger: one component per line, tab-separated.
-# dll<TAB>verdict<TAB>reason. verdict: partial | extended | existing | skip.
+# dll<TAB>verdict<TAB>reason. verdict: partial | extended | existing. Every dlls/ component must be ported; there is no skip verdict.
 # Components listed here have no mapping row in coverage/mapping.txt.
 dll	verdict	reason
-url	skip	url_main.c has only FIXME stubs and ShellExecute glue; PathCreateFromUrlA belongs to shlwapi
-pidgen	skip	PIDGenSimp* are FIXME stubs returning 0; other exports are spec stubs
-msvdsp	skip	COM class factory, registry/MFT/DMO registration only
-uianimation	skip	COM plumbing; IUIAnimation methods are E_NOTIMPL or fixed S_OK
-cryptxml	skip	HCRYPTXML handle plumbing; crypto/XML exports are stubs
-fontsub	skip	CreateFontPackage is a stub that only copies input; MergeFontPackage is a stub
-dswave	skip	COM plumbing only; wave.c belongs to dmusic (already skipped there)
-wmadmod	skip	COM class factory and MFT/DMO registration; forwarder to winegstreamer
-tdh	skip	TdhLoadManifest* are FIXME stubs; TdhEnumerateProviders is a semi-stub
-msmpeg2vdec	skip	COM factories and MFT registration only
 d3dx9_36	existing	already partial in mapping (045422b); extension candidate, not a new port
-msvcrt20	skip	1120 of 1125 exports forward to msvcrt/msvcirt; __getmainargs is OS startup glue
-vcruntime140	skip	critical sections, TLS, heap/throw glue; string exports already in mpf-msvcrt
-xaudio2_7	skip	COM class factories and FAudio forwarders
-olepro32	skip	only DllGetClassObject FIXME stub; rest are forwarders and idl
-bcryptprimitives	skip	ProcessPrng wraps RtlGenRandom (OS entropy)
-cdosys	skip	only DllGetClassObject FIXME stub
-msvcp140_atomic_wait	skip	WaitOnAddress, threadpool, SRWLOCK and tzdb OS plumbing
 prntvpt	partial	registered as mpf-prntvpt (9d9977c)
 msisip	partial	registered as mpf-msisip (4fad27a)
 msacm32.drv	partial	registered as mpf-msacm32_drv (9bb9aba)
@@ -33,46 +16,12 @@ atl	partial	registered as mpf-atl (ac28b07 -> 19f726c); registrar only
 msvcp140_2	partial	registered as mpf-msvcp140_2 (cdefe70 -> 05e2500); agent said ported, registered partial since 42 of 44 exports are stubs
 avicap32	partial	registered as mpf-avicap32 (0afadc9 -> ac0fc0d)
 ctl3d32	partial	registered as mpf-ctl3d32 (c4ef3a0 -> 2cc2312); thin, skip is defensible
-lz32	skip	forwarders to kernel32 only
-lzexpand.dll16	skip	LZ and DOS handle forwarders; IS_LZ_HANDLE is too thin
-tapi32	skip	registry-bound lookups and FIXME stubs
-winnls32	skip	WINNLS32 functions are fake constant returns
-loadperf	skip	FIXME-only stubs
-wmilib.sys	skip	DriverEntry returns success; all exports are stubs
-msimtf	skip	IActiveIMMApp COM thunks over Imm* calls
 d3dx9_36	extended	quaternion slice added on top of partial port (c28aea7 -> 2dd7499)
 mfwmaaec	partial	registered as mpf-mfwmaaec (11d7154 -> 4e49fde); DMO media type check and output size
 inetmib1	partial	registered as mpf-inetmib1 (f86c0e7 -> 021622a); SNMP OID, table and row logic
-x3daudio1_7	skip	X3DAudio is a 77-line forwarder to FAudio
-xapofx1_5	skip	COM and FAudio forwarders; CLSID alias map too thin
-hrtfapo	skip	single FIXME stub, other exports stub
-rsabase	skip	forwarders to rsaenh; real logic belongs to rsaenh (needs own triage)
-rstrtmgr	skip	FIXME stubs only
-avrt	skip	FIXME stubs returning fixed values
-sfc_os	skip	FIXME stubs, error-code plumbing
-dmcompos	skip	COM plumbing and stubs
-msvcp140_codecvt_ids	skip	data objects only, no functions
-msdelta	skip	15 stub exports, no sources anywhere in tree
-cryptext	skip	E_NOTIMPL stubs and OS wrappers
-msident	skip	COM and FIXME stubs
-mscat32	skip	forwarders to wintrust; no sources here
 usp10	partial	registered as mpf-usp10 (a001c7b -> cdc6e59); real code lives in dlls/gdi32/uniscribe, dlls/usp10 is forwarders only
 qwave	partial	registered as mpf-qwave (61b2356 -> d0246c1); QOSCreateHandle argument validation only
-msvcrtd	skip	PARENTSRC = ../msvcrt; duplicates mpf-msvcrt
-dhcpcsvc	skip	batch 20 triage skip; one C file of 151 lines
-dpnhpast	skip	batch 20 triage skip; one C file of 50 lines
-difxapi	skip	batch 20 triage skip; one C file of 98 lines
-fntcache	skip	batch 20 triage skip; one C file of 90 lines
-wsnmp32	skip	batch 20 triage skip; one C file of 62 lines
-ndfapi	skip	batch 20 triage skip; one C file of 70 lines
-rtutils	skip	batch 20 triage skip; one C file of 64 lines
-amsi	skip	batch 20 triage skip; one C file of 65 lines
 d3dx9_36	extended	vec2 and vec4 operations added on top of partial port (5dd8be4 -> a424c5e); D3DXColor and *Array variants still open
-wmvdecod	skip	batch 21 triage skip; COM class factory, DllRegisterServer and CoCreateInstance plumbing only
-nddeapi	skip	batch 21 triage skip; every export is a stub, network DDE removed in Vista
-dataexchange	skip	batch 21 triage skip; COM vtable plumbing and window-handle checks
-thumbcache	skip	batch 21 triage skip; COM plumbing, class factory and FIXME stubs
-objsel	skip	batch 21 triage skip; COM class factory and FIXME stubs
 opcservices	partial	rels part path, content-type decision, array capacity policy (99957d7 -> 6eed3b3)
 aclui	partial	SID from ACE, access masks and access list rows (70dcfbc -> 6c03a21)
 dpnet	partial	IDirectPlay8Address component store and URL formatting (751bb82 -> 4929504)
@@ -83,27 +32,10 @@ winscard	partial	copy_multisz multi-string copy (9484dcc -> 8102541)
 joy.cpl	partial	MulDiv, DInput/XInput view geometry and panel layouts (87ea7ce -> ed037ae)
 dpvoice	partial	DPVOICE_GetCompressionTypes (26dce0e -> d4f754a)
 diasymreader	partial	CodeView RSDS record from GetDebugInfo (317cf21 -> 4fbc7ee)
-twaindsm	skip	batch 22 triage skip; TWAIN source manager broker, LoadLibrary/dialog/file-scan plumbing
-netcfgx	skip	batch 22 triage skip; COM class factory and refcount plumbing, FIXME stubs
-dsuiext	skip	batch 22 triage skip; COM vtables and FIXME stubs
-msttsengine	skip	batch 22 triage skip; COM plumbing and E_NOTIMPL stubs
-ctapi32	skip	batch 22 triage skip; smart-card forwarder, registry and dlopen plumbing
-pstorec	skip	batch 22 triage skip; E_NOTIMPL and FIXME stubs, COM plumbing
 winexinput.sys	partial	HID axis scaling, value caps and gamepad state translation (52028a7)
 infosoft	partial	word breaker wb_BreakText (3273964)
 localspl	partial	port names, MULTI_SZ length, UNC names, print environments (b1ef79b)
 winprint	partial	EnumPrintProcessorDatatypesW layout and OpenPrintProcessor checks (faf12c8)
-packager	skip	batch 23 triage skip; OLE object server vtables, FIXME stubs, temp-file I/O
-mfh264enc	skip	batch 23 triage skip; COM class factory, MFTRegister and registry plumbing
-msauddecmft	skip	batch 23 triage skip; COM and registry plumbing, only constant AAC tables
-l3codecx.ax	skip	batch 23 triage skip; COM class factory and registry plumbing
-windowscodecsext	skip	batch 23 triage skip; FIXME stub and COM proxies
-wevtapi	skip	batch 23 triage skip; FIXME stubs, only buffer plumbing left (LogFilePath sizing borderline)
-wimgapi	skip	batch 23 triage skip; three FIXME stubs
-mssign32	skip	batch 23 triage skip; six FIXME stubs
-hal	skip	batch 23 triage skip; IRQL and spinlock wrappers, FIXME stubs, concurrency plumbing
-authz	skip	batch 23 triage skip; all exports are FIXME stubs
-vssapi	skip	batch 23 triage skip; FIXME stubs and COM vtable plumbing
 wow64cpu	partial	fpux_to_fpu and copy_context_64to32 (7c9269e)
 desk.cpl	partial	display rect, devmode layout and option helpers (c9f8443)
 gameux	partial	registry/statistics path building and statistics store (94b7ff2)
@@ -111,19 +43,6 @@ ddrawex	partial	DDSURFACEDESC <-> DDSURFACEDESC2 conversion (c69db6a)
 atlthunk	partial	thunk machine-code encoders for x86-64/i386/AArch64, pool capacity and slot counters
 d3dx11_42	partial	D3DX11CheckVersion version predicate
 dbgeng	partial	debug target string return buffer and module lookup by base
-acledit	skip	single FIXME stub (FMExtensionProcW)
-apphelp	skip	all exports are stubs
-appxdeploymentclient	skip	COM factory and package plumbing, FIXME stubs
-atmlib	skip	FIXME stubs only
-capabilityaccessmanagerclient	skip	WinRT/COM shell, FIXME stubs
-chakra	skip	single FIXME stub (DllGetClassObject)
-cldapi	skip	FIXME stubs returning E_NOTIMPL
-clusapi	skip	FIXME stubs returning fixed values
-cng.sys	skip	DriverEntry only, other exports are stubs or bcrypt forwarders
-connect	skip	single FIXME stub (IsInternetConnected)
-coremessaging	skip	COM/WinRT plumbing and FIXME stubs
-d3d10core	skip	E_NOTIMPL stub and LoadLibrary/COM plumbing
-davclnt	skip	FIXME stubs only
 dciman32	partial	DCI provider last-error model, DCI codes, stub export fault model
 dcomp	partial	E_NOTIMPL create-device exports and stub exception record
 dhtmled.ocx	partial	interface dispatch, refcount, class factory, MulDiv, default extent (about 200 stubs modelled)
