@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msimtf"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msimtf subset for MPF: ActiveIMMApp and ClassFactory logic, DllGetClassObject, msimtf.spec export table, and the MsimtfIsGuidMapEnable and MsimtfIsWindowFiltered stub exceptions"
+
+[dependencies]
