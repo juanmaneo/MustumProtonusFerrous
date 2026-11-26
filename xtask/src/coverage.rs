@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 77] = [
+const NO_CODE_FILES: [&str; 92] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -92,9 +92,24 @@ const NO_CODE_FILES: [&str; 77] = [
     "crates/mpf-msports/src/lib.rs",
     "crates/mpf-mssign32/src/lib.rs",
     "crates/mpf-msttsengine/src/lib.rs",
+    "crates/mpf-msvcm80/src/lib.rs",
+    "crates/mpf-msvcp140_atomic_wait/src/lib.rs",
+    "crates/mpf-msvcp140_codecvt_ids/src/lib.rs",
+    "crates/mpf-msvcrt20/src/lib.rs",
+    "crates/mpf-msvdsp/src/lib.rs",
     "crates/mpf-msvfw32/src/lib.rs",
+    "crates/mpf-mswsock/src/lib.rs",
+    "crates/mpf-mtxdm/src/lib.rs",
+    "crates/mpf-nddeapi/src/lib.rs",
+    "crates/mpf-ndfapi/src/lib.rs",
+    "crates/mpf-netcfgx/src/lib.rs",
+    "crates/mpf-netutils/src/lib.rs",
+    "crates/mpf-newdev/src/lib.rs",
+    "crates/mpf-npmshtml/src/lib.rs",
+    "crates/mpf-nsiproxy_sys/src/lib.rs",
     "crates/mpf-ntdll/src/lib.rs",
     "crates/mpf-nsi/src/oracle_data.rs",
+    "crates/mpf-objsel/src/lib.rs",
     "crates/mpf-usp10/src/lib.rs",
     "crates/mpf-winexinput_sys/src/lib.rs",
 ];
