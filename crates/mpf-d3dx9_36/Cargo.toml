@@ -3,6 +3,6 @@ name = "mpf-d3dx9_36"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "d3dx9_36 subset for MPF: D3DX vector, matrix and plane math"
+description = "d3dx9_36 subset for MPF: D3DX vector, matrix, plane and quaternion math"
 
 [dependencies]

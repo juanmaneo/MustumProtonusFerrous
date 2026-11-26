@@ -1,7 +1,9 @@
 //! Replays of the oracle rows in `target/canon/d3dx9_36`. The oracle compiles the verbatim
 //! `dlls/d3dx9_36/math.c` with `gcc -fsanitize=address,undefined` and prints each result. Its
 //! run reported no sanitizer finding, so no vector is excluded. Each test names the row it
-//! reproduces. Comparisons are on the bit pattern, so the sign of zero is checked as well.
+//! reproduces. Rows 25 to 47 are the quaternion slice; the quaternion harness prints the same
+//! 23 rows as `row 01` to `row 23` in `target/canon/d3dx9_36/oracle_out.txt`. Comparisons are on
+//! the bit pattern, so the sign of zero is checked as well.
 
 use super::*;
 
@@ -41,6 +43,115 @@ const FLAT: Plane = Plane {
     c: 0.0,
     d: -2.0,
 };
+const QA: Quaternion = Quaternion {
+    x: 0.5,
+    y: -1.25,
+    z: 2.0,
+    w: 0.75,
+};
+const QB: Quaternion = Quaternion {
+    x: -0.3,
+    y: 0.8,
+    z: 0.1,
+    w: -0.6,
+};
+const QV: Quaternion = Quaternion {
+    x: 0.4,
+    y: -0.7,
+    z: 0.2,
+    w: 0.9,
+};
+const ZQ: Quaternion = Quaternion {
+    x: 0.0,
+    y: 0.0,
+    z: 0.0,
+    w: 5.0,
+};
+const QU: Quaternion = Quaternion {
+    x: 0.3,
+    y: -0.4,
+    z: 0.5,
+    w: 0.6,
+};
+const QONE: Quaternion = Quaternion {
+    x: 0.2,
+    y: 0.1,
+    z: -0.3,
+    w: 1.0,
+};
+const QM1: Quaternion = Quaternion {
+    x: 0.2,
+    y: 0.1,
+    z: -0.3,
+    w: -1.0,
+};
+const U1: Quaternion = Quaternion {
+    x: 0.0,
+    y: 0.0,
+    z: 0.0,
+    w: 1.0,
+};
+const U2: Quaternion = Quaternion {
+    x: 0.6,
+    y: 0.0,
+    z: 0.0,
+    w: 0.8,
+};
+const U3: Quaternion = Quaternion {
+    x: 0.0,
+    y: 0.6,
+    z: 0.0,
+    w: -0.8,
+};
+const U4: Quaternion = Quaternion {
+    x: 0.0,
+    y: 0.0,
+    z: 0.6,
+    w: -0.8,
+};
+const U6: Quaternion = Quaternion {
+    x: 0.0005,
+    y: 0.0,
+    z: 0.0,
+    w: 1.0,
+};
+const AXIS: Vec3 = Vec3 {
+    x: 1.0,
+    y: 2.0,
+    z: -2.0,
+};
+const ROT_TRACE: Matrix = Matrix {
+    m: [
+        [0.6, -0.8, 0.0, 0.0],
+        [0.8, 0.6, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ],
+};
+const ROT_MAX_X: Matrix = Matrix {
+    m: [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, -0.8, 0.6, 0.0],
+        [0.0, -0.6, -0.8, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ],
+};
+const ROT_MAX_Y: Matrix = Matrix {
+    m: [
+        [-0.8, 0.0, -0.6, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.6, 0.0, -0.8, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ],
+};
+const ROT_MAX_Z: Matrix = Matrix {
+    m: [
+        [-0.8, 0.6, 0.0, 0.0],
+        [-0.6, -0.8, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ],
+};
 
 pub(crate) fn assert_bits(actual: &[f32], expected: &[f32]) {
     let actual: Vec<u32> = actual.iter().map(|v| v.to_bits()).collect();
@@ -50,6 +161,10 @@ pub(crate) fn assert_bits(actual: &[f32], expected: &[f32]) {
 
 pub(crate) fn xyz(v: Vec3) -> [f32; 3] {
     [v.x, v.y, v.z]
+}
+
+pub(crate) fn quat(q: Quaternion) -> [f32; 4] {
+    [q.x, q.y, q.z, q.w]
 }
 
 fn abcd(p: Plane) -> [f32; 4] {
@@ -297,4 +412,164 @@ fn oracle_24_plane_from_points_collinear() {
         vec3(3.0, 2.0, 3.0),
     );
     assert_bits(&abcd(plane), &[0.0, 0.0, 0.0, -0.0]);
+}
+
+#[test]
+fn oracle_25_quaternion_multiply() {
+    assert_bits(&quat(QA.multiply(QB)), &[1.2, 2.0, -1.15, 0.5]);
+}
+
+#[test]
+fn oracle_26_quaternion_inverse() {
+    assert_bits(
+        &quat(QA.inverse()),
+        &[-0.078431375, 0.19607843, -0.3137255, 0.11764706],
+    );
+}
+
+#[test]
+fn oracle_27_quaternion_normalize() {
+    assert_bits(
+        &quat(QA.normalize()),
+        &[0.19802952, -0.4950738, 0.7921181, 0.29704428],
+    );
+}
+
+#[test]
+fn oracle_28_quaternion_exp() {
+    assert_bits(
+        &quat(QV.exp()),
+        &[0.3555612, -0.6222321, 0.1777806, 0.67438686],
+    );
+}
+
+#[test]
+fn oracle_29_quaternion_exp_zero_vector() {
+    assert_bits(&quat(ZQ.exp()), &[0.0, 0.0, 0.0, 1.0]);
+}
+
+#[test]
+fn oracle_30_quaternion_ln_acos() {
+    assert_bits(&quat(QU.ln()), &[0.3477357, -0.4636476, 0.5795595, 0.0]);
+}
+
+#[test]
+fn oracle_31_quaternion_ln_w_one() {
+    assert_bits(&quat(QONE.ln()), &[0.2, 0.1, -0.3, 0.0]);
+}
+
+#[test]
+fn oracle_32_quaternion_ln_w_minus_one() {
+    assert_bits(&quat(QM1.ln()), &[0.2, 0.1, -0.3, 0.0]);
+}
+
+#[test]
+fn oracle_33_quaternion_rotation_axis() {
+    let out = Quaternion::rotation_axis(AXIS, 0.9);
+    assert_bits(&quat(out), &[0.1449885, 0.289977, -0.289977, 0.90044713]);
+}
+
+#[test]
+fn oracle_34_quaternion_rotation_yaw_pitch_roll() {
+    let out = Quaternion::rotation_yaw_pitch_roll(0.7, -0.3, 1.1);
+    assert_bits(&quat(out), &[0.057539985, 0.3624201, 0.52916986, 0.7650622]);
+}
+
+#[test]
+fn oracle_35_quaternion_rotation_matrix_trace() {
+    let out = Quaternion::rotation_matrix(ROT_TRACE);
+    assert_bits(&quat(out), &[0.0, 0.0, -0.44721362, 0.8944272]);
+}
+
+#[test]
+fn oracle_36_quaternion_rotation_matrix_max_x() {
+    let out = Quaternion::rotation_matrix(ROT_MAX_X);
+    assert_bits(&quat(out), &[0.94868326, 0.0, 0.0, 0.3162278]);
+}
+
+#[test]
+fn oracle_37_quaternion_rotation_matrix_max_y() {
+    let out = Quaternion::rotation_matrix(ROT_MAX_Y);
+    assert_bits(&quat(out), &[0.0, 0.94868326, 0.0, 0.3162278]);
+}
+
+#[test]
+fn oracle_38_quaternion_rotation_matrix_max_z() {
+    let out = Quaternion::rotation_matrix(ROT_MAX_Z);
+    assert_bits(&quat(out), &[0.0, 0.0, 0.94868326, 0.3162278]);
+}
+
+#[test]
+fn oracle_39_quaternion_slerp_acos() {
+    assert_bits(
+        &quat(U1.slerp(U2, 0.5)),
+        &[0.31622776, 0.0, 0.0, 0.94868326],
+    );
+}
+
+#[test]
+fn oracle_40_quaternion_slerp_negative_dot() {
+    assert_bits(
+        &quat(U1.slerp(U3, 0.3)),
+        &[0.0, -0.19185346, 0.0, 0.9814236],
+    );
+}
+
+#[test]
+fn oracle_41_quaternion_slerp_linear() {
+    assert_bits(&quat(U1.slerp(U6, 0.4)), &[0.00020000001, 0.0, 0.0, 1.0]);
+}
+
+#[test]
+fn oracle_42_quaternion_squad() {
+    assert_bits(
+        &quat(U1.squad(U2, U3, U4, 0.3)),
+        &[0.1968271, -0.0888545, -0.11507988, 0.96959823],
+    );
+}
+
+#[test]
+fn oracle_43_quaternion_squad_setup() {
+    let (aout, bout, cout) = Quaternion::squad_setup(U1, U2, U3, U4);
+    assert_bits(
+        &quat(aout),
+        &[0.7985049, 0.16772652, 7.450581e-09, 0.5781504],
+    );
+    assert_bits(
+        &quat(bout),
+        &[-0.16728905, -0.7745395, 0.16728903, 0.58661515],
+    );
+    assert_bits(&quat(cout), &[0.0, -0.6, 0.0, 0.8]);
+}
+
+#[test]
+fn oracle_44_quaternion_squad_setup_flip_pq0() {
+    let (aout, bout, cout) = Quaternion::squad_setup(U3, U1, U2, U4);
+    assert_bits(&quat(aout), &[-0.15949102, 0.15949102, 0.0, 0.9742306]);
+    assert_bits(
+        &quat(bout),
+        &[0.7985049, -7.450581e-09, 0.16772652, 0.5781504],
+    );
+    assert_bits(&quat(cout), &[0.6, 0.0, 0.0, 0.8]);
+}
+
+#[test]
+fn oracle_45_quaternion_squad_setup_no_flip() {
+    let (aout, bout, cout) = Quaternion::squad_setup(U1, U2, U2, U1);
+    assert_bits(&quat(aout), &[0.7203983, 0.0, 0.0, 0.6935606]);
+    assert_bits(&quat(bout), &[0.7203983, 0.0, 0.0, 0.6935606]);
+    assert_bits(&quat(cout), &[0.6, 0.0, 0.0, 0.8]);
+}
+
+#[test]
+fn oracle_46_quaternion_to_axis_angle() {
+    let (axis, angle) = U2.to_axis_angle();
+    assert_bits(&xyz(axis), &[0.6, 0.0, 0.0]);
+    assert_bits(&[angle], &[1.2870022]);
+}
+
+#[test]
+fn oracle_47_quaternion_bary_centric() {
+    let out = U1.bary_centric(U2, U3, 0.3, 0.2);
+    assert_bits(&quat(out), &[0.19393805, -0.13017485, 0.0, 0.9723387]);
 }
