@@ -1,0 +1,8 @@
+[package]
+name = "mpf-aclui"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "aclui subset for MPF: ACE SID selection, per-SID allow/deny mask accumulation, access list X/- rows"
+
+[dependencies]
