@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 62] = [
+const NO_CODE_FILES: [&str; 77] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -76,7 +76,22 @@ const NO_CODE_FILES: [&str; 62] = [
     "crates/mpf-mfmediaengine/src/lib.rs",
     "crates/mpf-mfsrcsnk/src/lib.rs",
     "crates/mpf-mgmtapi/src/lib.rs",
+    "crates/mpf-mmcndmgr/src/lib.rs",
     "crates/mpf-mountmgr_sys/src/lib.rs",
+    "crates/mpf-mprapi/src/lib.rs",
+    "crates/mpf-msauddecmft/src/lib.rs",
+    "crates/mpf-msctfmonitor/src/lib.rs",
+    "crates/mpf-msdaps/src/lib.rs",
+    "crates/mpf-msdrm/src/lib.rs",
+    "crates/mpf-msftedit/src/lib.rs",
+    "crates/mpf-msident/src/lib.rs",
+    "crates/mpf-msimg32/src/lib.rs",
+    "crates/mpf-msimtf/src/lib.rs",
+    "crates/mpf-msisys_ocx/src/lib.rs",
+    "crates/mpf-msnet32/src/lib.rs",
+    "crates/mpf-msports/src/lib.rs",
+    "crates/mpf-mssign32/src/lib.rs",
+    "crates/mpf-msttsengine/src/lib.rs",
     "crates/mpf-msvfw32/src/lib.rs",
     "crates/mpf-ntdll/src/lib.rs",
     "crates/mpf-nsi/src/oracle_data.rs",
