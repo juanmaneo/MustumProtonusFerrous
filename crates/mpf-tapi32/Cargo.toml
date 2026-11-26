@@ -1,0 +1,8 @@
+[package]
+name = "mpf-tapi32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "tapi32 subset for MPF: line country list, location info, fixed-return and out-parameter exports, tapi32.spec export table, and tapiRequest stub exceptions"
+
+[dependencies]
