@@ -1,0 +1,8 @@
+[package]
+name = "mpf-scardsvr"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "scardsvr subset for MPF: service control handler table, CalaisMain call sequence, scardsvr.spec export table, InitSmartCardService stub exception"
+
+[dependencies]
