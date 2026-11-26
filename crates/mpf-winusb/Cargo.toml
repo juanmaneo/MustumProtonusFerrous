@@ -1,0 +1,8 @@
+[package]
+name = "mpf-winusb"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "winusb subset for MPF: WinUsb_Free return value, winusb.spec export table, and the @ stub exception for the other 21 exports"
+
+[dependencies]
