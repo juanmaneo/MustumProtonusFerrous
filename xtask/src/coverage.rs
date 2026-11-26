@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 107] = [
+const NO_CODE_FILES: [&str; 132] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -125,7 +125,32 @@ const NO_CODE_FILES: [&str; 107] = [
     "crates/mpf-riched32/src/lib.rs",
     "crates/mpf-rstrtmgr/src/lib.rs",
     "crates/mpf-rtscom/src/lib.rs",
+    "crates/mpf-rtutils/src/lib.rs",
+    "crates/mpf-scardsvr/src/lib.rs",
+    "crates/mpf-scrobj/src/lib.rs",
+    "crates/mpf-scsiport_sys/src/lib.rs",
+    "crates/mpf-sensapi/src/lib.rs",
+    "crates/mpf-sfc_os/src/lib.rs",
+    "crates/mpf-shdocvw/src/lib.rs",
+    "crates/mpf-sppc/src/lib.rs",
+    "crates/mpf-srvsvc/src/lib.rs",
+    "crates/mpf-sti/src/lib.rs",
+    "crates/mpf-tapi32/src/lib.rs",
+    "crates/mpf-tbs/src/lib.rs",
+    "crates/mpf-tdh/src/lib.rs",
+    "crates/mpf-tdi_sys/src/lib.rs",
+    "crates/mpf-threadpoolwinrt/src/lib.rs",
+    "crates/mpf-thumbcache/src/lib.rs",
+    "crates/mpf-tiptsf/src/lib.rs",
+    "crates/mpf-traffic/src/lib.rs",
+    "crates/mpf-twaindsm/src/lib.rs",
+    "crates/mpf-uianimation/src/lib.rs",
+    "crates/mpf-uiribbon/src/lib.rs",
+    "crates/mpf-updspapi/src/lib.rs",
+    "crates/mpf-url/src/lib.rs",
     "crates/mpf-usp10/src/lib.rs",
+    "crates/mpf-vcruntime140/src/lib.rs",
+    "crates/mpf-vdmdbg/src/lib.rs",
     "crates/mpf-winexinput_sys/src/lib.rs",
 ];
 
