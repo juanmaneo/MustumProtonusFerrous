@@ -1513,7 +1513,23 @@ name = "mpf-wevtsvc"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wiaservc"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wimgapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winbrand"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-windowscodecs"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-windowscodecsext"
 version = "0.1.0"
 
 [[package]]
@@ -1532,7 +1548,15 @@ name = "mpf-winebus_sys"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-winedmo"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-winegstreamer"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winehid_sys"
 version = "0.1.0"
 
 [[package]]
@@ -1560,6 +1584,10 @@ name = "mpf-wininet"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-winnls32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-winnt"
 version = "0.1.0"
 
@@ -1576,6 +1604,10 @@ name = "mpf-winspool_drv"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-winsta"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wintab32"
 version = "0.1.0"
 
@@ -1588,6 +1620,14 @@ name = "mpf-wintypes"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-winusb"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wkscli"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wlanapi"
 version = "0.1.0"
 
@@ -1596,8 +1636,24 @@ name = "mpf-wldap32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wldp"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wmadmod"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wmilib_sys"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wmiutils"
 version = "0.1.0"
+
+[[package]]
+name = "mpf-wmp"
+version = "0.0.0"
 
 [[package]]
 name = "mpf-wmphoto"
@@ -1608,7 +1664,15 @@ name = "mpf-wmvcore"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wmvdecod"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wnaspi32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wofutil"
 version = "0.1.0"
 
 [[package]]
@@ -1624,7 +1688,15 @@ name = "mpf-wow64win"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-wpc"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wpcap"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wpnapps"
 version = "0.1.0"
 
 [[package]]
@@ -1637,6 +1709,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wshom_ocx"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wsnmp32"
 version = "0.1.0"
 
 [[package]]
@@ -1656,7 +1732,15 @@ name = "mpf-xactengine3_7"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-xaudio2_7"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-xinput1_3"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-xinput9_1_0"
 version = "0.1.0"
 
 [[package]]

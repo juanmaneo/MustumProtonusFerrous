@@ -181,3 +181,24 @@ vulkan-1	partial	spec export table, DllMain gate, stub exceptions
 websocket	partial	export table, E_NOTIMPL/no-op handle functions, stub exceptions
 wevtapi	partial	fixed-value Evt returns, log-path property, export table, stub records
 wevtsvc	partial	SERVICE_STATUS records, control dispatch and ServiceMain states
+wiaservc	partial	class factory, WiaDevMgr objects, service entry, stubs
+winbrand	partial	BrandingFormatString expansion, export table, @ stub exceptions
+windowscodecsext	ported	class object and color transform proxies, export table
+winedmo	partial	demuxer gate, stream metadata, media type and time conversions
+winehid.sys	partial	IOCTL routing, CTL_CODE values, add_device and DriverEntry setup
+winnls32	ported	explicit bodies, export table and @ stub exception
+winsta	partial	explicit stub bodies, export table and @ stub exception
+winusb	partial	WinUsb_Free return value, winusb.spec export table, @ stub exceptions
+wkscli	partial	NetGetJoinInformation, fixed-status NetUse/NetWksta functions and @ stub exceptions
+wldp	partial	explicit return values, export table and @ stub exception
+wmadmod	partial	class factory, DllGetClassObject, register/unregister chains and DllCanUnloadNow default
+wmilib.sys	partial	DriverEntry and 5 @ stub exports
+wmp	partial	DllGetClassObject, class factory, DllMain state and ordinal stubs
+wmvdecod	partial	DllGetClassObject factories, DllRegisterServer tables and DllCanUnloadNow
+wofutil	partial	explicit bodies, export table and @ stub exception
+wpc	partial	class factory, WPC E_NOTIMPL methods, ApplyParentalControlsW stub
+wpnapps	partial	DllGetActivationFactory dispatch, static factory and notifier QueryInterface tables, E_NOTIMPL methods
+wsnmp32	partial	stdcall bodies, export table and @ stub exception
+xaudio2_7	partial	class gates, QI dispatch, callback table, XAPO returns
+xinput9_1_0	partial	dsound GUID checks, forwarding and export table
+wimgapi	partial	stub bodies, export table and @ stub exception
