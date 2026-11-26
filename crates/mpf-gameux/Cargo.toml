@@ -1,0 +1,8 @@
+[package]
+name = "mpf-gameux"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "gameux subset for MPF: registry path building, statistics file path building, and the game statistics category/statistic store"
+
+[dependencies]
