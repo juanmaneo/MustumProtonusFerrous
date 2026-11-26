@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wmvdecod"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wmvdecod subset for MPF: DllGetClassObject class factories, DllRegisterServer and DllUnregisterServer MFT/DMO tables, DllCanUnloadNow"
+
+[dependencies]
