@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msimg32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msimg32 subset for MPF: vSetDdrawflag last-error model, DllMain entry model and msimg32.spec export table"
+
+[dependencies]
