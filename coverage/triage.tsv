@@ -124,3 +124,18 @@ connect	skip	single FIXME stub (IsInternetConnected)
 coremessaging	skip	COM/WinRT plumbing and FIXME stubs
 d3d10core	skip	E_NOTIMPL stub and LoadLibrary/COM plumbing
 davclnt	skip	FIXME stubs only
+dciman32	partial	DCI provider last-error model, DCI codes, stub export fault model
+dcomp	partial	E_NOTIMPL create-device exports and stub exception record
+dhtmled.ocx	partial	interface dispatch, refcount, class factory, MulDiv, default extent (about 200 stubs modelled)
+directmanipulation	partial	QI and refcount routing, factories, stub return codes
+dispex	partial	IDispatchEx InvokeEx proxy/stub argument and flag logic
+dmusic32	partial	return model of the two stub exports
+dpnhupnp	partial	DirectPlayNATHelpCreate and class object stub results
+dsrole	partial	primary domain info argument checks and stub returns
+dx8vb	partial	DllGetClassObject dispatch, factory refcount, 135 stub exports as fault
+dxtrans	partial	DllGetClassObject result and unimplemented-stub model
+explorerframe	partial	NSTC style, item state, taskbar results, class factory
+fltlib	partial	HRESULT_FROM_WIN32 and filter stub return values
+fltmgr.sys	partial	default security descriptor layout and export stub returns
+fwpuclnt	partial	WFP export stubs modelled as return values (137 spec-only stubs not modelled)
+gameinput	partial	GameInputCreate and DllGetClassObject stub codes

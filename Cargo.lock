@@ -220,6 +220,14 @@ name = "mpf-dbghelp"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dciman32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dcomp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ddraw"
 version = "0.1.0"
 
@@ -236,11 +244,23 @@ name = "mpf-devenum"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dhtmled_ocx"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-diasymreader"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-dinput"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-directmanipulation"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dispex"
 version = "0.1.0"
 
 [[package]]
@@ -264,6 +284,10 @@ name = "mpf-dmusic"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dmusic32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dnsapi"
 version = "0.1.0"
 
@@ -273,6 +297,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-dpnet"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dpnhupnp"
 version = "0.1.0"
 
 [[package]]
@@ -288,6 +316,10 @@ name = "mpf-dsdmo"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dsrole"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dssenh"
 version = "0.1.0"
 
@@ -300,11 +332,19 @@ name = "mpf-dwrite"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dx8vb"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dxcore"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-dxdiagn"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dxtrans"
 version = "0.1.0"
 
 [[package]]
@@ -316,11 +356,31 @@ name = "mpf-evr"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-explorerframe"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-faultrep"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-fltlib"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-fltmgr_sys"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-fusion"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-fwpuclnt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-gameinput"
 version = "0.1.0"
 
 [[package]]
