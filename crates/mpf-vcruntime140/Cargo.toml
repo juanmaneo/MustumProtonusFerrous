@@ -1,0 +1,8 @@
+[package]
+name = "mpf-vcruntime140"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "vcruntime140 subset for MPF: vcruntime140.spec export table, @ stub exception records, __uncaught_exceptions, the _Init_thread once state machine and the operator new and delete allocation rules"
+
+[dependencies]
