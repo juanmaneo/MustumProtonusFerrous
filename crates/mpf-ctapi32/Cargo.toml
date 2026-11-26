@@ -1,0 +1,8 @@
+[package]
+name = "mpf-ctapi32"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ctapi32 subset for MPF: CT_init/CT_data/CT_close forwarding, unix call table, attach and DllMain status logic, and libctapi.so name selection from Wine's dlls/ctapi32"
+
+[dependencies]
