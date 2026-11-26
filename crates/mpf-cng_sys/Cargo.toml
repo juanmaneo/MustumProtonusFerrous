@@ -1,0 +1,8 @@
+[package]
+name = "mpf-cng_sys"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "cng.sys subset for MPF: DriverEntry status, the 63-entry export table of cng.sys.spec, and the exception record each @ stub raises"
+
+[dependencies]
