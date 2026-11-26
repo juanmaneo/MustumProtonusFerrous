@@ -1,0 +1,8 @@
+[package]
+name = "mpf-drmclien"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "drmclien subset for MPF: drmclien.spec export table and the __wine_spec_unimplemented_stub records of its 28 @ stub exports"
+
+[dependencies]
