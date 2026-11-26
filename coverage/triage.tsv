@@ -173,3 +173,7 @@ updspapi	partial	SetDynamicStringA return value and @ stub records
 url	partial	FileProtocolHandlerA target choice, url.spec exports and stub records
 vcruntime140	partial	export table, stub records, init-thread state, operator new/delete rules
 vdmdbg	partial	export table, stub records and enum return values
+virtdisk	partial	model disk return logic and stubs
+vssapi	partial	writer stubs, backup E_NOTIMPL, spec stubs
+w32skrnl	partial	Win32s directory concatenation, spec export table, stub exceptions
+wbemdisp	partial	stub exports and export table

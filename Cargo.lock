@@ -1469,6 +1469,22 @@ name = "mpf-version"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-virtdisk"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-vssapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-w32skrnl"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-wbemdisp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-wbemprox"
 version = "0.1.0"
 

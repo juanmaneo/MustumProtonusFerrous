@@ -420,3 +420,7 @@ dlls/updspapi           mpf-updspapi         partial
 dlls/url                mpf-url              partial
 dlls/vcruntime140       mpf-vcruntime140     partial
 dlls/vdmdbg             mpf-vdmdbg           partial
+dlls/virtdisk           mpf-virtdisk         partial
+dlls/vssapi             mpf-vssapi           partial
+dlls/w32skrnl           mpf-w32skrnl         partial
+dlls/wbemdisp           mpf-wbemdisp         partial
