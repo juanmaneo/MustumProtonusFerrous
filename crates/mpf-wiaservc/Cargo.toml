@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wiaservc"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wiaservc subset for MPF: CLSID_WiaDevMgr class factory, IWiaDevMgr and IEnumWIA_DEV_INFO objects, service entry point, wiaservc.spec export table, and the @ stub exception for the 54 stub exports"
+
+[dependencies]
