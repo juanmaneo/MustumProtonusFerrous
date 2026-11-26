@@ -265,3 +265,5 @@ dlls/atl                mpf-atl             partial
 dlls/msvcp140_2         mpf-msvcp140_2      partial
 dlls/avicap32           mpf-avicap32        partial
 dlls/ctl3d32            mpf-ctl3d32         partial
+dlls/mfwmaaec           mpf-mfwmaaec        partial
+dlls/inetmib1           mpf-inetmib1        partial

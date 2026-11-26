@@ -363,6 +363,10 @@ name = "mpf-inetcpl_cpl"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-inetmib1"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-iphlpapi"
 version = "0.1.0"
 
@@ -456,6 +460,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mfsrcsnk"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mfwmaaec"
 version = "0.1.0"
 
 [[package]]
