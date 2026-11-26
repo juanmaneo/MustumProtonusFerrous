@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, `mod` declarations or re-exports,
 /// which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 47] = [
+const NO_CODE_FILES: [&str; 62] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -58,9 +58,24 @@ const NO_CODE_FILES: [&str; 47] = [
     "crates/mpf-fwpuclnt/src/lib.rs",
     "crates/mpf-gamingtcui/src/lib.rs",
     "crates/mpf-geolocation/src/lib.rs",
+    "crates/mpf-graphicscapture/src/lib.rs",
+    "crates/mpf-hal/src/lib.rs",
     "crates/mpf-hhctrl_ocx/src/lib.rs",
+    "crates/mpf-hrtfapo/src/lib.rs",
+    "crates/mpf-hvsimanagementapi/src/lib.rs",
     "crates/mpf-iccvid/src/oracle.rs",
+    "crates/mpf-icmui/src/lib.rs",
+    "crates/mpf-inkobj/src/lib.rs",
+    "crates/mpf-inseng/src/lib.rs",
+    "crates/mpf-ksecdd_sys/src/lib.rs",
+    "crates/mpf-ktmw32/src/lib.rs",
+    "crates/mpf-l3codecx_ax/src/lib.rs",
+    "crates/mpf-loadperf/src/lib.rs",
+    "crates/mpf-magnification/src/lib.rs",
+    "crates/mpf-mfh264enc/src/lib.rs",
+    "crates/mpf-mfmediaengine/src/lib.rs",
     "crates/mpf-mfsrcsnk/src/lib.rs",
+    "crates/mpf-mgmtapi/src/lib.rs",
     "crates/mpf-mountmgr_sys/src/lib.rs",
     "crates/mpf-msvfw32/src/lib.rs",
     "crates/mpf-ntdll/src/lib.rs",
