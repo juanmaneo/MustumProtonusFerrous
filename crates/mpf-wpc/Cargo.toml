@@ -1,0 +1,8 @@
+[package]
+name = "mpf-wpc"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "wpc subset for MPF: DllGetClassObject and class factory QueryInterface, WindowsParentalControls E_NOTIMPL methods, wpc.spec export table, ApplyParentalControlsW stub exception"
+
+[dependencies]
