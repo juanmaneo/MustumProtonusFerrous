@@ -103,3 +103,18 @@ magnification	ported	MagInitialize, MagUninitialize, 19 stub exports
 mfh264enc	ported	class factory, DllGetClassObject, MFT registration
 mfmediaengine	partial	time ranges, class factory, export table, stub model
 mgmtapi	partial	stub-only exports and SnmpMgr return values
+mmcndmgr	partial	IMMCVersionInfo and class factory dispatch, stub model
+mprapi	partial	MprAdmin/MprConfig error and stub exports
+msauddecmft	ported	AAC decoder class factory and MFT registration
+msctfmonitor	partial	InitLocalMsCtfMonitor, default Dll exports, stub model
+msdaps	partial	db_type_size, CLSID dispatch, class factory returns
+msdrm	partial	DRMRegisterContent and msdrm.spec stub exports
+msftedit	partial	DllMain state, stub exports, DllGetVersion default
+msident	partial	IUserIdentityManager, class factory, enumerator and DllGetClassObject logic
+msimg32	partial	vSetDdrawflag, DllMain entry and export table
+msimtf	partial	ActiveIMMApp, ClassFactory and msimtf.spec exports
+msisys.ocx	partial	DllGetClassObject class-unavailable return and spec export classification
+msnet32	partial	MSNET32_57 return value and stub records
+msports	partial	ComDBOpen/ComDBClose returns, msports.spec exports, stub records
+mssign32	partial	fixed Pvk/Signer returns and stub exception records
+msttsengine	ported	class factory, ttsengine object, DLL exports

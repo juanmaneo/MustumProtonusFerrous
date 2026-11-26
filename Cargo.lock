@@ -771,6 +771,10 @@ name = "mpf-mlang"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mmcndmgr"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mmdevapi"
 version = "0.1.0"
 
@@ -788,6 +792,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mpr"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mprapi"
 version = "0.1.0"
 
 [[package]]
@@ -811,6 +819,10 @@ name = "mpf-msasn1"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msauddecmft"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mscms"
 version = "0.1.0"
 
@@ -823,11 +835,27 @@ name = "mpf-msctf"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msctfmonitor"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msdaps"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msdasql"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-msdmo"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msdrm"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msftedit"
 version = "0.1.0"
 
 [[package]]
@@ -843,11 +871,35 @@ name = "mpf-msi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msident"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msimg32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msimtf"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msisip"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msisys_ocx"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msnet32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mspatcha"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msports"
 version = "0.1.0"
 
 [[package]]
@@ -859,7 +911,15 @@ name = "mpf-msscript_ocx"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mssign32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mstask"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msttsengine"
 version = "0.1.0"
 
 [[package]]
