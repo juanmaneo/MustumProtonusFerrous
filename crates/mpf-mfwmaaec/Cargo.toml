@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mfwmaaec"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mfwmaaec subset for MPF: DMO output media type validation and output buffer size"
+
+[dependencies]
