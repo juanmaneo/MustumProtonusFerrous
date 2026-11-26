@@ -88,3 +88,18 @@ fntcache	partial	service handler, ServiceMain status sequence, spec exports
 fontsub	partial	CreateFontPackage format gate and copy path, MergeFontPackage stub
 gamingtcui	partial	picker and profile-card results, stub exception model
 geolocation	partial	DLL exports, Geolocator activation, weak reference control block
+graphicscapture	partial	class gate, session QueryInterface and refcount
+hal	partial	fast mutex, fixed IRQL/port/bus values, stub exports
+hrtfapo	partial	E_NOTIMPL CreateHrtfApo, export table, stub exception model
+hvsimanagementapi	ported	DllGetClassObject, DllGetActivationFactory, IsolatedWindowsEnvironmentHost statics model
+icmui	partial	SetupColorMatchingW fixed result, SetupColorMatchingA stub
+inkobj	partial	DllGetClassObject class-not-available result and export kinds
+inseng	partial	class factory, InstallEngine methods and export stubs
+ksecdd.sys	partial	DriverEntry and the 73 stub exports
+ktmw32	partial	CommitTransaction, CreateTransaction, RollbackTransaction logic and stub model
+l3codecx.ax	partial	MPEG Layer-3 class factory, DllGetClassObject and filter registration
+loadperf	partial	InstallPerfDll, perf counter text strings, stubs
+magnification	ported	MagInitialize, MagUninitialize, 19 stub exports
+mfh264enc	ported	class factory, DllGetClassObject, MFT registration
+mfmediaengine	partial	time ranges, class factory, export table, stub model
+mgmtapi	partial	stub-only exports and SnmpMgr return values

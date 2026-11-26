@@ -523,6 +523,14 @@ name = "mpf-graphics"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-graphicscapture"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-hal"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-hhctrl_ocx"
 version = "0.1.0"
 
@@ -547,6 +555,10 @@ name = "mpf-hnetcfg"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-hrtfapo"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-http_sys"
 version = "0.1.0"
 
@@ -555,7 +567,15 @@ name = "mpf-httpapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-hvsimanagementapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-iccvid"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-icmui"
 version = "0.1.0"
 
 [[package]]
@@ -592,6 +612,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-infosoft"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-inkobj"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-inseng"
 version = "0.1.0"
 
 [[package]]
@@ -636,7 +664,19 @@ name = "mpf-kernelbase"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-ksecdd_sys"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ktmw32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-l3codeca_acm"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-l3codecx_ax"
 version = "0.1.0"
 
 [[package]]
@@ -647,11 +687,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-loadperf"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-localspl"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-localui"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-magnification"
 version = "0.1.0"
 
 [[package]]
@@ -683,6 +731,14 @@ name = "mpf-mf"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mfh264enc"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mfmediaengine"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mfplat"
 version = "0.1.0"
 
@@ -700,6 +756,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mfwmaaec"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mgmtapi"
 version = "0.1.0"
 
 [[package]]
