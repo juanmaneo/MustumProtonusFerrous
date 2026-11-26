@@ -19,7 +19,7 @@ const METRICS: [&str; 3] = ["regions", "lines", "functions"];
 
 /// Source files that hold only constants, type definitions, `mod` declarations
 /// or re-exports, which llvm-cov never lists because they contain no code.
-const NO_CODE_FILES: [&str; 162] = [
+const NO_CODE_FILES: [&str; 163] = [
     "crates/mpf-amsi/src/lib.rs",
     "crates/mpf-apphelp/src/lib.rs",
     "crates/mpf-appxdeploymentclient/src/lib.rs",
@@ -162,6 +162,7 @@ const NO_CODE_FILES: [&str; 162] = [
     "crates/mpf-wevtapi/src/lib.rs",
     "crates/mpf-wevtsvc/src/lib.rs",
     "crates/mpf-wiaservc/src/lib.rs",
+    "crates/mpf-wimgapi/src/lib.rs",
     "crates/mpf-winbrand/src/lib.rs",
     "crates/mpf-windowscodecsext/src/lib.rs",
     "crates/mpf-winedmo/src/lib.rs",
