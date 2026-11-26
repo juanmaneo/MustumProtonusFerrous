@@ -1,0 +1,8 @@
+[package]
+name = "mpf-aero_msstyles"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "aero.msstyles subset for MPF: resource IDs and string table, PACKTHEM_VERSION check, COLORNAMES/SIZENAMES/FILERESNAMES lists, THEMES_INI and BLUE_INI text, and the BITMAP name table"
+
+[dependencies]
