@@ -1,0 +1,8 @@
+[package]
+name = "mpf-updspapi"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "updspapi subset for MPF: UpdSpSetDynamicStringA return value, updspapi.spec export table, and the @ stub exception records"
+
+[dependencies]
