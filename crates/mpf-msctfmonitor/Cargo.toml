@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msctfmonitor"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msctfmonitor subset for MPF: InitLocalMsCtfMonitor E_FAIL return, winecrt0 default DllCanUnloadNow/DllRegisterServer/DllUnregisterServer results, EXCEPTION_WINE_STUB model for @ stub exports, msctfmonitor.spec export classification"
+
+[dependencies]
