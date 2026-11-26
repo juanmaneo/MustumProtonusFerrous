@@ -1,0 +1,8 @@
+[package]
+name = "mpf-vulkan_1"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "vulkan-1 subset for MPF: vulkan-1.spec export table with winevulkan forwarders, DllMain attach gate, and the ten @ stub exceptions"
+
+[dependencies]
