@@ -1,0 +1,206 @@
+//! Oracle-derived test vectors for the ported dhcpcsvc6 stub records.
+//!
+//! Vectors were captured by compiling the verbatim Wine C body of `__wine_spec_unimplemented_stub`
+//! (`dlls/ntdll/exception.c`) with `gcc -fsanitize=address,undefined -g` under
+//! `target/canon/dhcpcsvc6/stub_oracle.c`, and running the harness on `dlls/dhcpcsvc6/dhcpcsvc6.spec`.
+//! The harness printed 22 rows, one per `@ stub` export, in spec order. ASan and UBSan flagged
+//! none of them, so none is excluded.
+
+use super::*;
+
+/// One row per `@ stub` export, in the order the harness printed them: the export name, then the
+/// `StubException` fields (code, flags, number of parameters, module, function).
+const ORACLE_ROWS: [(&str, u32, u32, u32, &str, &str); 22] = [
+    (
+        "Dhcpv6AcquireParameters",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6AcquireParameters",
+    ),
+    (
+        "Dhcpv6CApiCleanup",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6CApiCleanup",
+    ),
+    (
+        "Dhcpv6CApiInitialize",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6CApiInitialize",
+    ),
+    (
+        "Dhcpv6CancelOperation",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6CancelOperation",
+    ),
+    (
+        "Dhcpv6EnableDhcp",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6EnableDhcp",
+    ),
+    (
+        "Dhcpv6EnableTracing",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6EnableTracing",
+    ),
+    (
+        "Dhcpv6FreeLeaseInfo",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6FreeLeaseInfo",
+    ),
+    (
+        "Dhcpv6FreeLeaseInfoArray",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6FreeLeaseInfoArray",
+    ),
+    (
+        "Dhcpv6GetTraceArray",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6GetTraceArray",
+    ),
+    (
+        "Dhcpv6GetUserClasses",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6GetUserClasses",
+    ),
+    (
+        "Dhcpv6IsEnabled",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6IsEnabled",
+    ),
+    (
+        "Dhcpv6QueryLeaseInfo",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6QueryLeaseInfo",
+    ),
+    (
+        "Dhcpv6QueryLeaseInfoArray",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6QueryLeaseInfoArray",
+    ),
+    (
+        "Dhcpv6ReleaseParameters",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6ReleaseParameters",
+    ),
+    (
+        "Dhcpv6ReleasePrefix",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6ReleasePrefix",
+    ),
+    (
+        "Dhcpv6ReleasePrefixEx",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6ReleasePrefixEx",
+    ),
+    (
+        "Dhcpv6RenewPrefix",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6RenewPrefix",
+    ),
+    (
+        "Dhcpv6RenewPrefixEx",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6RenewPrefixEx",
+    ),
+    (
+        "Dhcpv6RequestParams",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6RequestParams",
+    ),
+    (
+        "Dhcpv6RequestPrefix",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6RequestPrefix",
+    ),
+    (
+        "Dhcpv6RequestPrefixEx",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6RequestPrefixEx",
+    ),
+    (
+        "Dhcpv6SetUserClass",
+        0x8000_0100,
+        0x01,
+        2,
+        "dhcpcsvc6.dll",
+        "Dhcpv6SetUserClass",
+    ),
+];
+
+#[test]
+fn oracle_stub_rows() {
+    for (export, code, flags, number_parameters, module, function) in ORACLE_ROWS {
+        assert_eq!(
+            export_stub(export),
+            Some(StubException {
+                code,
+                flags,
+                number_parameters,
+                module,
+                function,
+            })
+        );
+    }
+}
