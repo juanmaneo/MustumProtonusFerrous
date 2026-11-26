@@ -1,0 +1,8 @@
+[package]
+name = "mpf-diasymreader"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "diasymreader subset for MPF: CodeView RSDS debug-directory record for the PDB path"
+
+[dependencies]
