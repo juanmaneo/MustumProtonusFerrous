@@ -204,6 +204,10 @@ name = "mpf-connect"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-coremessaging"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-credui"
 version = "0.1.0"
 
@@ -217,6 +221,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-cryptdlg"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-cryptext"
 version = "0.1.0"
 
 [[package]]
@@ -236,11 +244,23 @@ name = "mpf-cryptui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-cryptxml"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ctapi32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ctl3d32"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-d2d1"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3d10core"
 version = "0.1.0"
 
 [[package]]
@@ -269,6 +289,14 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-d3dxof"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dataexchange"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-davclnt"
 version = "0.1.0"
 
 [[package]]
@@ -304,11 +332,19 @@ name = "mpf-devenum"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dhcpcsvc"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dhtmled_ocx"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-diasymreader"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-difxapi"
 version = "0.1.0"
 
 [[package]]
@@ -360,6 +396,10 @@ name = "mpf-dpnet"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dpnhpast"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dpnhupnp"
 version = "0.1.0"
 
@@ -381,6 +421,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-dssenh"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dsuiext"
 version = "0.1.0"
 
 [[package]]
@@ -432,6 +476,14 @@ name = "mpf-fltmgr_sys"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-fntcache"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-fontsub"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-fusion"
 version = "0.1.0"
 
@@ -448,11 +500,19 @@ name = "mpf-gameux"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-gamingtcui"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-gdi32"
 version = "0.1.0"
 dependencies = [
  "mpf-ntdll",
 ]
+
+[[package]]
+name = "mpf-geolocation"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-glu32"

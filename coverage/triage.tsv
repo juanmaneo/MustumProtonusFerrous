@@ -73,3 +73,18 @@ cldapi	partial	CfGetPlaceholderInfo, CfGetPlatformInfo, 49 stub exception raises
 clusapi	partial	7 fixed-return exports, 108 stub exception raises
 cng.sys	partial	DriverEntry, 35 bcrypt forwards, 28 stub exception raises
 connect	partial	IsInternetConnected, DllCanUnloadNow, 13 stub exception raises
+coremessaging	partial	IAsyncInfo state machine, dispatcher queue checks, class dispatch, stub returns
+cryptext	partial	ANSI-to-wide copy, OpenCER dialog choice, PFX stub returns
+cryptxml	partial	document and signature handles, 13 stub exception raises
+ctapi32	partial	CT-API forwarding, attach and DllMain logic
+d3d10core	partial	D3D10CoreCreateDevice control flow and RegisterLayers stub
+dataexchange	partial	factory and manager dispatch, GetForWindow checks
+davclnt	partial	auth callback handle, default entry points, stub fault model
+dhcpcsvc	partial	adapter name resolution, DhcpRequestParams mountmgr query, stub exports
+difxapi	partial	stub return codes, reboot clearing, log-callback no-ops
+dpnhpast	partial	stub exports, winecrt0 defaults, registration result fold
+dsuiext	partial	IDsDisplaySpecifier, class factory, stub exports
+fntcache	partial	service handler, ServiceMain status sequence, spec exports
+fontsub	partial	CreateFontPackage format gate and copy path, MergeFontPackage stub
+gamingtcui	partial	picker and profile-card results, stub exception model
+geolocation	partial	DLL exports, Geolocator activation, weak reference control block
