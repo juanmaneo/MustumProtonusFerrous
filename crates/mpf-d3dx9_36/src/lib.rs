@@ -4,6 +4,11 @@
 //! Ported (names in `dlls/d3dx9_36/math.c`; oracle rows in the `oracle_checks` tests):
 //! - `D3DXVec3Dot`, `D3DXVec3Length`, `D3DXVec3Cross`, `D3DXVec3Subtract` and
 //!   `D3DXVec3Normalize`: [`Vec3`] methods.
+//! - `D3DXVec2BaryCentric`, `D3DXVec2CatmullRom`, `D3DXVec2Hermite`, `D3DXVec2Normalize`,
+//!   `D3DXVec2Transform`, `D3DXVec2TransformCoord` and `D3DXVec2TransformNormal`: [`Vec2`]
+//!   methods. `D3DXVec2Transform` returns a [`Vec4`].
+//! - `D3DXVec4BaryCentric`, `D3DXVec4CatmullRom`, `D3DXVec4Cross`, `D3DXVec4Hermite`,
+//!   `D3DXVec4Normalize` and `D3DXVec4Transform`: [`Vec4`] methods.
 //! - `D3DXMatrixIdentity`, `D3DXMatrixMultiply`, `D3DXMatrixMultiplyTranspose`,
 //!   `D3DXMatrixTranspose`, `D3DXMatrixDeterminant`, `D3DXMatrixInverse`,
 //!   `D3DXMatrixTranslation`, `D3DXMatrixScaling` and `D3DXMatrixRotationX/Y/Z`: [`Matrix`].
@@ -19,23 +24,25 @@
 //! - The C functions write through an output pointer and return it. The port returns the value,
 //!   or a tuple where C writes several outputs. The NULL checks on the pointers cannot be
 //!   expressed with references, so they are not modelled. The `d3dx9math.inl` helpers used by
-//!   the quaternion functions (`D3DXQuaternionDot`, `Length` and `LengthSq`) have the same
-//!   omission.
+//!   the quaternion and vector functions (`D3DXQuaternionDot`, `Length` and `LengthSq`,
+//!   `D3DXVec2Length` and `D3DXVec4Length`) have the same omission.
 //! - C returns NULL where the port returns `None`: `D3DXMatrixInverse` for a zero determinant,
 //!   and `D3DXPlaneIntersectLine` for a zero dot product.
 //! - `D3DXMatrixInverse` writes `*pdeterminant` only for an invertible matrix. The port returns
 //!   the determinant next to the inverse in that case.
 //!
 //! Skipped, outside this subset:
-//! - The `D3DXVECTOR2` and `D3DXVECTOR4` functions, colour, spherical harmonic, projection and
-//!   view matrix, `D3DXMatrixDecompose`, the bounding-volume probes, and the `ID3DXMatrixStack`
-//!   COM object.
+//! - The stride-based `*Array` functions of `D3DXVec2` and `D3DXVec4`, which walk caller memory
+//!   by byte stride, colour, spherical harmonic, projection and view matrix,
+//!   `D3DXMatrixDecompose`, the bounding-volume probes, and the `ID3DXMatrixStack` COM object.
 //! - `D3DXFloat32To16Array` and `D3DXFloat16To32Array`, which depend on the float16 helpers of
 //!   `d3dx_helpers.c`.
 
 mod matrix;
 mod plane;
 mod quaternion;
+mod vec2;
+mod vec4;
 
 #[cfg(test)]
 mod edge_checks;
@@ -45,6 +52,8 @@ mod oracle_checks;
 pub use matrix::Matrix;
 pub use plane::Plane;
 pub use quaternion::Quaternion;
+pub use vec2::Vec2;
+pub use vec4::Vec4;
 
 /// A `D3DXVECTOR3`.
 #[derive(Clone, Copy, Debug, PartialEq)]

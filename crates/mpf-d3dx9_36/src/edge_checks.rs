@@ -1,12 +1,14 @@
 //! Edge cases: NaN propagation, the zero and point-on-plane cases of the line intersection, the
-//! signed zeros that the C arithmetic leaves in the trigonometric and inverse matrices, and the
-//! quaternion boundaries. The quaternion expectations are the `edge outputs` section of
-//! `target/canon/d3dx9_36/oracle_out.txt`, which runs the verbatim `math.c` on the same inputs.
+//! signed zeros that the C arithmetic leaves in the trigonometric and inverse matrices, the
+//! quaternion boundaries, and the vec2 and vec4 divisions. The quaternion expectations are the
+//! `edge outputs` section of `target/canon/d3dx9_36/oracle_out.txt`, and the vec2 and vec4
+//! expectations are the `edge outputs` section of `target/canon/d3dx9_36/vec_oracle_out.txt`.
+//! Both runs use the verbatim `math.c` on the same inputs.
 //! The matrix and plane expectations come from an earlier edge driver whose output is not kept
 //! in that directory. Expectations marked "not oracle-derived" follow from the C branches alone.
 
 use super::*;
-use crate::oracle_checks::{assert_bits, quat, xyz};
+use crate::oracle_checks::{assert_bits, quat, xy, xyz, xyzw};
 
 fn vec3(x: f32, y: f32, z: f32) -> Vec3 {
     Vec3 { x, y, z }
@@ -14,6 +16,14 @@ fn vec3(x: f32, y: f32, z: f32) -> Vec3 {
 
 fn quaternion(x: f32, y: f32, z: f32, w: f32) -> Quaternion {
     Quaternion { x, y, z, w }
+}
+
+fn vec2(x: f32, y: f32) -> Vec2 {
+    Vec2 { x, y }
+}
+
+fn vec4(x: f32, y: f32, z: f32, w: f32) -> Vec4 {
+    Vec4 { x, y, z, w }
 }
 
 #[test]
@@ -227,4 +237,65 @@ fn quaternion_bary_centric_zero_g_matches_slerp() {
 fn quaternion_multiply_identity_left_returns_right_operand() {
     let out = quaternion(0.0, 0.0, 0.0, 1.0).multiply(quaternion(0.5, -1.25, 2.0, 0.75));
     assert_bits(&quat(out), &[0.5, -1.25, 2.0, 0.75]);
+}
+
+// Oracle edge row `edge normalize_nan_x`.
+#[test]
+fn vec2_normalize_nan_components_divide() {
+    let unit = vec2(f32::NAN, 0.0).normalize();
+    assert!(unit.x.is_nan() && unit.y.is_nan());
+}
+
+// Oracle edge row `edge transform_coord_zero_w`: the last column of `pm` is zero, so the
+// division is by zero.
+#[test]
+fn vec2_transform_coord_zero_w_is_infinite() {
+    let zero_w = Matrix {
+        m: [
+            [1.0, 0.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [3.0, 0.0, 0.0, 0.0],
+        ],
+    };
+    let out = vec2(1.0, 2.0).transform_coord(zero_w);
+    assert_bits(&xy(out), &[f32::INFINITY, f32::INFINITY]);
+}
+
+// Oracle edge row `edge hermite_s_zero`.
+#[test]
+fn vec2_hermite_s_zero_returns_first_point() {
+    let out = vec2(1.5, -2.0).hermite(vec2(0.5, 4.0), vec2(-1.25, 0.75), vec2(2.0, -0.5), 0.0);
+    assert_bits(&xy(out), &[1.5, -2.0]);
+}
+
+// Oracle edge row `edge vec4_normalize_zero`: there is no zero branch, so 0 / 0 gives NaN.
+#[test]
+fn vec4_normalize_zero_divides() {
+    let unit = vec4(0.0, 0.0, 0.0, 0.0).normalize();
+    assert!(unit.x.is_nan() && unit.y.is_nan() && unit.z.is_nan() && unit.w.is_nan());
+}
+
+// Oracle edge row `edge vec4_cross_dependent`: the cross of two parallel vectors keeps the
+// signs of the zeros.
+#[test]
+fn vec4_cross_dependent_vectors_keep_signed_zeros() {
+    let v1 = vec4(1.5, -2.0, 0.25, 3.0);
+    let cross = v1.cross(v1, vec4(0.5, 4.0, -1.0, 2.5));
+    assert_bits(&xyzw(cross), &[0.0, -0.0, 0.0, -0.0]);
+}
+
+// Not oracle-derived: `D3DXVec2TransformNormal` reads only the upper-left 2x2 block of `pm`,
+// so the translation row cannot change the result.
+#[test]
+fn vec2_transform_normal_ignores_translation() {
+    let out = vec2(1.5, -2.0).transform_normal(Matrix::translation(5.0, 6.0, 7.0));
+    assert_bits(&xy(out), &[1.5, -2.0]);
+}
+
+// Not oracle-derived: the identity matrix leaves a vector unchanged, from the C formula.
+#[test]
+fn vec4_transform_identity_returns_input() {
+    let out = vec4(-1.25, 1.0, 2.0, 5.0).transform(Matrix::identity());
+    assert_bits(&xyzw(out), &[-1.25, 1.0, 2.0, 5.0]);
 }

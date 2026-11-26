@@ -1,9 +1,11 @@
 //! Replays of the oracle rows in `target/canon/d3dx9_36`. The oracle compiles the verbatim
-//! `dlls/d3dx9_36/math.c` with `gcc -fsanitize=address,undefined` and prints each result. Its
+//! `dlls/d3dx9_36/math.c` with `gcc -fsanitize=address,undefined` and prints each result. Each
 //! run reported no sanitizer finding, so no vector is excluded. Each test names the row it
 //! reproduces. Rows 25 to 47 are the quaternion slice; the quaternion harness prints the same
-//! 23 rows as `row 01` to `row 23` in `target/canon/d3dx9_36/oracle_out.txt`. Comparisons are on
-//! the bit pattern, so the sign of zero is checked as well.
+//! 23 rows as `row 01` to `row 23` in `target/canon/d3dx9_36/oracle_out.txt`. Rows 48 to 67 are
+//! the vec2 and vec4 slice; the vector harness (`vec_oracle.c`) prints the same 20 rows as
+//! `row 01` to `row 20` in `target/canon/d3dx9_36/vec_oracle_out.txt`. Comparisons are on the
+//! bit pattern, so the sign of zero is checked as well.
 
 use super::*;
 
@@ -153,6 +155,35 @@ const ROT_MAX_Z: Matrix = Matrix {
     ],
 };
 
+const P0: Vec2 = Vec2 { x: 1.5, y: -2.0 };
+const P1: Vec2 = Vec2 { x: 0.5, y: 4.0 };
+const P2: Vec2 = Vec2 { x: -1.25, y: 0.75 };
+const P3: Vec2 = Vec2 { x: 2.0, y: -0.5 };
+const V1: Vec4 = Vec4 {
+    x: 1.5,
+    y: -2.0,
+    z: 0.25,
+    w: 3.0,
+};
+const V2: Vec4 = Vec4 {
+    x: 0.5,
+    y: 4.0,
+    z: -1.0,
+    w: 2.5,
+};
+const V3: Vec4 = Vec4 {
+    x: 2.0,
+    y: 0.75,
+    z: 3.5,
+    w: -0.5,
+};
+const V4: Vec4 = Vec4 {
+    x: -1.25,
+    y: 1.0,
+    z: 2.0,
+    w: 5.0,
+};
+
 pub(crate) fn assert_bits(actual: &[f32], expected: &[f32]) {
     let actual: Vec<u32> = actual.iter().map(|v| v.to_bits()).collect();
     let expected: Vec<u32> = expected.iter().map(|v| v.to_bits()).collect();
@@ -161,6 +192,14 @@ pub(crate) fn assert_bits(actual: &[f32], expected: &[f32]) {
 
 pub(crate) fn xyz(v: Vec3) -> [f32; 3] {
     [v.x, v.y, v.z]
+}
+
+pub(crate) fn xy(v: Vec2) -> [f32; 2] {
+    [v.x, v.y]
+}
+
+pub(crate) fn xyzw(v: Vec4) -> [f32; 4] {
+    [v.x, v.y, v.z, v.w]
 }
 
 pub(crate) fn quat(q: Quaternion) -> [f32; 4] {
@@ -173,6 +212,10 @@ fn abcd(p: Plane) -> [f32; 4] {
 
 fn vec3(x: f32, y: f32, z: f32) -> Vec3 {
     Vec3 { x, y, z }
+}
+
+fn vec4(x: f32, y: f32, z: f32, w: f32) -> Vec4 {
+    Vec4 { x, y, z, w }
 }
 
 #[test]
@@ -572,4 +615,125 @@ fn oracle_46_quaternion_to_axis_angle() {
 fn oracle_47_quaternion_bary_centric() {
     let out = U1.bary_centric(U2, U3, 0.3, 0.2);
     assert_bits(&quat(out), &[0.19393805, -0.13017485, 0.0, 0.9723387]);
+}
+
+#[test]
+fn oracle_48_vec2_bary_centric() {
+    let out = P0.bary_centric(P1, P2, 0.3, 0.2);
+    assert_bits(&xy(out), &[0.65, 0.35000005]);
+}
+
+#[test]
+fn oracle_49_vec2_bary_centric_vertex() {
+    let out = P0.bary_centric(P1, P2, 1.0, 0.0);
+    assert_bits(&xy(out), &[0.5, 4.0]);
+}
+
+#[test]
+fn oracle_50_vec2_catmull_rom() {
+    let out = P0.catmull_rom(P1, P2, P3, 0.4);
+    assert_bits(&xy(out), &[-0.38600004, 3.2700005]);
+}
+
+#[test]
+fn oracle_51_vec2_catmull_rom_s_zero() {
+    let out = P0.catmull_rom(P1, P2, P3, 0.0);
+    assert_bits(&xy(out), &[0.5, 4.0]);
+}
+
+#[test]
+fn oracle_52_vec2_hermite() {
+    let out = P0.hermite(P1, P2, P3, 0.25);
+    assert_bits(&xy(out), &[1.046875, -0.984375]);
+}
+
+#[test]
+fn oracle_53_vec2_hermite_s_one() {
+    let out = P0.hermite(P1, P2, P3, 1.0);
+    assert_bits(&xy(out), &[-1.25, 0.75]);
+}
+
+#[test]
+fn oracle_54_vec2_normalize() {
+    assert_bits(&xy(P0.normalize()), &[0.6, -0.8]);
+}
+
+#[test]
+fn oracle_55_vec2_normalize_zero() {
+    let unit = Vec2 { x: 0.0, y: 0.0 }.normalize();
+    assert_bits(&xy(unit), &[0.0, 0.0]);
+}
+
+#[test]
+fn oracle_56_vec2_transform() {
+    let out = P0.transform(A);
+    assert_bits(&xyzw(out), &[0.0, -10.0, 4.375, 4.5]);
+}
+
+#[test]
+fn oracle_57_vec2_transform_coord() {
+    assert_bits(&xy(P0.transform_coord(A)), &[0.0, -2.2222223]);
+}
+
+#[test]
+fn oracle_58_vec2_transform_normal() {
+    assert_bits(&xy(P0.transform_normal(A)), &[1.25, -11.0]);
+}
+
+#[test]
+fn oracle_59_vec4_bary_centric() {
+    let out = V1.bary_centric(V2, V3, 0.3, 0.2);
+    assert_bits(&xyzw(out), &[1.3, 0.35000005, 0.525, 2.15]);
+}
+
+#[test]
+fn oracle_60_vec4_catmull_rom() {
+    let out = V1.catmull_rom(V2, V3, V4, 0.4);
+    assert_bits(&xyzw(out), &[1.1480001, 3.198, 0.6739999, 1.0719999]);
+}
+
+#[test]
+fn oracle_61_vec4_cross() {
+    let out = V1.cross(V2, V3);
+    assert_bits(&xyzw(out), &[61.71875, -0.1875, -39.1875, -27.71875]);
+}
+
+#[test]
+fn oracle_62_vec4_cross_unit_axes() {
+    let out = vec4(1.0, 0.0, 0.0, 0.0).cross(vec4(0.0, 1.0, 0.0, 0.0), vec4(0.0, 0.0, 1.0, 0.0));
+    assert_bits(&xyzw(out), &[0.0, -0.0, 0.0, -1.0]);
+}
+
+#[test]
+fn oracle_63_vec4_hermite() {
+    let out = V1.hermite(V2, V3, V4, 0.25);
+    assert_bits(&xyzw(out), &[1.7070312, -1.0546875, 0.5234375, 2.5703125]);
+}
+
+#[test]
+fn oracle_64_vec4_normalize() {
+    let unit = V1.normalize();
+    assert_bits(
+        &xyzw(unit),
+        &[0.38332593, -0.51110125, 0.063887656, 0.76665187],
+    );
+}
+
+#[test]
+fn oracle_65_vec4_normalize_negative() {
+    let unit = V4.normalize();
+    assert_bits(
+        &xyzw(unit),
+        &[-0.22249709, 0.17799766, 0.35599533, 0.88998836],
+    );
+}
+
+#[test]
+fn oracle_66_vec4_transform() {
+    assert_bits(&xyzw(V1.transform(A)), &[-2.0, -7.8125, 9.25, 14.375]);
+}
+
+#[test]
+fn oracle_67_vec4_transform_second() {
+    assert_bits(&xyzw(V4.transform(A)), &[-3.625, 13.0, 15.6875, 22.75]);
 }
