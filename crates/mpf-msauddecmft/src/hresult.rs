@@ -1,0 +1,14 @@
+//! `HRESULT` values and the `FAILED` macro from `include/winerror.h`.
+
+/// `HRESULT`, a signed 32-bit value, so that `FAILED` is a sign test.
+pub type Hresult = i32;
+
+pub const S_OK: Hresult = 0;
+pub const S_FALSE: Hresult = 1;
+pub const E_NOINTERFACE: Hresult = 0x8000_4002u32 as i32;
+pub const CLASS_E_CLASSNOTAVAILABLE: Hresult = 0x8004_0111u32 as i32;
+
+/// `FAILED`: true for every negative `HRESULT`.
+pub fn failed(hr: Hresult) -> bool {
+    hr < 0
+}
