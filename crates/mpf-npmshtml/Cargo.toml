@@ -1,0 +1,8 @@
+[package]
+name = "mpf-npmshtml"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "npmshtml subset for MPF: NP_Initialize and NP_Shutdown return values, npmshtml.spec export table with the NP_GetEntryPoints forward to mshtml"
+
+[dependencies]
