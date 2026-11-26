@@ -1,0 +1,8 @@
+[package]
+name = "mpf-rstrtmgr"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "rstrtmgr subset for MPF: RmGetList and RmStartSession out-parameters, ERROR_SUCCESS returns, rstrtmgr.spec export table, and the MODULE stub exception for the @ stub exports"
+
+[dependencies]
