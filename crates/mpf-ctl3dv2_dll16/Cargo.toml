@@ -1,0 +1,8 @@
+[package]
+name = "mpf-ctl3dv2_dll16"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ctl3dv2.dll16 for MPF: CTL3D auto-subclass flag state machine, fixed-return API, window procedures and the Ctl3dSetStyle stub exception"
+
+[dependencies]
