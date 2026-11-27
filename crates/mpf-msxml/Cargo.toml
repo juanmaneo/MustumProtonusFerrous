@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msxml"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msxml subset for MPF: msxml.spec export table, winebuild forward split and file name, and msxml.rgs class registrations"
+
+[dependencies]
