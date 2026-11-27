@@ -1,0 +1,8 @@
+[package]
+name = "mpf-irprops_cpl"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "irprops.cpl subset for MPF: irprops.cpl.spec export table and the 33 @ stub exception records"
+
+[dependencies]
