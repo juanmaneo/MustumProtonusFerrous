@@ -1,0 +1,8 @@
+[package]
+name = "mpf-ctl3d_dll16"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "ctl3d.dll16 subset for MPF: CTL3D16 auto-subclass flag, Ctl3dGetVer, the fixed-value 16-bit exports, the ctl3d.dll16.spec export table and the Ctl3dSetStyle stub exception"
+
+[dependencies]
