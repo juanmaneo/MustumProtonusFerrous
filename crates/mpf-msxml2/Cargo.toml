@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msxml2"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msxml2 subset for MPF: msxml2.spec export table, msxml2_tlb.idl GUID constants and DOMNodeType enum"
+
+[dependencies]
