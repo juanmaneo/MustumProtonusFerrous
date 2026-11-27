@@ -1,0 +1,8 @@
+[package]
+name = "mpf-pwrshplugin"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "pwrshplugin subset for MPF: pwrshplugin.spec export table and the __wine_spec_unimplemented_stub records for its 12 @ stub exports"
+
+[dependencies]
