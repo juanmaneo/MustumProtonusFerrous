@@ -655,11 +655,31 @@ name = "mpf-iccvid"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-icmp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-icmui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-icu"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-icuin"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-icuuc"
+version = "0.0.0"
+
+[[package]]
 name = "mpf-ieframe"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ieproxy"
 version = "0.1.0"
 
 [[package]]
@@ -695,6 +715,10 @@ name = "mpf-infosoft"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-initpki"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-inkobj"
 version = "0.1.0"
 
@@ -707,7 +731,19 @@ name = "mpf-iphlpapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-iprop"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ir50_32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-irprops_cpl"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-itircl"
 version = "0.1.0"
 
 [[package]]
@@ -748,6 +784,14 @@ name = "mpf-ksecdd_sys"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-ksproxy_ax"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ksuser"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-ktmw32"
 version = "0.1.0"
 
@@ -779,11 +823,19 @@ name = "mpf-localui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-lz32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-magnification"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-mapi32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mapistub"
 version = "0.1.0"
 
 [[package]]
@@ -808,6 +860,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mf"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mferror"
 version = "0.1.0"
 
 [[package]]
@@ -903,11 +959,19 @@ name = "mpf-msauddecmft"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mscat32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mscms"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-mscoree"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-mscorwks"
 version = "0.1.0"
 
 [[package]]
@@ -919,11 +983,19 @@ name = "mpf-msctfmonitor"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msctfp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msdaps"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-msdasql"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msdelta"
 version = "0.1.0"
 
 [[package]]
@@ -947,6 +1019,10 @@ name = "mpf-msgsm32_acm"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mshtml_tlb"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msi"
 version = "0.1.0"
 
@@ -956,6 +1032,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-msimg32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msimsg"
 version = "0.1.0"
 
 [[package]]

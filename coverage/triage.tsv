@@ -222,3 +222,23 @@ esent	partial	export table and stub records for 336 @ stub exports
 feclient	partial	feclient.spec export table and 50 @ stub records
 gpkcsp	partial	gpkcsp.spec export table and @ stub records
 ia2comproxy	partial	export table, PSFactoryBuffer CLSID and Makefile constants
+icmp	partial	forward table, i386 stack sizes and --def lines
+icu	partial	icu.spec export table and six @ stub records
+icuin	partial	icuin.spec export table and forwards to icu
+icuuc	partial	icuuc.spec export table and forwarders to icu
+ieproxy	partial	spec export table, winebuild ordinals and wrapper callees (partial)
+initpki	partial	spec export table and @ stub exception records
+iprop	partial	iprop.spec forwarder table and i386 stdcall stack sizes
+irprops.cpl	partial	export table and @ stub records
+itircl	partial	itircl.spec export table and DllGetClassObject stub
+ksproxy.ax	partial	export table and @ stub records
+ksuser	partial	ksuser.spec export table and stub records for its @ stub exports
+lz32	partial	lz32.spec export table, kernel32 forwards and .def body
+mapistub	partial	export table and stub records
+mferror	partial	MessageId table, HRESULT composition and lookups
+mscat32	partial	mscat32.spec export table and @ stub records
+mscorwks	partial	export table, forwards and 97 @ stub exports
+msctfp	partial	spec exports, proxy CLSID, DllMain and registry enumeration
+msdelta	partial	msdelta.spec export table and @ stub model
+mshtml.tlb	partial	MSHTML typelib enum constants and lookups
+msimsg	partial	1703 RCDATA reboot prompt and its language id
