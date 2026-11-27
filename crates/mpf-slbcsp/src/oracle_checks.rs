@@ -8,7 +8,14 @@
 
 use super::*;
 
-type OracleRow = (fn() -> StubException, u32, u32, u32, &'static str, &'static str);
+type OracleRow = (
+    fn() -> StubException,
+    u32,
+    u32,
+    u32,
+    &'static str,
+    &'static str,
+);
 
 /// One row per `@ stub` export, in spec order: the helper, then the `code`, `flags`, number of
 /// parameters, `module` and `function` that the harness printed.
