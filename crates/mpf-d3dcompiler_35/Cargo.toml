@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3dcompiler_35"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d3dcompiler_35 subset for MPF: d3dcompiler_35.spec export table, D3D_COMPILER_VERSION gates, and the stub exception for D3DDisassembleEffect and DebugSetMute"
+
+[dependencies]
