@@ -1,0 +1,8 @@
+[package]
+name = "mpf-actxprxy"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "actxprxy subset for MPF: IEnumShellItems and IEnumObjects Next proxy and stub out-parameter logic, and the DllCanUnloadNow refcount gate"
+
+[dependencies]
