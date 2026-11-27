@@ -1,0 +1,8 @@
+[package]
+name = "mpf-npptools"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "npptools subset for MPF: npptools.spec export table and the 60 @ stub exports with their __wine_spec_unimplemented_stub records"
+
+[dependencies]
