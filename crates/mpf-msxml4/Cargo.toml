@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msxml4"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msxml4 subset for MPF: msxml4.spec export table, msxml4_tlb.idl library and coclass CLSIDs, and the manifest and module constants"
+
+[dependencies]
