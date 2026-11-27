@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mferror"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mferror subset for MPF: the mferror.mc message table with HRESULT composition and lookups; the DLL exports nothing"
+
+[dependencies]
