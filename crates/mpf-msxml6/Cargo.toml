@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msxml6"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msxml6 subset for MPF: msxml6.spec export table with its msxml3 forward, and the MSXML2 library and coclass records from msxml6.idl"
+
+[dependencies]
