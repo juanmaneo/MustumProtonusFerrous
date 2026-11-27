@@ -74,8 +74,8 @@ in the dev container for direct comparison.
       (string-only subset, conformance case seeded from `dlls/shlwapi/tests`)
 - [x] `cargo xtask coverage` gate: every file of every crate at 100% of
       regions, lines and functions
-- [ ] 494 of 744 `dlls/` components have a port crate (480 partial, 14
-      fully ported); 8 are marked `native` (not a final status) and 242 are not ported yet
+- [ ] 505 of 744 `dlls/` components have a port crate (489 partial, 16
+      fully ported); 8 are marked `native` (not a final status) and 231 are not ported yet
 - [ ] all 744 `dlls/` components ported, each with conformance cases
       seeded from its `dlls/<dll>/tests`
 
