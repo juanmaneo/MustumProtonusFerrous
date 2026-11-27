@@ -37,7 +37,7 @@ impl MatrixOrder {
 }
 
 /// `malloc` from the C functions: `alloc` is called with the size and reports whether it succeeded.
-fn allocate(alloc: impl FnOnce(usize) -> bool, size: usize) -> Result<(), Status> {
+fn allocate(alloc: fn(usize) -> bool, size: usize) -> Result<(), Status> {
     if alloc(size) {
         Ok(())
     } else {
@@ -91,7 +91,7 @@ pub fn gdip_create_matrix2(
     m22: f32,
     dx: f32,
     dy: f32,
-    alloc: impl FnOnce(usize) -> bool,
+    alloc: fn(usize) -> bool,
 ) -> Result<Matrix, Status> {
     allocate(alloc, size_of::<Matrix>())?;
     Ok(Matrix {
@@ -104,7 +104,7 @@ pub fn gdip_create_matrix2(
 pub fn gdip_create_matrix3(
     rect: Option<&RectF>,
     pt: Option<&[PointF; 3]>,
-    alloc: impl FnOnce(usize) -> bool,
+    alloc: fn(usize) -> bool,
 ) -> Result<Matrix, Status> {
     let (Some(rect), Some(pt)) = (rect, pt) else {
         return Err(Status::InvalidParameter);
@@ -125,7 +125,7 @@ pub fn gdip_create_matrix3(
 pub fn gdip_create_matrix3_i(
     rect: Option<&Rect>,
     pt: Option<&[Point; 3]>,
-    alloc: impl FnOnce(usize) -> bool,
+    alloc: fn(usize) -> bool,
 ) -> Result<Matrix, Status> {
     let (Some(rect), Some(pt)) = (rect, pt) else {
         return Err(Status::InvalidParameter);
@@ -147,7 +147,7 @@ pub fn gdip_create_matrix3_i(
 /// `GdipCloneMatrix` from `dlls/gdiplus/matrix.c`.
 pub fn gdip_clone_matrix(
     matrix: Option<&Matrix>,
-    alloc: impl FnOnce(usize) -> bool,
+    alloc: fn(usize) -> bool,
 ) -> Result<Matrix, Status> {
     let Some(matrix) = matrix else {
         return Err(Status::InvalidParameter);
@@ -157,7 +157,7 @@ pub fn gdip_clone_matrix(
 }
 
 /// `GdipCreateMatrix` from `dlls/gdiplus/matrix.c`: the identity matrix.
-pub fn gdip_create_matrix(alloc: impl FnOnce(usize) -> bool) -> Result<Matrix, Status> {
+pub fn gdip_create_matrix(alloc: fn(usize) -> bool) -> Result<Matrix, Status> {
     allocate(alloc, size_of::<Matrix>())?;
     Ok(identity_matrix())
 }
@@ -329,7 +329,7 @@ pub fn gdip_transform_matrix_points(matrix: Option<&Matrix>, pts: &mut [PointF])
 pub fn gdip_transform_matrix_points_i(
     matrix: Option<&Matrix>,
     pts: &mut [Point],
-    alloc: impl FnOnce(usize) -> bool,
+    alloc: fn(usize) -> bool,
 ) -> Status {
     transform_int_points(matrix, pts, alloc, gdip_transform_matrix_points)
 }
@@ -383,7 +383,7 @@ pub fn gdip_vector_transform_matrix_points(matrix: Option<&Matrix>, pts: &mut [P
 pub fn gdip_vector_transform_matrix_points_i(
     matrix: Option<&Matrix>,
     pts: &mut [Point],
-    alloc: impl FnOnce(usize) -> bool,
+    alloc: fn(usize) -> bool,
 ) -> Status {
     transform_int_points(matrix, pts, alloc, gdip_vector_transform_matrix_points)
 }
@@ -393,7 +393,7 @@ pub fn gdip_vector_transform_matrix_points_i(
 fn transform_int_points(
     matrix: Option<&Matrix>,
     pts: &mut [Point],
-    alloc: impl FnOnce(usize) -> bool,
+    alloc: fn(usize) -> bool,
     transform: fn(Option<&Matrix>, &mut [PointF]) -> Status,
 ) -> Status {
     if pts.is_empty() {

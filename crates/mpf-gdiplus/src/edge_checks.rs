@@ -31,16 +31,6 @@ fn alloc_ok(_size: usize) -> bool {
     true
 }
 
-// Force monomorphizations of allocate() and clone functions to be instantiated with both
-// failing and succeeding allocators by using them in module-level assertions.
-// This ensures coverage of all instantiation paths at compile time.
-const _: () = {
-    const fn check_alloc_compiles() {
-        // These never execute, but verify the functions compile with both allocators.
-        // The actual test coverage happens at runtime in the test functions below.
-    }
-};
-
 #[test]
 fn export_table_matches_gdiplus_spec() {
     // C source: gdiplus.spec has 630 entries, ordinals 1..=630 with no gaps, 12 `@ stub`
@@ -244,6 +234,10 @@ fn null_matrix_arguments_return_invalid_parameter() {
         gdip_clone_matrix(None, alloc_fail),
         Err(Status::InvalidParameter)
     );
+    assert_eq!(
+        gdip_clone_matrix(Some(&m), alloc_fail),
+        Err(Status::OutOfMemory)
+    );
     assert_eq!(gdip_delete_matrix(None), Status::InvalidParameter);
     assert_eq!(
         gdip_get_matrix_elements(None),
@@ -406,25 +400,15 @@ fn all_allocators_succeed_with_valid_sizes() {
 fn allocation_requests_match_the_c_malloc_sizes() {
     // C source: malloc(sizeof(GpMatrix)) is 24 bytes, and malloc(sizeof(GpPointF) * count) is
     // count * 8 bytes.
-    let mut requested = 0;
-    assert!(gdip_create_matrix(|size| {
-        requested = size;
-        true
-    })
-    .is_ok());
-    assert_eq!(requested, 24);
+    assert!(gdip_create_matrix(|size| size == 24).is_ok());
 
     let mut pts = [
         Point { x: 1, y: 2 },
         Point { x: 3, y: 4 },
         Point { x: 5, y: 6 },
     ];
-    let status = gdip_transform_matrix_points_i(Some(&identity()), &mut pts, |size| {
-        requested = size;
-        true
-    });
+    let status = gdip_transform_matrix_points_i(Some(&identity()), &mut pts, |size| size == 3 * 8);
     assert_eq!(status, Status::Ok);
-    assert_eq!(requested, 3 * 8);
 }
 
 #[test]

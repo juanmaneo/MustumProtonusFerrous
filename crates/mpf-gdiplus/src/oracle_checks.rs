@@ -19,6 +19,14 @@ fn bits<const N: usize>(v: [f32; N]) -> [u32; N] {
     v.map(f32::to_bits)
 }
 
+fn allocator(ok: bool) -> fn(usize) -> bool {
+    if ok {
+        |_| true
+    } else {
+        |_| false
+    }
+}
+
 fn coords(v: &[[f32; 2]]) -> Vec<[u32; 2]> {
     v.iter().map(|&c| bits(c)).collect()
 }
@@ -2338,7 +2346,7 @@ const SET_RECT_ROWS: &[([f32; 4], [f32; 4])] = &[
 #[test]
 fn oracle_create2() {
     for (i, &(m, alloc_ok, status, out)) in CREATE2_ROWS.iter().enumerate() {
-        let result = gdip_create_matrix2(m[0], m[1], m[2], m[3], m[4], m[5], |_| alloc_ok);
+        let result = gdip_create_matrix2(m[0], m[1], m[2], m[3], m[4], m[5], allocator(alloc_ok));
         assert_eq!(
             outcome(result.map(|mat| mat.elements)),
             (status, bits(out)),
@@ -2353,7 +2361,7 @@ fn oracle_create3() {
         let result = gdip_create_matrix3(
             rect.map(to_rect).as_ref(),
             pts.map(to_points3).as_ref(),
-            |_| alloc_ok,
+            allocator(alloc_ok),
         );
         assert_eq!(
             outcome(result.map(|mat| mat.elements)),
@@ -2369,7 +2377,7 @@ fn oracle_create3_i() {
         let result = gdip_create_matrix3_i(
             rect.map(to_rect_i).as_ref(),
             pts.map(to_points3_i).as_ref(),
-            |_| alloc_ok,
+            allocator(alloc_ok),
         );
         assert_eq!(
             outcome(result.map(|mat| mat.elements)),
@@ -2382,7 +2390,7 @@ fn oracle_create3_i() {
 #[test]
 fn oracle_clone() {
     for (i, &(src, alloc_ok, status, out)) in CLONE_ROWS.iter().enumerate() {
-        let result = gdip_clone_matrix(to_matrix(src).as_ref(), |_| alloc_ok);
+        let result = gdip_clone_matrix(to_matrix(src).as_ref(), allocator(alloc_ok));
         assert_eq!(
             outcome(result.map(|mat| mat.elements)),
             (status, bits(out)),
@@ -2394,7 +2402,7 @@ fn oracle_clone() {
 #[test]
 fn oracle_create() {
     for (i, &(alloc_ok, status, out)) in CREATE_ROWS.iter().enumerate() {
-        let result = gdip_create_matrix(|_| alloc_ok);
+        let result = gdip_create_matrix(allocator(alloc_ok));
         assert_eq!(
             outcome(result.map(|mat| mat.elements)),
             (status, bits(out)),
@@ -2517,8 +2525,11 @@ fn oracle_vector() {
 fn oracle_transform_i() {
     for (i, &(src, pts, alloc_ok, status, out)) in TRANSFORM_I_ROWS.iter().enumerate() {
         let mut points = to_points_i(pts);
-        let result =
-            gdip_transform_matrix_points_i(to_matrix(src).as_ref(), &mut points, |_| alloc_ok);
+        let result = gdip_transform_matrix_points_i(
+            to_matrix(src).as_ref(),
+            &mut points,
+            allocator(alloc_ok),
+        );
         assert_eq!(
             (result, point_coords_i(&points)),
             (status, out.to_vec()),
@@ -2531,10 +2542,11 @@ fn oracle_transform_i() {
 fn oracle_vector_i() {
     for (i, &(src, pts, alloc_ok, status, out)) in VECTOR_I_ROWS.iter().enumerate() {
         let mut points = to_points_i(pts);
-        let result =
-            gdip_vector_transform_matrix_points_i(to_matrix(src).as_ref(), &mut points, |_| {
-                alloc_ok
-            });
+        let result = gdip_vector_transform_matrix_points_i(
+            to_matrix(src).as_ref(),
+            &mut points,
+            allocator(alloc_ok),
+        );
         assert_eq!(
             (result, point_coords_i(&points)),
             (status, out.to_vec()),
