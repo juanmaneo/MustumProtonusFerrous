@@ -1,0 +1,8 @@
+[package]
+name = "mpf-scarddlg"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "scarddlg subset for MPF: scarddlg.spec export table and the EXCEPTION_WINE_STUB records of its five @ stub exports"
+
+[dependencies]
