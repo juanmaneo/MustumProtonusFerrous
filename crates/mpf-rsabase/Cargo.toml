@@ -1,0 +1,8 @@
+[package]
+name = "mpf-rsabase"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "rsabase subset for MPF: rsabase.spec export table forwarding to rsaenh, the winebuild .def lines, and the stdcall argument-size rule"
+
+[dependencies]
