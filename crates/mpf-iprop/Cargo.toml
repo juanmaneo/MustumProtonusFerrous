@@ -1,0 +1,8 @@
+[package]
+name = "mpf-iprop"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "iprop subset for MPF: iprop.spec forwarder table to ole32 and i386 stdcall stack sizes"
+
+[dependencies]
