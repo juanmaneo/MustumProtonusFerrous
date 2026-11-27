@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msvcp_win"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msvcp_win subset for MPF: the x86_64 msvcp_win.spec export table and its @ stub records"
+
+[dependencies]
