@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3dx10_40"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d3dx10_40 subset for MPF: D3DX10 SDK version check"
+
+[dependencies]
