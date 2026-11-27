@@ -179,6 +179,10 @@ name = "mpf-comcat"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-comctl32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-comctl32_v6"
 version = "0.1.0"
 
@@ -480,6 +484,10 @@ name = "mpf-dsdmo"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dsound"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dsrole"
 version = "0.1.0"
 
@@ -581,6 +589,10 @@ version = "0.1.0"
 dependencies = [
  "mpf-ntdll",
 ]
+
+[[package]]
+name = "mpf-gdiplus"
+version = "0.1.0"
 
 [[package]]
 name = "mpf-geolocation"
@@ -1439,7 +1451,15 @@ name = "mpf-rasdlg"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-regapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-resampledmo"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-resutils"
 version = "0.1.0"
 
 [[package]]
@@ -1456,6 +1476,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-rpcrt4"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-rsabase"
 version = "0.1.0"
 
 [[package]]
@@ -1479,11 +1503,27 @@ name = "mpf-rtworkq"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-samlib"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-sapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-sas"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-scarddlg"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-scardsvr"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-sccbase"
 version = "0.1.0"
 
 [[package]]
@@ -1515,11 +1555,23 @@ name = "mpf-secur32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-security"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-sensapi"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-serialui"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-setupapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-sfc"
 version = "0.1.0"
 
 [[package]]
@@ -1531,11 +1583,19 @@ name = "mpf-shcore"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-shdoclc"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-shdocvw"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-shell32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-shfolder"
 version = "0.1.0"
 
 [[package]]
@@ -1546,6 +1606,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-slbcsp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-slc"
 version = "0.1.0"
 
@@ -1554,11 +1618,23 @@ name = "mpf-snmpapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-softpub"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-spoolss"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-sppc"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-srclient"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-srvcli"
 version = "0.1.0"
 
 [[package]]
@@ -1821,6 +1897,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-wininet"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-winmm"
 version = "0.1.0"
 
 [[package]]
