@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3dx9_24"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d3dx9_24 subset for MPF: the @ stub export table of d3dx9_24.spec and its stub records"
+
+[dependencies]
