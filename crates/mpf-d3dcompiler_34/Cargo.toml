@@ -1,0 +1,8 @@
+[package]
+name = "mpf-d3dcompiler_34"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "d3dcompiler_34 subset for MPF: d3dcompiler_34.spec export table and the stub exception of its two @ stub exports"
+
+[dependencies]
