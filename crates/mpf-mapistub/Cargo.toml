@@ -1,0 +1,8 @@
+[package]
+name = "mpf-mapistub"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "mapistub subset for MPF: mapistub.spec export table, @ stub exception records, and one helper per stub export"
+
+[dependencies]
