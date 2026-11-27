@@ -1,0 +1,8 @@
+[package]
+name = "mpf-comm_drv16"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "comm.drv16 subset for MPF: comm.drv16.spec export table and the __wine_spec_unimplemented_stub records for its 21 @ stub exports"
+
+[dependencies]
