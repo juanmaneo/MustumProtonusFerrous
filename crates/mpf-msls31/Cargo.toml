@@ -1,0 +1,8 @@
+[package]
+name = "mpf-msls31"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "msls31 subset for MPF: msls31.spec export table of 79 @ stub exports and their __wine_spec_unimplemented_stub records"
+
+[dependencies]
