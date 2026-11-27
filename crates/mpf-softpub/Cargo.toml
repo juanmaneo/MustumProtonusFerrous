@@ -1,0 +1,8 @@
+[package]
+name = "mpf-softpub"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "softpub subset for MPF: the softpub.spec export table with its wintrust forwards and PRIVATE flags, and the __wine_spec_unimplemented_stub records for its three stub exports"
+
+[dependencies]
