@@ -19,6 +19,10 @@ name = "mpf-activeds_tlb"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-actxprxy"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-adsldp"
 version = "0.1.0"
 
@@ -64,6 +68,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-atl"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-atl80"
 version = "0.1.0"
 
 [[package]]
@@ -195,6 +203,10 @@ name = "mpf-coml2"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-comm_drv16"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-compstui"
 version = "0.1.0"
 
@@ -237,6 +249,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-credui"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-crtdll"
 version = "0.1.0"
 
 [[package]]
@@ -288,6 +304,14 @@ name = "mpf-ctl3d32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-ctl3d_dll16"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ctl3dv2_dll16"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d2d1"
 version = "0.1.0"
 
@@ -301,6 +325,26 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-d3d8thk"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dcompiler_34"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dcompiler_35"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dcompiler_36"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dcompiler_37"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dcompiler_38"
 version = "0.1.0"
 
 [[package]]

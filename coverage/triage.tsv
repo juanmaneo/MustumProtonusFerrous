@@ -282,3 +282,14 @@ winmm	partial	error text, callback/driver checks, timer table, fourcc, spec expo
 dsound	partial	export table, create paths, class object, volume/pan, sample readers, vector math, speaker mask
 gdiplus	partial	GpMatrix affine functions, arc/spline/color helpers, 630-row export table
 setupapi	partial	INF parser, fixed returns, export table, stubs
+actxprxy	partial	IEnumShellItems/IEnumObjects Next out-parameters and DllCanUnloadNow gate
+atl80	partial	AtlComModuleRegisterServer and @ stub exports
+comm.drv16	partial	stub model of the 21 @ stub exports
+crtdll	partial	export table, 9 stub exports and msvcrt math, ctype and swab routines
+ctl3d.dll16	ported	CTL3D16 auto-subclass flag, fixed-value exports and Ctl3dSetStyle stub
+ctl3dv2.dll16	ported	CTL3D flag state machine, fixed returns and Ctl3dSetStyle stub
+d3dcompiler_34	partial	spec export table and stub exceptions
+d3dcompiler_35	partial	spec export table, stubs and version gates
+d3dcompiler_36	partial	blob part selection, argument gates, export table and stubs
+d3dcompiler_37	partial	spec export table and stub model
+d3dcompiler_38	partial	spec export table and @ stub records

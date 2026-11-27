@@ -524,3 +524,14 @@ dlls/slbcsp              mpf-slbcsp               partial
 dlls/softpub             mpf-softpub              partial
 dlls/srclient            mpf-srclient             partial
 dlls/srvcli              mpf-srvcli               partial
+dlls/actxprxy            mpf-actxprxy             partial
+dlls/atl80               mpf-atl80                partial
+dlls/comm.drv16          mpf-comm_drv16           partial
+dlls/crtdll              mpf-crtdll               partial
+dlls/ctl3d.dll16         mpf-ctl3d_dll16          ported
+dlls/ctl3dv2.dll16       mpf-ctl3dv2_dll16        ported
+dlls/d3dcompiler_34      mpf-d3dcompiler_34       partial
+dlls/d3dcompiler_35      mpf-d3dcompiler_35       partial
+dlls/d3dcompiler_36      mpf-d3dcompiler_36       partial
+dlls/d3dcompiler_37      mpf-d3dcompiler_37       partial
+dlls/d3dcompiler_38      mpf-d3dcompiler_38       partial
