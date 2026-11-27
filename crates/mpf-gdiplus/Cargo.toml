@@ -1,0 +1,8 @@
+[package]
+name = "mpf-gdiplus"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "gdiplus subset for MPF: GpMatrix affine functions, arc and spline helpers, colour and unit conversions, gdiplus.spec export table, @ stub exception records"
+
+[dependencies]
