@@ -1,0 +1,8 @@
+[package]
+name = "mpf-atl80"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "atl80 subset for MPF: AtlComModuleRegisterServer registration walk and the @ stub exception records"
+
+[dependencies]
