@@ -1,0 +1,361 @@
+// The enumerator names are the IDL names verbatim, so some are not SCREAMING_CASE, such as
+// `POINTER_GRAVITY_Left` and `DomConstructorObject`.
+#![allow(non_upper_case_globals)]
+
+/// One enumerator of a typelib enum: its IDL name and its value.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Member {
+    pub name: &'static str,
+    pub value: i32,
+}
+
+/// Declares the constants of one `typedef enum` from `include/mshtml.idl`, then the member table
+/// `$table` that lists them in IDL order.
+macro_rules! typelib_enum {
+    ($table:ident { $($member:ident = $value:expr,)+ }) => {
+        $(pub const $member: i32 = $value;)+
+
+        pub const $table: &[Member] = &[$(Member { name: stringify!($member), value: $member }),+];
+    };
+}
+
+typelib_enum!(POINTER_GRAVITY {
+    POINTER_GRAVITY_Left = 0,
+    POINTER_GRAVITY_Right = 1,
+    POINTER_GRAVITY_Max = 2147483647,
+});
+
+typelib_enum!(MARKUP_CONTEXT_TYPE {
+    CONTEXT_TYPE_None = 0,
+    CONTEXT_TYPE_Text = 1,
+    CONTEXT_TYPE_EnterScope = 2,
+    CONTEXT_TYPE_ExitScope = 3,
+    CONTEXT_TYPE_NoScope = 4,
+    MARKUP_CONTEXT_TYPE_Max = 2147483647,
+});
+
+typelib_enum!(ELEMENT_ADJACENCY {
+    ELEM_ADJ_BeforeBegin = 0,
+    ELEM_ADJ_AfterBegin = 1,
+    ELEM_ADJ_BeforeEnd = 2,
+    ELEM_ADJ_AfterEnd = 3,
+    ELEMENT_ADJACENCY_Max = 2147483647,
+});
+
+typelib_enum!(MOVEUNIT_ACTION {
+    MOVEUNIT_PREVCHAR = 0,
+    MOVEUNIT_NEXTCHAR = 1,
+    MOVEUNIT_PREVCLUSTERBEG = 2,
+    MOVEUNIT_NEXTCLUSTERBEG = 3,
+    MOVEUNIT_PREVCLUSTEREND = 4,
+    MOVEUNIT_NEXTCLUSTEREND = 5,
+    MOVEUNIT_PREVWORDBEG = 6,
+    MOVEUNIT_NEXTWORDBEG = 7,
+    MOVEUNIT_PREVWORDEND = 8,
+    MOVEUNIT_NEXTWORDEND = 9,
+    MOVEUNIT_PREVPROOFWORD = 10,
+    MOVEUNIT_NEXTPROOFWORD = 11,
+    MOVEUNIT_NEXTURLBEG = 12,
+    MOVEUNIT_PREVURLBEG = 13,
+    MOVEUNIT_NEXTURLEND = 14,
+    MOVEUNIT_PREVURLEND = 15,
+    MOVEUNIT_PREVSENTENCE = 16,
+    MOVEUNIT_NEXTSENTENCE = 17,
+    MOVEUNIT_PREVBLOCK = 18,
+    MOVEUNIT_NEXTBLOCK = 19,
+    MOVEUNIT_ACTION_Max = 2147483647,
+});
+
+typelib_enum!(SELECTION_TYPE {
+    SELECTION_TYPE_None = 0,
+    SELECTION_TYPE_Caret = 1,
+    SELECTION_TYPE_Text = 2,
+    SELECTION_TYPE_Control = 3,
+    SELECTION_TYPE_Max = 2147483647,
+});
+
+typelib_enum!(ELEMENT_TAG_ID {
+    TAGID_NULL = 0,
+    TAGID_UNKNOWN = 1,
+    TAGID_A = 2,
+    TAGID_ACRONYM = 3,
+    TAGID_ADDRESS = 4,
+    TAGID_APPLET = 5,
+    TAGID_AREA = 6,
+    TAGID_B = 7,
+    TAGID_BASE = 8,
+    TAGID_BASEFONT = 9,
+    TAGID_BDO = 10,
+    TAGID_BGSOUND = 11,
+    TAGID_BIG = 12,
+    TAGID_BLINK = 13,
+    TAGID_BLOCKQUOTE = 14,
+    TAGID_BODY = 15,
+    TAGID_BR = 16,
+    TAGID_BUTTON = 17,
+    TAGID_CAPTION = 18,
+    TAGID_CENTER = 19,
+    TAGID_CITE = 20,
+    TAGID_CODE = 21,
+    TAGID_COL = 22,
+    TAGID_COLGROUP = 23,
+    TAGID_COMMENT = 24,
+    TAGID_COMMENT_RAW = 25,
+    TAGID_DD = 26,
+    TAGID_DEL = 27,
+    TAGID_DFN = 28,
+    TAGID_DIR = 29,
+    TAGID_DIV = 30,
+    TAGID_DL = 31,
+    TAGID_DT = 32,
+    TAGID_EM = 33,
+    TAGID_EMBED = 34,
+    TAGID_FIELDSET = 35,
+    TAGID_FONT = 36,
+    TAGID_FORM = 37,
+    TAGID_FRAME = 38,
+    TAGID_FRAMESET = 39,
+    TAGID_GENERIC = 40,
+    TAGID_H1 = 41,
+    TAGID_H2 = 42,
+    TAGID_H3 = 43,
+    TAGID_H4 = 44,
+    TAGID_H5 = 45,
+    TAGID_H6 = 46,
+    TAGID_HEAD = 47,
+    TAGID_HR = 48,
+    TAGID_HTML = 49,
+    TAGID_I = 50,
+    TAGID_IFRAME = 51,
+    TAGID_IMG = 52,
+    TAGID_INPUT = 53,
+    TAGID_INS = 54,
+    TAGID_KBD = 55,
+    TAGID_LABEL = 56,
+    TAGID_LEGEND = 57,
+    TAGID_LI = 58,
+    TAGID_LINK = 59,
+    TAGID_LISTING = 60,
+    TAGID_MAP = 61,
+    TAGID_MARQUEE = 62,
+    TAGID_MENU = 63,
+    TAGID_META = 64,
+    TAGID_NEXTID = 65,
+    TAGID_NOBR = 66,
+    TAGID_NOEMBED = 67,
+    TAGID_NOFRAMES = 68,
+    TAGID_NOSCRIPT = 69,
+    TAGID_OBJECT = 70,
+    TAGID_OL = 71,
+    TAGID_OPTION = 72,
+    TAGID_P = 73,
+    TAGID_PARAM = 74,
+    TAGID_PLAINTEXT = 75,
+    TAGID_PRE = 76,
+    TAGID_Q = 77,
+    TAGID_RP = 78,
+    TAGID_RT = 79,
+    TAGID_RUBY = 80,
+    TAGID_S = 81,
+    TAGID_SAMP = 82,
+    TAGID_SCRIPT = 83,
+    TAGID_SELECT = 84,
+    TAGID_SMALL = 85,
+    TAGID_SPAN = 86,
+    TAGID_STRIKE = 87,
+    TAGID_STRONG = 88,
+    TAGID_STYLE = 89,
+    TAGID_SUB = 90,
+    TAGID_SUP = 91,
+    TAGID_TABLE = 92,
+    TAGID_TBODY = 93,
+    TAGID_TC = 94,
+    TAGID_TD = 95,
+    TAGID_TEXTAREA = 96,
+    TAGID_TFOOT = 97,
+    TAGID_TH = 98,
+    TAGID_THEAD = 99,
+    TAGID_TITLE = 100,
+    TAGID_TR = 101,
+    TAGID_TT = 102,
+    TAGID_U = 103,
+    TAGID_UL = 104,
+    TAGID_VAR = 105,
+    TAGID_WBR = 106,
+    TAGID_XMP = 107,
+    TAGID_ROOT = 108,
+    TAGID_OPTGROUP = 109,
+    TAGID_ABBR = 110,
+    TAGID_COUNT = 111,
+    TAGID_LAST_PREDEFINED = 10000,
+    ELEMENT_TAG_ID_Max = 2147483647,
+});
+
+typelib_enum!(COORD_SYSTEM {
+    COORD_SYSTEM_GLOBAL = 0,
+    COORD_SYSTEM_PARENT = 1,
+    COORD_SYSTEM_CONTAINER = 2,
+    COORD_SYSTEM_CONTENT = 3,
+    COORD_SYSTEM_FRAME = 4,
+    COORD_SYSTEM_Max = 2147483647,
+});
+
+typelib_enum!(DISPLAY_MOVEUNIT {
+    DISPLAY_MOVEUNIT_PreviousLine = 1,
+    DISPLAY_MOVEUNIT_NextLine = 2,
+    DISPLAY_MOVEUNIT_CurrentLineStart = 3,
+    DISPLAY_MOVEUNIT_CurrentLineEnd = 4,
+    DISPLAY_MOVEUNIT_TopOfWindow = 5,
+    DISPLAY_MOVEUNIT_BottomOfWindow = 6,
+    DISPLAY_MOVEUNIT_Max = 2147483647,
+});
+
+typelib_enum!(DISPLAY_GRAVITY {
+    DISPLAY_GRAVITY_PreviousLine = 1,
+    DISPLAY_GRAVITY_NextLine = 2,
+    DISPLAY_GRAVITY_Max = 2147483647,
+});
+
+typelib_enum!(CARET_DIRECTION {
+    CARET_DIRECTION_INDETERMINATE = 0,
+    CARET_DIRECTION_SAME = 1,
+    CARET_DIRECTION_BACKWARD = 2,
+    CARET_DIRECTION_FORWARD = 3,
+    CARET_DIRECTION_Max = 2147483647,
+});
+
+typelib_enum!(DomConstructor {
+    DomConstructorObject = 0,
+    DomConstructorAttr = 1,
+    DomConstructorBehaviorUrnsCollection = 2,
+    DomConstructorBookmarkCollection = 3,
+    DomConstructorCompatibleInfo = 4,
+    DomConstructorCompatibleInfoCollection = 5,
+    DomConstructorControlRangeCollection = 6,
+    DomConstructorCSSCurrentStyleDeclaration = 7,
+    DomConstructorCSSRuleList = 8,
+    DomConstructorCSSRuleStyleDeclaration = 9,
+    DomConstructorCSSStyleDeclaration = 10,
+    DomConstructorCSSStyleRule = 11,
+    DomConstructorCSSStyleSheet = 12,
+    DomConstructorDataTransfer = 13,
+    DomConstructorDOMImplementation = 14,
+    DomConstructorElement = 15,
+    DomConstructorEvent = 16,
+    DomConstructorHistory = 17,
+    DomConstructorHTCElementBehaviorDefaults = 18,
+    DomConstructorHTMLAnchorElement = 19,
+    DomConstructorHTMLAreaElement = 20,
+    DomConstructorHTMLAreasCollection = 21,
+    DomConstructorHTMLBaseElement = 22,
+    DomConstructorHTMLBaseFontElement = 23,
+    DomConstructorHTMLBGSoundElement = 24,
+    DomConstructorHTMLBlockElement = 25,
+    DomConstructorHTMLBodyElement = 26,
+    DomConstructorHTMLBRElement = 27,
+    DomConstructorHTMLButtonElement = 28,
+    DomConstructorHTMLCollection = 29,
+    DomConstructorHTMLCommentElement = 30,
+    DomConstructorHTMLDDElement = 31,
+    DomConstructorHTMLDivElement = 32,
+    DomConstructorHTMLDocument = 33,
+    DomConstructorHTMLDListElement = 34,
+    DomConstructorHTMLDTElement = 35,
+    DomConstructorHTMLEmbedElement = 36,
+    DomConstructorHTMLFieldSetElement = 37,
+    DomConstructorHTMLFontElement = 38,
+    DomConstructorHTMLFormElement = 39,
+    DomConstructorHTMLFrameElement = 40,
+    DomConstructorHTMLFrameSetElement = 41,
+    DomConstructorHTMLGenericElement = 42,
+    DomConstructorHTMLHeadElement = 43,
+    DomConstructorHTMLHeadingElement = 44,
+    DomConstructorHTMLHRElement = 45,
+    DomConstructorHTMLHtmlElement = 46,
+    DomConstructorHTMLIFrameElement = 47,
+    DomConstructorHTMLImageElement = 48,
+    DomConstructorHTMLInputElement = 49,
+    DomConstructorHTMLIsIndexElement = 50,
+    DomConstructorHTMLLabelElement = 51,
+    DomConstructorHTMLLegendElement = 52,
+    DomConstructorHTMLLIElement = 53,
+    DomConstructorHTMLLinkElement = 54,
+    DomConstructorHTMLMapElement = 55,
+    DomConstructorHTMLMarqueeElement = 56,
+    DomConstructorHTMLMetaElement = 57,
+    DomConstructorHTMLModelessDialog = 58,
+    DomConstructorHTMLNamespaceInfo = 59,
+    DomConstructorHTMLNamespaceInfoCollection = 60,
+    DomConstructorHTMLNextIdElement = 61,
+    DomConstructorHTMLNoShowElement = 62,
+    DomConstructorHTMLObjectElement = 63,
+    DomConstructorHTMLOListElement = 64,
+    DomConstructorHTMLOptionElement = 65,
+    DomConstructorHTMLParagraphElement = 66,
+    DomConstructorHTMLParamElement = 67,
+    DomConstructorHTMLPhraseElement = 68,
+    DomConstructorHTMLPluginsCollection = 69,
+    DomConstructorHTMLPopup = 70,
+    DomConstructorHTMLScriptElement = 71,
+    DomConstructorHTMLSelectElement = 72,
+    DomConstructorHTMLSpanElement = 73,
+    DomConstructorHTMLStyleElement = 74,
+    DomConstructorHTMLTableCaptionElement = 75,
+    DomConstructorHTMLTableCellElement = 76,
+    DomConstructorHTMLTableColElement = 77,
+    DomConstructorHTMLTableElement = 78,
+    DomConstructorHTMLTableRowElement = 79,
+    DomConstructorHTMLTableSectionElement = 80,
+    DomConstructorHTMLTextAreaElement = 81,
+    DomConstructorHTMLTextElement = 82,
+    DomConstructorHTMLTitleElement = 83,
+    DomConstructorHTMLUListElement = 84,
+    DomConstructorHTMLUnknownElement = 85,
+    DomConstructorImage = 86,
+    DomConstructorLocation = 87,
+    DomConstructorNamedNodeMap = 88,
+    DomConstructorNavigator = 89,
+    DomConstructorNodeList = 90,
+    DomConstructorOption = 91,
+    DomConstructorScreen = 92,
+    DomConstructorSelection = 93,
+    DomConstructorStaticNodeList = 94,
+    DomConstructorStorage = 95,
+    DomConstructorStyleSheetList = 96,
+    DomConstructorStyleSheetPage = 97,
+    DomConstructorStyleSheetPageList = 98,
+    DomConstructorText = 99,
+    DomConstructorTextRange = 100,
+    DomConstructorTextRangeCollection = 101,
+    DomConstructorTextRectangle = 102,
+    DomConstructorTextRectangleList = 103,
+    DomConstructorWindow = 104,
+    DomConstructorXDomainRequest = 105,
+    DomConstructorXMLHttpRequest = 106,
+    DomConstructorMax = 107,
+    DomConstructor_Max = 2147483647,
+});
+
+typelib_enum!(DOM_EVENT_PHASE {
+    DEP_CAPTURING_PHASE = 1,
+    DEP_AT_TARGET = 2,
+    DEP_BUBBLING_PHASE = 3,
+    DOM_EVENT_PHASE_Max = 2147483647,
+});
+
+/// Returns the value of the member called `name` in `members`, or `None` if there is none.
+pub fn member_value(members: &[Member], name: &str) -> Option<i32> {
+    members
+        .iter()
+        .find(|member| member.name == name)
+        .map(|member| member.value)
+}
+
+/// Returns the name of the first member of `members` with the value `value`, or `None` if no
+/// member has that value.
+pub fn member_name(members: &[Member], value: i32) -> Option<&'static str> {
+    members
+        .iter()
+        .find(|member| member.value == value)
+        .map(|member| member.name)
+}
