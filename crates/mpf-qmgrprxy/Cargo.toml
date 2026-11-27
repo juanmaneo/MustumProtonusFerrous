@@ -1,0 +1,8 @@
+[package]
+name = "mpf-qmgrprxy"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "qmgrprxy subset for MPF: spec export table, PSFactoryBuffer GUID, DllMain and DllRegisterServer routing with no registry resources"
+
+[dependencies]
