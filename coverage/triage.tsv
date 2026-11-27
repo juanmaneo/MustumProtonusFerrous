@@ -242,3 +242,23 @@ msctfp	partial	spec exports, proxy CLSID, DllMain and registry enumeration
 msdelta	partial	msdelta.spec export table and @ stub model
 mshtml.tlb	partial	MSHTML typelib enum constants and lookups
 msimsg	partial	1703 RCDATA reboot prompt and its language id
+msls31	partial	msls31.spec export table and 79 @ stub records
+mssip32	partial	stub model of the seven CryptSIP @ stub exports
+msvcp120_app	partial	export table, forwards and @ stub records
+msvcp_win	partial	x86_64 export table and @ stub model
+msvcr120_app	partial	export table and stub model
+msvcrt40	partial	msvcrt40.spec export table, forwards and stub records (partial)
+msxml	partial	msxml.spec export table, forward helpers, class registrations
+msxml2	partial	export table, typelib GUIDs and DOMNodeType enum
+msxml4	partial	msxml4.spec exports, msxml4_tlb CLSIDs and manifest constants
+msxml6	partial	msxml6.spec exports, MSXML2 library and coclass records
+normaliz	partial	normaliz.spec forwarder table and i386 stdcall stack sizes
+npptools	partial	npptools.spec export table and @ stub records
+odbcbcp	partial	odbcbcp.spec export table and @ stub records
+odbccu32	partial	export table and stub record of odbccu32.spec
+olethk32	partial	olethk32.spec export table and stub records
+photometadatahandler	partial	spec exports and DllGetClassObject stub
+profapi	partial	profapi.spec export table and unnamed @ stub exceptions
+psapi	partial	psapi.spec export table, stdcall decoration and .def body
+pwrshplugin	partial	spec export table and stub records for 12 @ stub exports
+qmgrprxy	partial	spec export table, proxy DllMain and register routing

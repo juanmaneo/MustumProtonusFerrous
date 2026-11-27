@@ -1051,6 +1051,10 @@ name = "mpf-msisys_ocx"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msls31"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msnet32"
 version = "0.1.0"
 
@@ -1075,6 +1079,10 @@ name = "mpf-mssign32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-mssip32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-mstask"
 version = "0.1.0"
 
@@ -1092,6 +1100,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-msvcm80"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvcp120_app"
 version = "0.1.0"
 
 [[package]]
@@ -1115,11 +1127,23 @@ name = "mpf-msvcp90"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-msvcp_win"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvcr120_app"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-msvcrt"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-msvcrt20"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msvcrt40"
 version = "0.1.0"
 
 [[package]]
@@ -1140,6 +1164,22 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-mswsock"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msxml"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msxml2"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msxml4"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-msxml6"
 version = "0.1.0"
 
 [[package]]
@@ -1187,7 +1227,15 @@ name = "mpf-ninput"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-normaliz"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-npmshtml"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-npptools"
 version = "0.1.0"
 
 [[package]]
@@ -1223,7 +1271,15 @@ name = "mpf-odbc32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-odbcbcp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-odbccp32"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-odbccu32"
 version = "0.1.0"
 
 [[package]]
@@ -1262,6 +1318,10 @@ name = "mpf-olesvr32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-olethk32"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-opcservices"
 version = "0.1.0"
 
@@ -1282,6 +1342,10 @@ name = "mpf-pe"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-photometadatahandler"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-pidgen"
 version = "0.1.0"
 
@@ -1295,6 +1359,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-prntvpt"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-profapi"
 version = "0.1.0"
 
 [[package]]
@@ -1315,7 +1383,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mpf-psapi"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-pstorec"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-pwrshplugin"
 version = "0.1.0"
 
 [[package]]
@@ -1336,6 +1412,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-qmgr"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-qmgrprxy"
 version = "0.1.0"
 
 [[package]]
