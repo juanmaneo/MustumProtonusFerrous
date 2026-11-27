@@ -15,7 +15,15 @@ name = "mpf-activeds"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-activeds_tlb"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-adsldp"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-adsldpc"
 version = "0.1.0"
 
 [[package]]
@@ -27,11 +35,19 @@ name = "mpf-advpack"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-aero_msstyles"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-amsi"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-amstream"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-apisetschema"
 version = "0.1.0"
 
 [[package]]
@@ -95,6 +111,10 @@ name = "mpf-browseui"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-bthprops_cpl"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cabinet"
 version = "0.1.0"
 
@@ -152,6 +172,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-combase"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-comcat"
 version = "0.1.0"
 
 [[package]]
@@ -224,6 +248,10 @@ name = "mpf-cryptdlg"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-cryptdll"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-cryptext"
 version = "0.1.0"
 
@@ -264,7 +292,23 @@ name = "mpf-d3d10core"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-d3d12core"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3d8thk"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-d3dcompiler_43"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dim"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-d3dim700"
 version = "0.1.0"
 
 [[package]]
@@ -336,6 +380,10 @@ name = "mpf-dhcpcsvc"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dhcpcsvc6"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dhtmled_ocx"
 version = "0.1.0"
 
@@ -388,7 +436,15 @@ name = "mpf-dnsapi"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dplay"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dplayx"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-dpnaddr"
 version = "0.1.0"
 
 [[package]]
@@ -404,11 +460,19 @@ name = "mpf-dpnhupnp"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-dpnlobby"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-dpvoice"
 version = "0.1.0"
 
 [[package]]
 name = "mpf-dpwsockx"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-drmclien"
 version = "0.1.0"
 
 [[package]]
@@ -456,6 +520,10 @@ name = "mpf-dxva2"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-esent"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-evr"
 version = "0.1.0"
 
@@ -465,6 +533,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-faultrep"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-feclient"
 version = "0.1.0"
 
 [[package]]
@@ -519,6 +591,10 @@ name = "mpf-glu32"
 version = "0.1.0"
 
 [[package]]
+name = "mpf-gpkcsp"
+version = "0.1.0"
+
+[[package]]
 name = "mpf-graphics"
 version = "0.1.0"
 
@@ -568,6 +644,10 @@ version = "0.1.0"
 
 [[package]]
 name = "mpf-hvsimanagementapi"
+version = "0.1.0"
+
+[[package]]
+name = "mpf-ia2comproxy"
 version = "0.1.0"
 
 [[package]]

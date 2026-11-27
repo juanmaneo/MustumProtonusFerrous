@@ -202,3 +202,23 @@ wsnmp32	partial	stdcall bodies, export table and @ stub exception
 xaudio2_7	partial	class gates, QI dispatch, callback table, XAPO returns
 xinput9_1_0	partial	dsound GUID checks, forwarding and export table
 wimgapi	partial	stub bodies, export table and @ stub exception
+activeds.tlb	partial	ActiveDs enum constants from iads.idl and member lookups
+adsldpc	partial	adsldpc.spec export table and stub model for 189 exports
+aero.msstyles	partial	resource tables and PACKTHEM_VERSION check
+apisetschema	partial	winebuild apiset parser and ApiSetSchema v6 section writer
+bthprops.cpl	partial	export table and @ stub records
+comcat	partial	comcat.spec export table, winebuild .def lines, Makefile values
+cryptdll	partial	export table and stub model (partial)
+d3d12core	partial	d3d12core.spec export table and stub records
+d3d8thk	partial	export table and OsThunk stub records
+d3dim	partial	d3dim.spec export table and @ stub exception records
+d3dim700	partial	export table and stub model for 18 @ stub exports
+dhcpcsvc6	partial	dhcpcsvc6.spec export table and @ stub records
+dplay	partial	dplay.spec forwarder export table and data-only rule
+dpnaddr	partial	dpnaddr.spec forward, stdcall arg bytes and build constants
+dpnlobby	partial	export table, DirectPlay8LobbyCreate forward and .def rules
+drmclien	partial	drmclien.spec export table and stub records
+esent	partial	export table and stub records for 336 @ stub exports
+feclient	partial	feclient.spec export table and 50 @ stub records
+gpkcsp	partial	gpkcsp.spec export table and @ stub records
+ia2comproxy	partial	export table, PSFactoryBuffer CLSID and Makefile constants
