@@ -262,3 +262,23 @@ profapi	partial	profapi.spec export table and unnamed @ stub exceptions
 psapi	partial	psapi.spec export table, stdcall decoration and .def body
 pwrshplugin	partial	spec export table and stub records for 12 @ stub exports
 qmgrprxy	partial	spec export table, proxy DllMain and register routing
+regapi	partial	regapi.spec export table and @ stub records
+resutils	partial	stub model of the 71 @ stub exports
+rsabase	partial	export table, winebuild .def lines, get_args_size
+samlib	partial	samlib.spec export table and 65 @ stub exports modelled
+sas	partial	sas.spec export table and SendSAS stub record
+scarddlg	partial	scarddlg.spec export table and stub records
+sccbase	partial	sccbase.spec export table and CP* stub records
+security	partial	security.spec forwarder export table to secur32
+sfc	partial	sfc.spec export table, forwards to sfc_os
+shdoclc	partial	resource IDs, STRINGTABLE, browse context MENU, ERROR.HTM
+shfolder	partial	shfolder.spec export table and winebuild .def output
+slbcsp	partial	slbcsp.spec export table and CP* @ stub records
+softpub	partial	spec export table, wintrust forwards and stub records
+srclient	partial	srclient.spec export table and stub model (partial)
+srvcli	partial	export table, netapi32 forwards and @ stub records
+comctl32	partial	DPA/DSA pointer and item arrays, Str_GetPtr/SetPtr, export table, stubs
+winmm	partial	error text, callback/driver checks, timer table, fourcc, spec export table and stub record
+dsound	partial	export table, create paths, class object, volume/pan, sample readers, vector math, speaker mask
+gdiplus	partial	GpMatrix affine functions, arc/spline/color helpers, 630-row export table
+setupapi	partial	INF parser, fixed returns, export table, stubs
