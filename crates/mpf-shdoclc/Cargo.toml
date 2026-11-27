@@ -1,0 +1,8 @@
+[package]
+name = "mpf-shdoclc"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "shdoclc subset for MPF: resource IDs, the English STRINGTABLE, the IDR_BROWSE_CONTEXT_MENU MENU, the ERROR.HTM resource and the LANG_ID of a data-only DLL"
+
+[dependencies]
